@@ -898,23 +898,26 @@
         <desc id="canvas-kb-hint">Interactive diagram canvas. Tab to select elements, arrow keys to move, Delete to remove, Escape to deselect.</desc>
         <defs>
           <!-- → forward arrowheads (marker-end, points right along line) -->
-          <marker id="arrow-sync"   markerWidth="8" markerHeight="8" refX="8" refY="3.5" orient="auto">
+          <marker id="arrow-sync"   markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth" overflow="visible">
+            <rect x="-1" y="-4" width="10" height="15" fill="#0d0f14"/>
             <polygon points="0 0, 8 3.5, 0 7" fill="#4af0c4"/>
           </marker>
-          <marker id="arrow-async"  markerWidth="8" markerHeight="8" refX="8" refY="3.5" orient="auto">
+          <marker id="arrow-async"  markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto" overflow="visible">
+            <rect x="-1" y="-4" width="10" height="15" fill="#0d0f14"/>
             <polyline points="0,0 7,3.5 0,7" fill="none" stroke="#7b6fff" stroke-width="1.5"/>
           </marker>
-          <marker id="arrow-return" markerWidth="8" markerHeight="8" refX="8" refY="3.5" orient="auto">
+          <marker id="arrow-return" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto" overflow="visible">
+            <rect x="-1" y="-4" width="10" height="15" fill="#0d0f14"/>
             <polyline points="0,0 7,3.5 0,7" fill="none" stroke="#ff6b8a" stroke-width="1.5"/>
           </marker>
           <!-- ← reversed arrowheads (marker-start, points back along line toward start) -->
-          <marker id="arrow-sync-rev"   markerWidth="8" markerHeight="8" refX="0" refY="3.5" orient="auto-start-reverse">
+          <marker id="arrow-sync-rev"   markerWidth="8" markerHeight="8" refX="1" refY="3.5" orient="auto-start-reverse">
             <polygon points="0 0, 8 3.5, 0 7" fill="#4af0c4"/>
           </marker>
-          <marker id="arrow-async-rev"  markerWidth="8" markerHeight="8" refX="0" refY="3.5" orient="auto-start-reverse">
+          <marker id="arrow-async-rev"  markerWidth="8" markerHeight="8" refX="1" refY="3.5" orient="auto-start-reverse">
             <polyline points="0,0 7,3.5 0,7" fill="none" stroke="#7b6fff" stroke-width="1.5"/>
           </marker>
-          <marker id="arrow-return-rev" markerWidth="8" markerHeight="8" refX="0" refY="3.5" orient="auto-start-reverse">
+          <marker id="arrow-return-rev" markerWidth="8" markerHeight="8" refX="1" refY="3.5" orient="auto-start-reverse">
             <polyline points="0,0 7,3.5 0,7" fill="none" stroke="#ff6b8a" stroke-width="1.5"/>
           </marker>
         </defs>
