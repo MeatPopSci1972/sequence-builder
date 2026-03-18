@@ -1,0 +1,3435 @@
+<!DOCTYPE html>
+<!--
+  SequenceForge — Visual Sequence Diagram Builder
+  Version: 0.9.1
+  License: MIT
+  Repository: https://github.com/GGemini/sequenceforge
+
+  Single-file, zero-dependency static HTML application.
+  Drop onto any static host (GitHub Pages, Netlify, S3) — no build step required.
+
+  Features:
+  - Visual drag-and-drop sequence diagram editor
+  - PlantUML and Mermaid output formats
+  - Actors, synchronous/async/return messages, notes, fragments (alt/loop/opt)
+  - Bidirectional arrows — double-click to cycle direction, or set in Properties
+  - Undo stack (50 steps), keyboard shortcuts, WCAG 2.2 AA accessibility
+  - Mock Ollama API integration (localhost:11434) for local LLM diagram analysis
+
+  Keyboard shortcuts:
+  A — add actor      M — draw message    N — add note
+  F — add fragment   Del — delete        Ctrl+Z — undo   Ctrl+Y — redo
+  Esc — deselect     Arrows — nudge selected element (Shift+Arrow = 10px)
+  Double-click message — cycle arrow direction (right → left → both)
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SequenceForge — Visual Diagram Builder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg:        #0d0f14;
+    --surface:   #141720;
+    --surface2:  #1c2030;
+    --surface3:  #242840;
+    --border:    #2e3450;
+    --border2:   #3d4466;
+    --accent:    #4af0c4;
+    --accent2:   #7b6fff;
+    --accent3:   #ff6b8a;
+    --text:      #e8ecf4;
+    --text2:     #8892aa;
+    --text3:     #7d899e;  /* was #556080 ~3.2:1; now ~4.7:1 — WCAG AA 1.4.3 */
+    --actor-bg:  #1a1f35;
+    --actor-border: #3d4466;
+    --msg-color: #4af0c4;
+    --msg-async: #7b6fff;
+    --msg-return:#ff6b8a;
+    --focus-ring: 0 0 0 3px #4af0c450, 0 0 0 1px #4af0c4;
+    --r:         6px;
+    --r2:        10px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%; background: var(--bg); color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    overflow: hidden;
+  }
+
+  /* ── Skip link (WCAG 2.4.1) ── */
+  .skip-link {
+    position: absolute; top: -99px; left: 8px; z-index: 9999;
+    background: var(--accent); color: #000; padding: 8px 16px;
+    border-radius: var(--r); font-weight: 700; text-decoration: none;
+    transition: top .15s;
+  }
+  .skip-link:focus { top: 8px; box-shadow: var(--focus-ring); }
+
+  /* ── Layout ── */
+  #app { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+
+  /* ── Topbar ── */
+  #topbar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    padding: 6px 12px; border-bottom: 1px solid var(--border);
+    background: var(--surface); z-index: 20; min-height: 48px;
+  }
+  #topbar h1 {
+    font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800;
+    letter-spacing: .08em; color: var(--accent);
+    margin-right: 4px; white-space: nowrap;
+  }
+  #topbar h1 span { color: var(--text2); }
+  .top-sep { display: none; }  /* replaced by .tbtn-group border-left */
+
+  /* ── Toolbar groups — wrap as a unit, separated by border-left ── */
+  .tbtn-group {
+    display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;
+  }
+  .tbtn-group + .tbtn-group {
+    padding-left: 8px; border-left: 1px solid var(--border); margin-left: 2px;
+  }
+
+  /* toolbar buttons */
+  .tbtn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: var(--r);
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text2); font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; cursor: pointer; transition: all .15s;
+    white-space: nowrap; user-select: none;
+  }
+  .tbtn:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+  .tbtn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .tbtn.active { background: var(--surface3); color: var(--accent); border-color: var(--accent); }
+  .tbtn svg { flex-shrink: 0; }
+
+  /* format toggle */
+  #fmt-group { display: flex; gap: 0; }
+  #fmt-group .tbtn { border-radius: 0; border-right-width: 0; }
+  #fmt-group .tbtn:first-child { border-radius: var(--r) 0 0 var(--r); }
+  #fmt-group .tbtn:last-child { border-radius: 0 var(--r) var(--r) 0; border-right-width: 1px; }
+
+  .spacer { flex: 1 1 100%; height: 0; }  /* full-width invisible spacer forces a wrap row break */
+
+  /* ── Main workspace ── */
+  #workspace {
+    display: grid;
+    grid-template-columns: 200px 1fr 340px;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    background: var(--surface); border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 12px 8px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .sidebar-section h2 {
+    font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700;
+    letter-spacing: .15em; text-transform: uppercase; color: var(--text3);
+    padding: 0 6px; margin-bottom: 8px;
+  }
+  .palette-grid { display: flex; flex-direction: column; gap: 4px; }
+
+  /* Two-part palette row: [icon+label | +] */
+  .palette-row {
+    display: flex; gap: 3px; align-items: stretch;
+  }
+  .palette-row .palette-item {
+    flex: 1; border-radius: var(--r) 0 0 var(--r);
+    border-right-width: 0;
+  }
+  .palette-row .palette-item:only-child {
+    border-radius: var(--r); border-right-width: 1px;
+  }
+  .palette-add-btn {
+    flex-shrink: 0; width: 26px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 0 var(--r) var(--r) 0;
+    color: var(--text3); font-size: 14px; line-height: 1;
+    cursor: pointer; transition: all .15s; user-select: none;
+  }
+  .palette-add-btn:hover { background: var(--surface3); color: var(--accent); border-color: var(--border2); }
+  .palette-add-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  /* Preview-active: palette item highlighted when its type is previewing */
+  .palette-item.previewing { border-color: var(--accent)66; color: var(--accent); background: var(--accent)08; }
+
+  /* draggable palette items */
+  .palette-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: var(--r);
+    border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text2);
+    font-size: 11px; cursor: grab; transition: all .15s;
+    user-select: none;
+  }
+  .palette-item:hover { border-color: var(--border2); color: var(--text); background: var(--surface3); }
+  .palette-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .palette-item:active { cursor: grabbing; }
+  .pill {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 4px; font-size: 10px;
+    font-weight: 700; flex-shrink: 0;
+  }
+  .pill-actor  { background: #1a2a40; color: #4af0c4; border: 1px solid #4af0c430; }
+  .pill-sync   { background: #1a2a1a; color: #4af0c4; border: 1px solid #4af0c430; }
+  .pill-async  { background: #221a40; color: #7b6fff; border: 1px solid #7b6fff30; }
+  .pill-return { background: #2a1a20; color: #ff6b8a; border: 1px solid #ff6b8a30; }
+  .pill-note   { background: #2a2a1a; color: #f0c44a; border: 1px solid #f0c44a30; }
+  .pill-alt    { background: #2a1a2a; color: #c44af0; border: 1px solid #c44af030; }
+  .pill-loop   { background: #1a2a2a; color: #4af0e0; border: 1px solid #4af0e030; }
+
+  /* ── Canvas ── */
+  #canvas-wrap {
+    position: relative; overflow: hidden; background: var(--bg);
+    cursor: default;
+  }
+  /* grid background */
+  #canvas-wrap::before {
+    content: '';
+    position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(var(--surface2) 1px, transparent 1px),
+      linear-gradient(90deg, var(--surface2) 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: .4;
+  }
+  #canvas {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  /* drop zone highlight */
+  #canvas-wrap.drop-active::after {
+    content: 'Drop here'; pointer-events: none;
+    position: absolute; inset: 0;
+    border: 2px dashed var(--accent); border-radius: var(--r2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: var(--accent); opacity: .5;
+  }
+
+  /* ── SVG actors & messages ── */
+  .actor-group { cursor: move; }
+  .actor-head {
+    fill: var(--actor-bg); stroke: var(--actor-border);
+    stroke-width: 1.5; rx: 6;
+  }
+  .actor-head.selected { stroke: var(--accent); stroke-width: 2; }
+  .actor-label {
+    fill: var(--text); font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 500; dominant-baseline: middle;
+    text-anchor: middle;
+  }
+  .lifeline {
+    stroke: var(--border2); stroke-width: 1;
+    stroke-dasharray: 6 4; pointer-events: none;
+  }
+  .lifeline-active { fill: var(--surface3); stroke: var(--border2); }
+
+  /* message arrows */
+  .msg-line {
+    stroke-width: 1.8; fill: none; cursor: pointer;
+  }
+  .msg-line.sync   { stroke: var(--msg-color); }
+  .msg-line.async  { stroke: var(--msg-async); stroke-dasharray: none; }
+  .msg-line.return { stroke: var(--msg-return); stroke-dasharray: 5 3; }
+  .msg-line.selected { stroke-width: 3; filter: drop-shadow(0 0 4px currentColor); }
+
+  .msg-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    dominant-baseline: auto; pointer-events: none;
+  }
+  .msg-label.sync   { fill: var(--msg-color); }
+  .msg-label.async  { fill: var(--msg-async); }
+  .msg-label.return { fill: var(--msg-return); }
+
+  /* note boxes */
+  .note-box { fill: #1e1c0e; stroke: #f0c44a44; stroke-width: 1.5; }
+  .note-text { fill: #f0c44a; font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+
+  /* fragment boxes */
+  .fragment-box { fill: none; stroke: #c44af044; stroke-width: 1.5; stroke-dasharray: 8 3; }
+  .fragment-label { fill: #c44af0; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; }
+
+  /* ── Properties / Output panel ── */
+  #panel {
+    background: var(--surface); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  /* tabs */
+  #panel-tabs {
+    display: flex; border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .ptab {
+    flex: 1; padding: 10px 8px;
+    font-size: 10px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text3);
+    background: transparent; border: none; cursor: pointer;
+    transition: all .15s; font-family: 'JetBrains Mono', monospace;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .ptab:hover { color: var(--text2); }
+  .ptab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .ptab:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+  .panel-body { flex: 1; overflow-y: auto; padding: 16px; }
+
+  /* properties form */
+  .prop-group { margin-bottom: 20px; }
+  .prop-group label {
+    display: block; font-size: 10px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text3); margin-bottom: 6px;
+  }
+  .prop-input, .prop-select, .prop-textarea {
+    width: 100%; padding: 8px 10px; border-radius: var(--r);
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text); font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; transition: border-color .15s;
+  }
+  .prop-input:focus, .prop-select:focus, .prop-textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent)22;
+  }
+  .prop-select option { background: var(--surface2); }
+  .prop-textarea { resize: vertical; min-height: 60px; }
+  .prop-row { display: flex; gap: 8px; align-items: center; }
+  .prop-row label { font-size: 11px; color: var(--text2); cursor: pointer; }
+  .prop-row input[type=checkbox] {
+    accent-color: var(--accent); width: 14px; height: 14px;
+  }
+  .prop-row input[type=checkbox]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  .no-selection {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 12px; height: 200px;
+    color: var(--text3); text-align: center; font-size: 12px;
+  }
+  .no-selection svg { opacity: .3; }
+
+  /* delete button */
+  .btn-danger {
+    width: 100%; padding: 8px; border-radius: var(--r);
+    border: 1px solid #ff6b8a44; background: #ff6b8a11;
+    color: var(--msg-return); font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; cursor: pointer; transition: all .15s;
+    margin-top: 8px;
+  }
+  .btn-danger:hover { background: #ff6b8a22; border-color: var(--msg-return); }
+  .btn-danger:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+  /* ── Output tab ── */
+  #output-wrap { display: flex; flex-direction: column; height: 100%; }
+
+  .output-toolbar {
+    display: flex; gap: 8px; margin-bottom: 12px; flex-shrink: 0;
+  }
+  .obtn {
+    flex: 1; padding: 7px; border-radius: var(--r);
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text2); font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; cursor: pointer; transition: all .15s;
+  }
+  .obtn:hover { background: var(--surface3); color: var(--text); }
+  .obtn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .obtn.primary {
+    background: var(--accent)18; border-color: var(--accent)66;
+    color: var(--accent);
+  }
+  .obtn.primary:hover { background: var(--accent)28; }
+
+  #output-code {
+    flex: 1; overflow-y: auto;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 12px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    line-height: 1.7; color: var(--text2); white-space: pre;
+    min-height: 200px;
+  }
+  /* syntax highlight classes */
+  .kw { color: var(--accent2); }
+  .str { color: var(--accent); }
+  .cmt { color: var(--text3); }
+  .sym { color: var(--msg-return); }
+  .num { color: #f0c44a; }
+
+  /* API response */
+  #api-section { margin-top: 16px; }
+  #api-section h3 {
+    font-size: 10px; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--text3); margin-bottom: 8px;
+  }
+  #api-response {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 12px;
+    font-size: 10px; line-height: 1.6; color: var(--text2);
+    white-space: pre-wrap; max-height: 220px; overflow-y: auto;
+  }
+  .api-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 99px;
+    font-size: 10px; margin-bottom: 8px;
+  }
+  .api-status.ok  { background: #4af0c422; color: var(--accent); border: 1px solid var(--accent)44; }
+  .api-status.err { background: #ff6b8a22; color: var(--msg-return); border: 1px solid var(--msg-return)44; }
+  .api-status.loading { background: #7b6fff22; color: var(--accent2); border: 1px solid var(--accent2)44; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .dot.pulse { animation: pulse .8s ease infinite alternate; }
+  @keyframes pulse { to { opacity: .2; } }
+
+  /* ── Status bar ── */
+  #statusbar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 24px; background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 12px; font-size: 10px; color: var(--text3);
+    z-index: 30;
+  }
+  #statusbar span b { color: var(--text2); }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--surface3); border: 1px solid var(--border2);
+    color: var(--text); padding: 8px 20px; border-radius: 99px;
+    font-size: 12px; opacity: 0; transition: all .25s;
+    pointer-events: none; z-index: 9999;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Scrollbars ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* ── Connection mode cursor ── */
+  #canvas-wrap.connecting { cursor: crosshair; }
+
+  /* ── Debug console ── */
+  #debug-console {
+    position: fixed; bottom: 24px; left: 0; right: 0;
+    height: 0; background: #0a0c10;
+    border-top: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    z-index: 25; transition: height .2s ease;
+    overflow: hidden;
+  }
+  #debug-console.open { height: 180px; }
+  #debug-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 10px; border-bottom: 1px solid var(--border);
+    flex-shrink: 0; background: var(--surface);
+  }
+  #debug-toolbar span {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text3); flex: 1;
+  }
+  #debug-toolbar button {
+    font-size: 10px; font-family: 'JetBrains Mono', monospace;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text3); padding: 2px 8px; border-radius: 4px;
+    cursor: pointer;
+  }
+  #debug-toolbar button:hover { color: var(--text); border-color: var(--border2); }
+  #debug-log {
+    flex: 1; overflow-y: auto; padding: 6px 10px;
+    font-size: 10px; font-family: 'JetBrains Mono', monospace;
+    line-height: 1.8;
+  }
+  .dlog-info  { color: var(--text2); }
+  .dlog-warn  { color: var(--amber); }
+  .dlog-error { color: var(--red); }
+  .dlog-ok    { color: var(--accent); }
+  .dlog-ts    { color: var(--text3); margin-right: 8px; user-select: none; }
+  body.debug-open #statusbar { bottom: 180px; }
+  body.debug-open #toast     { bottom: 216px; }
+
+  /* ── SVG element focus ring (2.4.7 / 2.4.11) ── */
+  /* Targets actors, messages, notes, fragments that have tabindex=0 */
+  [data-id]:focus-visible {
+    outline: none; /* suppress default — we draw our own */
+  }
+  [data-id]:focus-visible .hover-bounds {
+    opacity: 1;
+    stroke: var(--accent);
+    stroke-width: 2;
+    stroke-dasharray: none;
+  }
+
+  /* ── Hover highlight bounding box ── */
+  .hover-bounds {
+    fill: none;
+    stroke: var(--border2);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+    rx: 4px;
+    pointer-events: all; /* full rect is clickable/draggable */
+    opacity: 0;
+    transition: opacity .12s;
+  }
+  [data-id]:hover .hover-bounds,
+  [data-id]:focus .hover-bounds,
+  .hover-bounds:hover { opacity: 1; }
+
+  /* ── Pending actor — armed for message association ── */
+  .actor-head.pending-actor {
+    stroke: var(--violet) !important; stroke-width: 2 !important;
+    filter: drop-shadow(0 0 5px var(--violet));
+  }
+
+  /* ── Connect mode: source actor highlight ── */
+  .actor-head.connect-source {
+    stroke: var(--amber) !important; stroke-width: 2.5 !important;
+    filter: drop-shadow(0 0 6px var(--amber));
+  }
+
+  /* ── Drag ghost — element stays visible while dragging ── */
+  .dragging-ghost { opacity: 0.45; pointer-events: none; }
+
+  /* ── Message drag ghost ── */
+  .msg-drag-ghost {
+    stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 3;
+    fill: none; pointer-events: none; opacity: .5;
+  }
+
+  /* ── Network badge on arrows ── */
+  .net-badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    fill: var(--text3); pointer-events: none;
+  }
+
+  /* ── Custom Actor modal ── */
+  #actor-modal-backdrop {
+    display: none; position: fixed; inset: 0; z-index: 10001;
+    background: rgba(0,0,0,.75); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+  }
+  #actor-modal-backdrop.open { display: flex; }
+  #actor-modal {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--r2); padding: 24px 28px; min-width: 340px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.6);
+    animation: modal-in .18s ease;
+  }
+  #actor-modal h2 {
+    font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800;
+    color: var(--text); margin-bottom: 16px;
+  }
+  .emoji-grid {
+    display: grid; grid-template-columns: repeat(8, 1fr);
+    gap: 4px; margin-bottom: 12px; max-height: 160px; overflow-y: auto;
+  }
+  .emoji-btn {
+    font-size: 18px; padding: 4px; border-radius: 6px; border: 1px solid transparent;
+    background: var(--surface2); cursor: pointer; text-align: center; transition: all .1s;
+  }
+  .emoji-btn:hover, .emoji-btn.selected { border-color: var(--accent); background: var(--surface3); }
+  .emoji-preview {
+    font-size: 28px; text-align: center; padding: 8px;
+    background: var(--surface2); border-radius: 8px; margin-bottom: 12px;
+    border: 1px solid var(--border);
+  }
+  /* ── Output format row ── */
+  .output-format-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px; flex-shrink: 0;
+  }
+
+  .prop-section-label {
+    font-size: 9px; font-weight: 700; letter-spacing: .15em;
+    text-transform: uppercase; color: var(--text3);
+    border-top: 1px solid var(--border); padding-top: 12px;
+    margin-top: 4px; margin-bottom: 10px;
+  }
+
+  /* ── Keyboard hint overlay ── */
+  #kb-hint {
+    position: absolute; bottom: 36px; right: 12px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 10px 14px;
+    font-size: 10px; color: var(--text3); line-height: 2;
+    pointer-events: none;
+  }
+  #kb-hint b { color: var(--text2); }
+
+  /* ── Empty state ── */
+  #empty-hint {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center; pointer-events: none; user-select: none;
+  }
+  #empty-hint h2 {
+    font-family: 'Syne', sans-serif; font-size: 22px;
+    font-weight: 800; color: var(--surface3); letter-spacing: .05em;
+    margin-bottom: 8px;
+  }
+  #empty-hint p { font-size: 11px; color: var(--text3); }
+
+  /* ── Modal ── */
+  #modal-backdrop {
+    display: none; position: fixed; inset: 0; z-index: 10000;
+    background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+  }
+  #modal-backdrop.open { display: flex; }
+  #modal {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--r2); padding: 28px 32px; min-width: 320px; max-width: 420px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.6);
+    animation: modal-in .18s ease;
+  }
+  @keyframes modal-in {
+    from { opacity:0; transform: scale(.94) translateY(-8px); }
+    to   { opacity:1; transform: scale(1)  translateY(0); }
+  }
+  #modal h2 {
+    font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800;
+    color: var(--text); margin-bottom: 10px;
+  }
+  #modal p { font-size: 12px; color: var(--text2); line-height: 1.7; margin-bottom: 24px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .modal-btn {
+    padding: 8px 20px; border-radius: var(--r);
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    font-weight: 700; cursor: pointer; transition: all .15s; border: 1px solid;
+  }
+  .modal-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .modal-btn.cancel {
+    background: transparent; color: var(--text2); border-color: var(--border2);
+  }
+  .modal-btn.cancel:hover { background: var(--surface2); color: var(--text); }
+  .modal-btn.confirm-ok {
+    background: #ff6b8a18; color: var(--msg-return); border-color: #ff6b8a66;
+  }
+  .modal-btn.confirm-ok:hover { background: #ff6b8a30; }
+
+  /* ── Undo disabled ── */
+  .tbtn:disabled { opacity: .35; cursor: not-allowed; pointer-events: none; }
+
+  /* ── WCAG 2.3.3 — Respect reduced-motion preference ── */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<a href="#canvas-wrap" class="skip-link">Skip to canvas</a>
+
+<div id="app" role="application" aria-label="SequenceForge diagram builder">
+
+  <!-- TOPBAR -->
+  <header id="topbar" role="banner">
+
+    <!-- Group 1: Brand -->
+    <div class="tbtn-group">
+      <h1 aria-label="SequenceForge">Sequence<span>Forge</span></h1>
+    </div>
+
+    <!-- Group 2: Create elements -->
+    <div class="tbtn-group">
+      <button class="tbtn" id="btn-add-actor" title="Add Actor (A)" aria-keyshortcuts="a">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="1" y="1" width="14" height="6" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="8" y1="7" x2="8" y2="15" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/>
+        </svg>
+        Add Actor
+      </button>
+
+      <button class="tbtn" id="btn-connect" title="Draw Message (M)" aria-keyshortcuts="m">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M2 8 L12 8 M10 5 L13 8 L10 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Message
+      </button>
+
+      <button class="tbtn" id="btn-note" title="Add Note (N)" aria-keyshortcuts="n">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="1" y="1" width="11" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M12 1 L15 4 L12 4 Z" fill="currentColor"/>
+          <line x1="4" y1="6" x2="9" y2="6" stroke="currentColor" stroke-width="1.2"/>
+          <line x1="4" y1="9" x2="9" y2="9" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
+        Note
+      </button>
+
+      <button class="tbtn" id="btn-frag" title="Add Fragment (F)" aria-keyshortcuts="f">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="1" y="1" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 2"/>
+          <text x="3" y="10" fill="currentColor" font-size="7" font-family="monospace">alt</text>
+        </svg>
+        Fragment
+      </button>
+    </div>
+
+    <!-- Spacer: pushes remaining groups right on wide viewports; becomes a row-break on narrow ones -->
+    <div class="spacer" role="none"></div>
+
+    <!-- Group 3: History -->
+    <div class="tbtn-group">
+      <button class="tbtn" id="btn-undo" title="Undo (Ctrl+Z)" aria-keyshortcuts="ctrl+z" disabled>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3.5 9.5 A5 5 0 1 1 9 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+          <polyline points="1,7 3.5,9.5 6,7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+        Undo
+      </button>
+
+      <button class="tbtn" id="btn-redo" title="Redo (Ctrl+Y)" aria-keyshortcuts="ctrl+y" disabled>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M12.5 9.5 A5 5 0 1 0 7 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+          <polyline points="15,7 12.5,9.5 10,7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+        Redo
+      </button>
+    </div>
+
+    <!-- Group 4: Diagram actions -->
+    <div class="tbtn-group">
+      <button class="tbtn" id="btn-clear" title="Clear canvas">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 10h8l1-10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Clear
+      </button>
+
+      <button class="tbtn" id="btn-load-demo" title="Load demo diagram">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Demo
+      </button>
+
+      <button class="tbtn" id="btn-export" title="Export diagram as JSON file">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M8 2v8M5 7l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Export
+      </button>
+
+      <button class="tbtn" id="btn-import" title="Import diagram from JSON file">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M8 10V2M5 5l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Import
+      </button>
+      <input type="file" id="import-file-input" accept=".json" style="display:none" aria-hidden="true">
+    </div>
+
+    <!-- Group 5: Settings + API -->
+    <div class="tbtn-group">
+      <button class="tbtn" id="btn-send-api" title="Send to mock Ollama API">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M5 8 L11 8 M9 5.5 L11.5 8 L9 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Send to API
+      </button>
+
+      <button class="tbtn" id="btn-settings" title="Settings">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.42 1.42M11.53 11.53l1.42 1.42M3.05 12.95l1.42-1.42M11.53 4.47l1.42-1.42" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        Settings
+      </button>
+    </div>
+
+    <!-- Group 6: Zoom -->
+    <div class="tbtn-group">
+      <button class="tbtn" id="btn-zoom-out" title="Zoom out (Ctrl+-)" aria-keyshortcuts="ctrl+minus" aria-label="Zoom out">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4.5 7h5M11 11l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Zoom−
+      </button>
+
+      <button class="tbtn" id="btn-zoom-reset" title="Reset zoom (Ctrl+0)" aria-keyshortcuts="ctrl+0" aria-label="Reset zoom to 100%">
+        <span id="zoom-label" style="font-size:10px;letter-spacing:.04em">100%</span>
+      </button>
+
+      <button class="tbtn" id="btn-zoom-in" title="Zoom in (Ctrl++)" aria-keyshortcuts="ctrl+equal" aria-label="Zoom in">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M7 4.5v5M4.5 7h5M11 11l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Zoom+
+      </button>
+    </div>
+
+  </header>
+
+  <!-- WORKSPACE -->
+  <div id="workspace">
+
+    <!-- PALETTE SIDEBAR -->
+    <aside id="sidebar" role="complementary" aria-label="Element palette">
+
+      <div class="sidebar-section">
+        <h2>Actors</h2>
+        <div class="palette-grid">
+          <div class="palette-row">
+            <div class="palette-item" draggable="true" data-type="actor-person" tabindex="0" role="button" aria-label="Preview person actor properties">
+              <span class="pill pill-actor">👤</span> Person
+            </div>
+            <button class="palette-add-btn" data-add-type="actor-person" tabindex="0" title="Add person actor" aria-label="Add person actor to canvas">+</button>
+          </div>
+          <div class="palette-row">
+            <div class="palette-item" draggable="true" data-type="actor-system" tabindex="0" role="button" aria-label="Preview system actor properties">
+              <span class="pill pill-actor">⬜</span> System
+            </div>
+            <button class="palette-add-btn" data-add-type="actor-system" tabindex="0" title="Add system actor" aria-label="Add system actor to canvas">+</button>
+          </div>
+          <div class="palette-row">
+            <div class="palette-item" draggable="true" data-type="actor-db" tabindex="0" role="button" aria-label="Preview database actor properties">
+              <span class="pill pill-actor">🗄</span> Database
+            </div>
+            <button class="palette-add-btn" data-add-type="actor-db" tabindex="0" title="Add database actor" aria-label="Add database actor to canvas">+</button>
+          </div>
+          <div class="palette-row">
+            <div class="palette-item" draggable="true" data-type="actor-queue" tabindex="0" role="button" aria-label="Preview queue actor properties">
+              <span class="pill pill-actor">📥</span> Queue
+            </div>
+            <button class="palette-add-btn" data-add-type="actor-queue" tabindex="0" title="Add queue actor" aria-label="Add queue actor to canvas">+</button>
+          </div>
+          <div class="palette-row">
+            <div class="palette-item" data-type="actor-custom" tabindex="0" role="button" aria-label="Add custom actor with emoji">
+              <span class="pill pill-actor">✨</span> Custom…
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h2>Messages</h2>
+        <div class="palette-grid">
+          <div class="palette-row">
+            <div class="palette-item" draggable="true" data-type="msg-sync" tabindex="0" role="button" aria-label="Preview sync message properties">
+              <span class="pill pill-sync">→</span> Sync Call
+            </div>
+            <button class="palette-add-btn" data-add-type="msg-sync" tabindex="0" title="Add sync message" aria-label="Add sync message to canvas">+</button>
+          </div>
+          <div class="palette-row">
+            <div class="palette-item" draggable="true" data-type="msg-async" tabindex="0" role="button" aria-label="Preview async message properties">
+              <span class="pill pill-async">⇢</span> Async
+            </div>
+            <button class="palette-add-btn" data-add-type="msg-async" tabindex="0" title="Add async message" aria-label="Add async message to canvas">+</button>
+          </div>
+          <div class="palette-row">
+            <div class="palette-item" draggable="true" data-type="msg-return" tabindex="0" role="button" aria-label="Preview return message properties">
+              <span class="pill pill-return">←</span> Return
+            </div>
+            <button class="palette-add-btn" data-add-type="msg-return" tabindex="0" title="Add return message" aria-label="Add return message to canvas">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h2>Annotations</h2>
+        <div class="palette-grid">
+          <div class="palette-row">
+            <div class="palette-item" draggable="true" data-type="note" tabindex="0" role="button" aria-label="Preview note properties">
+              <span class="pill pill-note">📝</span> Note
+            </div>
+            <button class="palette-add-btn" data-add-type="note" tabindex="0" title="Add note" aria-label="Add note to canvas">+</button>
+          </div>
+          <div class="palette-row">
+            <div class="palette-item" draggable="true" data-type="frag-alt" tabindex="0" role="button" aria-label="Preview alt fragment properties">
+              <span class="pill pill-alt">alt</span> Alt
+            </div>
+            <button class="palette-add-btn" data-add-type="frag-alt" tabindex="0" title="Add alt fragment" aria-label="Add alt fragment to canvas">+</button>
+          </div>
+          <div class="palette-row">
+            <div class="palette-item" draggable="true" data-type="frag-loop" tabindex="0" role="button" aria-label="Preview loop fragment properties">
+              <span class="pill pill-loop">⟳</span> Loop
+            </div>
+            <button class="palette-add-btn" data-add-type="frag-loop" tabindex="0" title="Add loop fragment" aria-label="Add loop fragment to canvas">+</button>
+          </div>
+          <div class="palette-row">
+            <div class="palette-item" draggable="true" data-type="frag-opt" tabindex="0" role="button" aria-label="Preview opt fragment properties">
+              <span class="pill pill-alt">opt</span> Opt
+            </div>
+            <button class="palette-add-btn" data-add-type="frag-opt" tabindex="0" title="Add opt fragment" aria-label="Add opt fragment to canvas">+</button>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- CANVAS -->
+    <main id="canvas-wrap" tabindex="0" aria-label="Diagram canvas. Use arrow keys to pan, Escape to deselect."
+          role="region">
+      <svg id="canvas" role="application" aria-roledescription="diagram"
+           aria-label="Sequence diagram — 0 actors, 0 messages"
+           aria-describedby="canvas-kb-hint">
+        <desc id="canvas-kb-hint">Interactive diagram canvas. Tab to select elements, arrow keys to move, Delete to remove, Escape to deselect.</desc>
+        <defs>
+          <!-- → forward arrowheads (marker-end, points right along line) -->
+          <marker id="arrow-sync"   markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+            <polygon points="0 0, 8 3.5, 0 7" fill="#4af0c4"/>
+          </marker>
+          <marker id="arrow-async"  markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+            <polyline points="0,0 7,3.5 0,7" fill="none" stroke="#7b6fff" stroke-width="1.5"/>
+          </marker>
+          <marker id="arrow-return" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+            <polyline points="0,0 7,3.5 0,7" fill="none" stroke="#ff6b8a" stroke-width="1.5"/>
+          </marker>
+          <!-- ← reversed arrowheads (marker-start, points back along line toward start) -->
+          <marker id="arrow-sync-rev"   markerWidth="8" markerHeight="8" refX="1" refY="3.5" orient="auto-start-reverse">
+            <polygon points="0 0, 8 3.5, 0 7" fill="#4af0c4"/>
+          </marker>
+          <marker id="arrow-async-rev"  markerWidth="8" markerHeight="8" refX="1" refY="3.5" orient="auto-start-reverse">
+            <polyline points="0,0 7,3.5 0,7" fill="none" stroke="#7b6fff" stroke-width="1.5"/>
+          </marker>
+          <marker id="arrow-return-rev" markerWidth="8" markerHeight="8" refX="1" refY="3.5" orient="auto-start-reverse">
+            <polyline points="0,0 7,3.5 0,7" fill="none" stroke="#ff6b8a" stroke-width="1.5"/>
+          </marker>
+        </defs>
+        <g id="viewport">
+          <g id="fragments-layer"></g>
+          <g id="lifelines-layer"></g>
+          <g id="messages-layer"></g>
+          <g id="notes-layer"></g>
+          <g id="actors-layer"></g>
+          <g id="connect-preview" style="pointer-events:none"></g>
+        </g>
+      </svg>
+
+      <div id="empty-hint" aria-hidden="true">
+        <h2>DROP ELEMENTS HERE</h2>
+        <p>Drag from the palette or click "Demo" to start</p>
+      </div>
+
+      <div id="kb-hint" aria-hidden="true">
+        <b>A</b> actor · <b>M</b> msg · <b>Del</b> delete · <b>Esc</b> deselect · <b>Ctrl+Z</b> undo · <b>Ctrl+Y</b> redo · <b>dblclick</b> arrow direction
+      </div>
+    </main>
+
+    <!-- PROPERTIES PANEL -->
+    <aside id="panel" role="complementary" aria-label="Properties and output panel">
+      <div id="panel-tabs" role="tablist">
+        <button class="ptab active" id="tab-props" role="tab" aria-selected="true" aria-controls="pane-props">Properties</button>
+        <button class="ptab" id="tab-output" role="tab" aria-selected="false" aria-controls="pane-output">Output</button>
+        <button class="ptab" id="tab-api" role="tab" aria-selected="false" aria-controls="pane-api">API</button>
+      </div>
+
+      <!-- PROPERTIES PANE -->
+      <div id="pane-props" class="panel-body" role="tabpanel" aria-labelledby="tab-props">
+        <div id="props-content">
+          <div class="no-selection">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+              <rect x="4" y="4" width="32" height="32" rx="4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 3"/>
+              <circle cx="20" cy="18" r="5" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M12 32c0-4.4 3.6-8 8-8s8 3.6 8 8" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+            <p>Select an element<br>to edit its properties</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- OUTPUT PANE -->
+      <div id="pane-output" class="panel-body" role="tabpanel" aria-labelledby="tab-output" hidden>
+        <div id="output-wrap">
+          <div class="output-toolbar">
+            <button class="obtn" id="btn-copy-output" aria-label="Copy output to clipboard">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="margin-right:5px;vertical-align:-1px">
+                <rect x="5" y="1" width="10" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M3 3H2a1 1 0 00-1 1v10a1 1 0 001 1h9a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.5"/>
+              </svg>Copy
+            </button>
+            <button class="obtn primary" id="btn-regen" aria-label="Regenerate output">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="margin-right:5px;vertical-align:-1px">
+                <path d="M13.5 8A5.5 5.5 0 112.5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <polyline points="2,1 2,5 6,5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>Regenerate
+            </button>
+          </div>
+          <div class="output-format-row">
+            <label for="fmt-select" style="font-size:10px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase">Format</label>
+            <select id="fmt-select" class="prop-select" style="flex:1;font-size:11px" aria-label="Output format">
+              <option value="plantuml">PlantUML</option>
+              <option value="mermaid">Mermaid</option>
+            </select>
+          </div>
+          <pre id="output-code" aria-label="Generated diagram code" aria-live="polite" tabindex="0"></pre>
+        </div>
+      </div>
+
+      <!-- API PANE -->
+      <div id="pane-api" class="panel-body" role="tabpanel" aria-labelledby="tab-api" hidden>
+        <div class="prop-group">
+          <label for="api-url">Endpoint URL</label>
+          <input type="url" id="api-url" class="prop-input" value="http://localhost:11434/api/generate" aria-describedby="api-url-hint"/>
+          <small id="api-url-hint" style="color:var(--text3);font-size:10px;margin-top:4px;display:block">Mock intercepts localhost:11434</small>
+        </div>
+        <div class="prop-group">
+          <label for="api-model">Model</label>
+          <select id="api-model" class="prop-select">
+            <option value="llama3.2">llama3.2</option>
+            <option value="mistral">mistral</option>
+            <option value="codellama">codellama</option>
+            <option value="qwen2.5-coder">qwen2.5-coder</option>
+          </select>
+        </div>
+        <div class="prop-group">
+          <label for="api-prompt">System Prompt Prefix</label>
+          <textarea id="api-prompt" class="prop-textarea" rows="3">You are a senior software architect. Analyze the following sequence diagram and describe the interaction flow, identify potential issues, and suggest improvements.</textarea>
+        </div>
+        <button class="obtn primary" id="btn-api-send" style="width:100%">Send Diagram to API</button>
+
+        <div id="api-section">
+          <h3>Response</h3>
+          <div id="api-status-wrap"></div>
+          <pre id="api-response" aria-live="polite" aria-label="API response">—</pre>
+        </div>
+      </div>
+    </aside>
+
+  </div><!-- /workspace -->
+</div><!-- /app -->
+
+<!-- STATUS BAR -->
+<div id="statusbar" role="status" aria-live="polite">
+  <span>Actors: <b id="stat-actors">0</b></span>
+  <span>Messages: <b id="stat-msgs">0</b></span>
+  <span>Format: <b id="stat-fmt">PlantUML</b></span>
+  <span id="stat-mode">Mode: <b>Select</b></span>
+  <span style="flex:1"></span>
+  <button id="btn-debug" style="font-size:10px;font-family:inherit;background:transparent;border:1px solid var(--border);color:var(--text3);padding:1px 8px;border-radius:4px;cursor:pointer" title="Toggle debug console">🛠 Debug</button>
+</div>
+
+<!-- DEBUG CONSOLE -->
+<div id="debug-console" role="log" aria-label="Debug console">
+  <div id="debug-toolbar">
+    <span>🛠 Debug Console</span>
+    <button id="debug-clear">Clear</button>
+    <button id="debug-close">✕ Close</button>
+  </div>
+  <div id="debug-log"></div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" role="alert" aria-live="assertive"></div>
+
+<!-- ARIA LIVE REGION for connect-mode announcements -->
+<div id="connect-announce" aria-live="assertive" aria-atomic="true"
+     style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"></div>
+
+<!-- ARIA LIVE REGION for selection announcements (polite — not urgent) -->
+<div id="select-announce" aria-live="polite" aria-atomic="true"
+     style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"></div>
+
+<!-- CUSTOM ACTOR MODAL -->
+<div id="actor-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="actor-modal-title">
+  <div id="actor-modal">
+    <h2 id="actor-modal-title">Custom Actor</h2>
+    <div class="prop-group">
+      <label for="actor-label-input">Label</label>
+      <input type="text" id="actor-label-input" class="prop-input" placeholder="Actor name" maxlength="32"/>
+    </div>
+    <div class="prop-group">
+      <label>Icon</label>
+      <div class="emoji-preview" id="actor-emoji-preview">⬜</div>
+      <div class="emoji-grid" id="actor-emoji-grid"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" id="actor-modal-cancel">Cancel</button>
+      <button class="modal-btn confirm-ok" id="actor-modal-ok">Add Actor</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settings-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title"
+     style="display:none;position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:24px 28px;min-width:320px;max-width:400px;box-shadow:0 24px 64px rgba(0,0,0,.6);animation:modal-in .18s ease">
+    <h2 id="settings-modal-title" style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--text);margin-bottom:20px">
+      ⚙ Settings
+    </h2>
+
+    <div class="prop-group">
+      <label style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:8px">
+        On element click, focus panel
+      </label>
+      <select id="setting-click-tab" class="prop-select" aria-label="Panel tab to focus when clicking an element">
+        <option value="props">Properties (default)</option>
+        <option value="output">Output</option>
+        <option value="stay">Stay on current tab</option>
+      </select>
+      <small style="color:var(--text3);font-size:10px;margin-top:6px;display:block">
+        Controls which panel tab activates when you click a canvas element.
+      </small>
+    </div>
+
+    <div class="prop-group" style="margin-top:16px">
+      <label style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:8px">
+        Associate on click
+      </label>
+      <div class="prop-row">
+        <input type="checkbox" id="setting-assoc-on-click" aria-label="Associate message with last actor on click"/>
+        <label for="setting-assoc-on-click" style="font-size:11px;color:var(--text2)">
+          Set message From to last-added actor on click
+        </label>
+      </div>
+      <small style="color:var(--text3);font-size:10px;margin-top:6px;display:block">
+        When enabled, clicking a message reassigns its origin to the most recently added actor.
+      </small>
+    </div>
+
+    <div class="prop-group" style="margin-top:16px">
+      <label style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:8px">
+        Default Output Format
+      </label>
+      <select id="setting-default-format" class="prop-select" aria-label="Default output format">
+        <option value="plantuml">PlantUML</option>
+        <option value="mermaid">Mermaid</option>
+      </select>
+      <small style="color:var(--text3);font-size:10px;margin-top:6px;display:block">
+        Saved as your default. Changing it also updates the current session.
+      </small>
+    </div>
+
+    <div class="modal-actions" style="margin-top:20px">
+      <button class="modal-btn cancel" id="settings-modal-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-desc">
+  <div id="modal">
+    <h2 id="modal-title">Clear Canvas</h2>
+    <p id="modal-desc">All actors, messages, notes, and fragments will be removed.<br><br>
+    Use <b>Ctrl+Z</b> or the Undo button immediately after to restore.</p>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" id="modal-cancel">Cancel</button>
+      <button class="modal-btn confirm-ok" id="modal-ok">Clear Canvas</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DEBUG CONSOLE
+// ═══════════════════════════════════════════════════════
+const _debugEl  = document.getElementById('debug-log');
+const _debugCon = document.getElementById('debug-console');
+
+function _dbgWrite(level, args) {
+  const ts   = new Date().toTimeString().slice(0,8);
+  const text = args.map(a => {
+    if (typeof a === 'object') { try { return JSON.stringify(a); } catch { return String(a); } }
+    return String(a);
+  }).join(' ');
+  const row = document.createElement('div');
+  row.className = `dlog-${level}`;
+  row.innerHTML = `<span class="dlog-ts">${ts}</span>${text}`;
+  _debugEl.appendChild(row);
+  _debugEl.scrollTop = _debugEl.scrollHeight;
+}
+
+// Intercept native console
+const _origLog   = console.log.bind(console);
+const _origWarn  = console.warn.bind(console);
+const _origError = console.error.bind(console);
+console.log   = (...a) => { _origLog(...a);   _dbgWrite('info',  a); };
+console.warn  = (...a) => { _origWarn(...a);  _dbgWrite('warn',  a); };
+console.error = (...a) => { _origError(...a); _dbgWrite('error', a); };
+window.addEventListener('error', e => _dbgWrite('error', [`Uncaught ${e.message} (${e.filename}:${e.lineno})`]));
+
+// Public helper used in-code: dbg('tag', value)
+function dbg(tag, ...vals) { _dbgWrite('ok', [`[${tag}]`, ...vals]); }
+
+// Toggle / clear / close
+document.getElementById('btn-debug')?.addEventListener('click', () => {
+  const open = _debugCon.classList.toggle('open');
+  document.body.classList.toggle('debug-open', open);
+});
+document.getElementById('debug-close')?.addEventListener('click', () => {
+  _debugCon.classList.remove('open');
+  document.body.classList.remove('debug-open');
+});
+document.getElementById('debug-clear')?.addEventListener('click', () => {
+  _debugEl.innerHTML = '';
+});
+
+// Boot message
+_dbgWrite('info', ['SequenceForge v0.9.1 — debug console ready']);
+
+// ═══════════════════════════════════════════════════════
+//  DIAGRAMSTORE  (inline — matches sequence-builder.store.js)
+//  Pure logic, zero DOM touches. See store module for full docs.
+// ═══════════════════════════════════════════════════════
+const STORE_ACTOR_W   = 110
+const STORE_ACTOR_GAP = 60
+const STORE_UNDO_LIMIT = 50
+
+// ── Pure helpers (exported in the Node module, available here too) ──
+function nextMessageKind(kind) {
+  return { sync: 'async', async: 'return', return: 'sync' }[kind] || 'sync'
+}
+function nextMessageDirection(dir) {
+  return { right: 'left', left: 'both', both: 'right' }[dir] || 'right'
+}
+
+// ── Store factory (single instance for the app) ──
+function createStore() {
+  const state = {
+    actors:    [],
+    messages:  [],
+    notes:     [],
+    fragments: [],
+    nextId:    1,
+  }
+  const log        = []
+  const _snapshots = []
+  const _redoStack = []  // cleared on any new undoable mutation
+  const _listeners = {}
+
+  function uid()          { return 'e' + (state.nextId++) }
+  function getNextActorX() {
+    if (!state.actors.length) return 40
+    return Math.max(...state.actors.map(a => a.x)) + STORE_ACTOR_W + STORE_ACTOR_GAP
+  }
+  function snapshot() {
+    return JSON.parse(JSON.stringify({
+      actors: state.actors, messages: state.messages,
+      notes:  state.notes,  fragments: state.fragments, nextId: state.nextId,
+    }))
+  }
+  function restoreSnapshot(snap) {
+    state.actors    = snap.actors;    state.messages  = snap.messages
+    state.notes     = snap.notes;     state.fragments = snap.fragments
+    state.nextId    = snap.nextId
+  }
+  function pushSnapshot() {
+    _snapshots.push(snapshot())
+    if (_snapshots.length > STORE_UNDO_LIMIT) _snapshots.shift()
+    _redoStack.length = 0  // new branch — forward history is gone
+  }
+  function on(event, cb)  {
+    if (!_listeners[event]) _listeners[event] = new Set()
+    _listeners[event].add(cb)
+    return () => off(event, cb)
+  }
+  function off(event, cb) { _listeners[event]?.delete(cb) }
+  function emit(event, payload) { _listeners[event]?.forEach(cb => cb(payload)) }
+
+  const handlers = {
+    ADD_ACTOR({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const actor = {
+        id: uid(), x: getNextActorX(),
+        label: payload.label || 'Actor', type: payload.type || 'actor-system',
+        ...(payload.emoji !== undefined ? { emoji: payload.emoji } : {}),
+      }
+      state.actors.push(actor)
+      emit('actor:added', actor)
+    },
+    MOVE_ACTOR({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const a = state.actors.find(a => a.id === payload.id)
+      if (!a) return
+      a.x = payload.x
+      emit('actor:moved', a)
+    },
+    UPDATE_ACTOR({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const a = state.actors.find(a => a.id === payload.id)
+      if (!a) return
+      if (payload.label !== undefined) a.label = payload.label
+      if (payload.type  !== undefined) a.type  = payload.type
+      if (payload.emoji !== undefined) a.emoji = payload.emoji
+      emit('actor:updated', a)
+    },
+    DELETE_ACTOR({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const id = payload.id
+      const orphanedIds = state.messages.filter(m => m.fromId===id||m.toId===id).map(m=>m.id)
+      state.actors   = state.actors.filter(a => a.id !== id)
+      state.messages = state.messages.filter(m => m.fromId!==id && m.toId!==id)
+      emit('actor:deleted', id)
+      if (orphanedIds.length) emit('messages:orphaned', orphanedIds)
+    },
+    ADD_MESSAGE({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const message = {
+        id: uid(), fromId: payload.fromId, toId: payload.toId,
+        label: payload.label || 'message', kind: payload.kind || 'sync',
+        direction: payload.direction || 'right', y: 0,
+        ...(payload.protocol  ? { protocol:  payload.protocol  } : {}),
+        ...(payload.port      ? { port:      payload.port      } : {}),
+        ...(payload.auth      ? { auth:      payload.auth      } : {}),
+        ...(payload.dataClass ? { dataClass: payload.dataClass } : {}),
+      }
+      state.messages.push(message)
+      emit('message:added', message)
+    },
+    MOVE_MESSAGE({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const m = state.messages.find(m => m.id === payload.id)
+      if (!m) return
+      m.y = payload.y
+      emit('message:moved', m)
+    },
+    UPDATE_MESSAGE({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const m = state.messages.find(m => m.id === payload.id)
+      if (!m) return
+      const fields = ['label','fromId','toId','kind','direction','protocol','port','auth','dataClass']
+      for (const f of fields) { if (payload[f] !== undefined) m[f] = payload[f] }
+      emit('message:updated', m)
+    },
+    DELETE_MESSAGE({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      state.messages = state.messages.filter(m => m.id !== payload.id)
+      emit('message:deleted', payload.id)
+    },
+    ADD_NOTE({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const note = { id: uid(), x: payload.x??60, y: payload.y??200, text: payload.text||'note' }
+      state.notes.push(note)
+      emit('note:added', note)
+    },
+    MOVE_NOTE({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const n = state.notes.find(n => n.id === payload.id)
+      if (!n) return
+      n.x = payload.x; n.y = payload.y
+      emit('note:moved', n)
+    },
+    UPDATE_NOTE({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const n = state.notes.find(n => n.id === payload.id)
+      if (!n) return
+      if (payload.text !== undefined) n.text = payload.text
+      emit('note:updated', n)
+    },
+    DELETE_NOTE({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      state.notes = state.notes.filter(n => n.id !== payload.id)
+      emit('note:deleted', payload.id)
+    },
+    ADD_FRAGMENT({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const f = {
+        id: uid(), x: payload.x??60, y: payload.y??200,
+        w: payload.w??200, h: payload.h??100,
+        kind: payload.kind||'frag-alt', cond: payload.cond||'condition',
+      }
+      state.fragments.push(f)
+      emit('fragment:added', f)
+    },
+    MOVE_FRAGMENT({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const f = state.fragments.find(f => f.id === payload.id)
+      if (!f) return
+      f.x = payload.x; f.y = payload.y
+      emit('fragment:moved', f)
+    },
+    RESIZE_FRAGMENT({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const f = state.fragments.find(f => f.id === payload.id)
+      if (!f) return
+      f.w = payload.w; f.h = payload.h
+      emit('fragment:resized', f)
+    },
+    UPDATE_FRAGMENT({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      const f = state.fragments.find(f => f.id === payload.id)
+      if (!f) return
+      if (payload.kind !== undefined) f.kind = payload.kind
+      if (payload.cond !== undefined) f.cond = payload.cond
+      emit('fragment:updated', f)
+    },
+    DELETE_FRAGMENT({ payload, meta }) {
+      if (meta.undoable) pushSnapshot()
+      state.fragments = state.fragments.filter(f => f.id !== payload.id)
+      emit('fragment:deleted', payload.id)
+    },
+    UNDO() {
+      if (!_snapshots.length) return
+      _redoStack.push(snapshot())
+      if (_redoStack.length > STORE_UNDO_LIMIT) _redoStack.shift()
+      restoreSnapshot(_snapshots.pop())
+      emit('state:restored', { ...snapshot(), direction: 'undo' })
+    },
+    REDO() {
+      if (!_redoStack.length) return
+      _snapshots.push(snapshot())
+      if (_snapshots.length > STORE_UNDO_LIMIT) _snapshots.shift()
+      restoreSnapshot(_redoStack.pop())
+      emit('state:restored', { ...snapshot(), direction: 'redo' })
+    },
+    CLEAR_DIAGRAM({ meta }) {
+      if (meta.undoable) pushSnapshot()
+      state.actors=[]; state.messages=[]; state.notes=[]; state.fragments=[]; state.nextId=1
+      emit('diagram:cleared')
+    },
+    LOAD_DIAGRAM({ payload }) {
+      _snapshots.length = 0
+      _redoStack.length = 0
+      state.actors    = payload.actors    || []
+      state.messages  = payload.messages  || []
+      state.notes     = payload.notes     || []
+      state.fragments = payload.fragments || []
+      state.nextId    = payload.nextId    || 1
+      emit('diagram:loaded', { ...snapshot(), source: payload._source || 'import' })
+    },
+    LOAD_DEMO() {
+      _snapshots.length = 0
+      _redoStack.length = 0
+      let tempId = state.nextId
+      const tid = () => 'e' + (tempId++)
+      const user  = { id:tid(), x:40,  label:'User',         type:'actor-person' }
+      const api   = { id:tid(), x:210, label:'API Gateway',  type:'actor-system' }
+      const auth  = { id:tid(), x:380, label:'Auth Service', type:'actor-system' }
+      const db    = { id:tid(), x:550, label:'Database',     type:'actor-db'     }
+      state.actors = [user, api, auth, db]
+      state.messages = [
+        { id:tid(), fromId:user.id, toId:api.id,  label:'POST /login',        kind:'sync',   direction:'right', y:0 },
+        { id:tid(), fromId:api.id,  toId:auth.id, label:'validateCredentials', kind:'sync',   direction:'right', y:0 },
+        { id:tid(), fromId:auth.id, toId:db.id,   label:'SELECT user WHERE…',  kind:'sync',   direction:'right', y:0 },
+        { id:tid(), fromId:db.id,   toId:auth.id, label:'user record',          kind:'return', direction:'right', y:0 },
+        { id:tid(), fromId:auth.id, toId:api.id,  label:'JWT token',            kind:'return', direction:'right', y:0 },
+        { id:tid(), fromId:api.id,  toId:user.id, label:'200 OK + token',       kind:'return', direction:'right', y:0 },
+      ]
+      state.fragments = [{ id:tid(), x:160, y:170, w:340, h:175, kind:'frag-alt', cond:'valid credentials' }]
+      state.notes     = [{ id:tid(), x:20, y:0, text:'Auth flow' }]
+      state.nextId    = tempId
+      emit('diagram:loaded', { ...snapshot(), source: 'demo' })
+    },
+  }
+
+  function dispatch(action) {
+    const { type, payload={}, meta: rawMeta={} } = action
+    const meta = { undoable: rawMeta.undoable !== false, timestamp: Date.now(), ...rawMeta }
+    const skipLog = type === 'UNDO' || type === 'REDO'
+    if (!skipLog) log.push({ type, payload, meta })
+    const handler = handlers[type]
+    if (!handler) { console.warn(`[store] Unknown action: ${type}`); return }
+    try {
+      handler({ type, payload, meta })
+    } catch(err) {
+      // Roll back the log entry — a failed handler must not leave a phantom entry.
+      // The snapshot (if any) is still on the stack; undo remains consistent.
+      if (!skipLog) log.pop()
+      console.error(`[store] Handler for ${type} threw — log entry removed.`, err)
+    }
+  }
+
+  return {
+    state, log, dispatch, on, off,
+    get canUndo() { return _snapshots.length > 0 },  // true when undo stack is non-empty
+    get canRedo()  { return _redoStack.length  > 0 },  // true when redo stack is non-empty
+  }
+}
+
+// ── Single app-level store instance ──
+const _store = createStore()
+const store  = _store   // alias — some call sites use bare 'store'
+
+// ── Convenience proxies so the rest of the app reads store.state cleanly ──
+// All render/interaction code reads from these — they are live references.
+const state = _store.state    // diagram data  — narrow, persistable
+
+// ── uiState — explicit, separate, never persisted ──
+const uiState = {
+  selected:       null,   // { ...obj, _type, _ref, _preview? }
+  mode:           'select',
+  connectFrom:    null,
+  pendingActorId: null,
+  format:         'plantuml',
+}
+
+// ── History button sync — reflects actual stack depths ──
+function updateHistoryBtns() {
+  const u = document.getElementById('btn-undo')
+  const r = document.getElementById('btn-redo')
+  if (u) u.disabled = !_store.canUndo
+  if (r) r.disabled = !_store.canRedo
+}
+// Alias — called from many existing sites; all redirect to updateHistoryBtns
+function updateUndoBtn() { updateHistoryBtns() }
+
+// ── requestRender — rAF-batched render for high-frequency events (drag, 60fps) ──
+// Deduplicates: multiple calls within one frame collapse to a single render().
+// Low-frequency mutations (add, delete, undo) call render() directly — no need to batch.
+let _rafPending = false;
+function requestRender() {
+  if (_rafPending) return;
+  _rafPending = true;
+  requestAnimationFrame(() => { _rafPending = false; render(); });
+}
+
+// ── Store event listeners — UI side effects only, no store mutations ──
+// Move events use requestRender (high-frequency during drag).
+// All other events call render() directly (low-frequency, immediate feedback expected).
+_store.on('actor:added',      actor   => { uiState.selected = _wrapSelected(actor, 'actor'); activateTab('tab-props'); updateUndoBtn(); render() })
+_store.on('actor:moved',      ()      => { requestRender() })
+_store.on('actor:updated',    ()      => { render() })
+_store.on('actor:deleted',    id      => { if (uiState.selected?.id === id) uiState.selected = null; updateUndoBtn(); render() })
+_store.on('messages:orphaned',ids     => { if (ids.includes(uiState.selected?.id)) uiState.selected = null })
+_store.on('message:added',    message => { uiState.selected = _wrapSelected(message, 'message'); activateTab('tab-props'); updateUndoBtn(); render() })
+_store.on('message:moved',    ()      => { requestRender() })
+_store.on('message:updated',  ()      => { render() })
+_store.on('message:deleted',  id      => { if (uiState.selected?.id === id) uiState.selected = null; updateUndoBtn(); render() })
+_store.on('note:added',       note    => { uiState.selected = _wrapSelected(note, 'note'); activateTab('tab-props'); updateUndoBtn(); render() })
+_store.on('note:moved',       ()      => { requestRender() })
+_store.on('note:updated',     ()      => { render() })
+_store.on('note:deleted',     id      => { if (uiState.selected?.id === id) uiState.selected = null; updateUndoBtn(); render() })
+_store.on('fragment:added',   frag    => { uiState.selected = _wrapSelected(frag, 'fragment'); activateTab('tab-props'); updateUndoBtn(); render() })
+_store.on('fragment:moved',   ()      => { requestRender() })
+_store.on('fragment:updated', ()      => { render() })
+_store.on('fragment:deleted', id      => { if (uiState.selected?.id === id) uiState.selected = null; updateUndoBtn(); render() })
+_store.on('diagram:cleared',  ()      => { uiState.selected = null; updateUndoBtn(); render(); toast('Cleared — Ctrl+Z to undo') })
+_store.on('diagram:loaded',   p       => { uiState.selected = null; updateUndoBtn(); render();
+  if      (p?.source === 'demo')        toast('Demo loaded — try the Output tab!')
+  else if (p?.source === 'import')      toast('Diagram imported ✓')
+  else if (p?.source === 'localStorage') { /* silent restore on boot */ }
+  else                                  toast('Diagram loaded ✓')
+})
+_store.on('state:restored',   p       => { uiState.selected = null; updateHistoryBtns(); render() })
+
+// ── Wrap a live store object into a uiState.selected shape ──
+// _ref is frozen for real store objects so direct writes throw immediately
+// rather than silently corrupting undo history. Preview scratch objects
+// (_preview: true) are intentionally writable — the palette form harvests
+// values from them before dispatch.
+function _wrapSelected(obj, type) {
+  if (!obj) return null
+  const ref = obj._preview ? obj : Object.freeze(obj)
+  return { ...obj, _type: type, _ref: ref }
+}
+
+// ── Last-added actor helper ──
+function getLastActor() {
+  if (!state.actors.length) return null
+  return state.actors[state.actors.length - 1]
+}
+// ── Undo / Redo dispatchers — called by buttons and keyboard shortcuts ──
+function undo() {
+  if (!_store.canUndo) { toast('Nothing to undo'); return; }
+  _store.dispatch({ type: 'UNDO' });
+  const redoable = _store.canRedo ? ' (Ctrl+Y to redo)' : '';
+  toast('Undo ✓' + redoable);
+  dbg('undo', `canUndo=${_store.canUndo} canRedo=${_store.canRedo}`);
+}
+
+function redo() {
+  if (!_store.canRedo) { toast('Nothing to redo'); return; }
+  _store.dispatch({ type: 'REDO' });
+  toast('Redo ✓');
+  dbg('redo', `canUndo=${_store.canUndo} canRedo=${_store.canRedo}`);
+}
+
+// ═══════════════════════════════════════════════════════
+//  ADAPTER PATTERN  (polymorphic serializers)
+// ═══════════════════════════════════════════════════════
+class DiagramAdapter {
+  serialize(actors, messages, notes, fragments) { throw new Error('abstract'); }
+  get name() { return 'base'; }
+}
+
+class PlantUMLAdapter extends DiagramAdapter {
+  get name() { return 'plantuml'; }
+
+  _escape(s) { return (s||'unnamed').replace(/"/g, '\\"'); }
+  _actorKeyword(type) {
+    return { 'actor-person':'actor', 'actor-system':'participant',
+             'actor-db':'database', 'actor-queue':'queue' }[type] || 'participant';
+  }
+
+  serialize(actors, messages, notes, fragments) {
+    const lines = [];
+    lines.push('@startuml');
+    lines.push('skinparam backgroundColor #0d0f14');
+    lines.push('skinparam sequenceArrowThickness 1.5');
+    lines.push('skinparam roundcorner 6');
+    lines.push('');
+
+    // Actors (ordered by x position)
+    const sorted = [...actors].sort((a,b)=>a.x-b.x);
+    for (const a of sorted) {
+      lines.push(`${this._actorKeyword(a.type)} "${this._escape(a.label)}" as ${a.id}`);
+    }
+    if (sorted.length) lines.push('');
+
+    // Fragments (open)
+    const openFrags = {};
+    for (const f of fragments) openFrags[f.id] = f;
+
+    // Messages sorted by y
+    const sortedMsgs = [...messages].sort((a,b)=>a.y-b.y);
+    // notes sorted by y
+    const notesSorted = [...notes].sort((a,b)=>a.y-b.y);
+
+    // Interleave messages and notes by y
+    const items = [
+      ...sortedMsgs.map(m => ({...m, _kind:'msg'})),
+      ...notesSorted.map(n => ({...n, _kind:'note'})),
+    ].sort((a,b) => (a.y||0) - (b.y||0));
+
+    // Fragment open/close markers
+    for (const f of fragments) {
+      const cond = f.cond || 'condition';
+      items.push({ y: f.y, _kind:'frag-open', f });
+      items.push({ y: f.y + f.h, _kind:'frag-close', f });
+    }
+    items.sort((a,b) => (a.y||0) - (b.y||0));
+
+    for (const item of items) {
+      if (item._kind === 'msg') {
+        const m = item;
+        const from = actors.find(a=>a.id===m.fromId);
+        const to   = actors.find(a=>a.id===m.toId);
+        if (!from||!to) continue;
+        const lbl = this._escape(m.label || 'message');
+        const fid = from.id, tid = to.id;
+        const dir = m.direction || 'right';
+        if (dir === 'both') {
+          // PlantUML bidirectional: emit both directions
+          if (m.kind === 'sync')   { lines.push(`${fid} -> ${tid} : ${lbl}`); lines.push(`${tid} -> ${fid} : ${lbl}`); }
+          if (m.kind === 'async')  { lines.push(`${fid} ->> ${tid} : ${lbl}`); lines.push(`${tid} ->> ${fid} : ${lbl}`); }
+          if (m.kind === 'return') { lines.push(`${fid} --> ${tid} : ${lbl}`); lines.push(`${tid} --> ${fid} : ${lbl}`); }
+        } else {
+          const [src, tgt] = dir === 'left' ? [tid, fid] : [fid, tid];
+          if (m.kind === 'sync')   lines.push(`${src} -> ${tgt} : ${lbl}`);
+          if (m.kind === 'async')  lines.push(`${src} ->> ${tgt} : ${lbl}`);
+          if (m.kind === 'return') lines.push(`${src} --> ${tgt} : ${lbl}`);
+        }
+        // Network details as PlantUML note
+        const netNote = [m.protocol, m.port ? ':'+m.port : '', m.auth, m.dataClass].filter(Boolean).join(' | ');
+        if (netNote) lines.push(`note right #1c2030 : ${netNote}`);
+      } else if (item._kind === 'note') {
+        lines.push(`note right : ${item.text||'note'}`);
+      } else if (item._kind === 'frag-open') {
+        const kw = item.f.kind.replace('frag-','');
+        lines.push(`${kw} [${item.f.cond||'condition'}]`);
+      } else if (item._kind === 'frag-close') {
+        lines.push('end');
+      }
+    }
+
+    lines.push('');
+    lines.push('@enduml');
+    return lines.join('\n');
+  }
+}
+
+class MermaidAdapter extends DiagramAdapter {
+  get name() { return 'mermaid'; }
+
+  _safe(s) {
+    return (s||'unnamed').replace(/[^a-zA-Z0-9_\s]/g,'').replace(/\s+/g,'_');
+  }
+
+  serialize(actors, messages, notes, fragments) {
+    const lines = [];
+    lines.push('sequenceDiagram');
+
+    const sorted = [...actors].sort((a,b)=>a.x-b.x);
+    for (const a of sorted) {
+      const kw = (a.type==='actor-person') ? 'actor' : 'participant';
+      lines.push(`  ${kw} ${this._safe(a.label)} as ${this._safe(a.label)}`);
+    }
+    if (sorted.length) lines.push('');
+
+    const items = [
+      ...messages.map(m=>({...m,_kind:'msg'})),
+      ...notes.map(n=>({...n,_kind:'note'})),
+      ...fragments.flatMap(f=>[
+        {y:f.y,_kind:'frag-open',f},
+        {y:f.y+f.h,_kind:'frag-close',f}
+      ])
+    ].sort((a,b)=>(a.y||0)-(b.y||0));
+
+    for (const item of items) {
+      if (item._kind==='msg') {
+        const m = item;
+        const from = actors.find(a=>a.id===m.fromId);
+        const to   = actors.find(a=>a.id===m.toId);
+        if (!from||!to) continue;
+        const fs = this._safe(from.label), ts = this._safe(to.label);
+        const lbl = m.label||'message';
+        const dir = m.direction || 'right';
+        if (dir === 'both') {
+          if (m.kind==='sync')   { lines.push(`  ${fs}->>${ts}: ${lbl}`); lines.push(`  ${ts}->>${fs}: ${lbl}`); }
+          if (m.kind==='async')  { lines.push(`  ${fs}->>${ts}: ${lbl}`); lines.push(`  ${ts}->>${fs}: ${lbl}`); }
+          if (m.kind==='return') { lines.push(`  ${ts}-->>${fs}: ${lbl}`); lines.push(`  ${fs}-->>${ts}: ${lbl}`); }
+        } else {
+          const [src, tgt] = dir === 'left' ? [ts, fs] : [fs, ts];
+          if (m.kind==='sync')   lines.push(`  ${src}->>${tgt}: ${lbl}`);
+          if (m.kind==='async')  lines.push(`  ${src}->>${tgt}: ${lbl}`);
+          if (m.kind==='return') lines.push(`  ${tgt}-->>${src}: ${lbl}`);
+        }
+        // Network details as Mermaid note
+        const netNote = [m.protocol, m.port ? ':'+m.port : '', m.auth, m.dataClass].filter(Boolean).join(' | ');
+        if (netNote) lines.push(`  Note right of ${fs}: ${netNote}`);
+      } else if (item._kind==='note') {
+        const closest = actors[0];
+        if (closest) lines.push(`  Note right of ${this._safe(closest.label)}: ${item.text||'note'}`);
+      } else if (item._kind==='frag-open') {
+        const kw = item.f.kind.replace('frag-','');
+        if (kw==='alt') { lines.push(`  alt ${item.f.cond||'condition'}`); }
+        else if (kw==='loop') { lines.push(`  loop ${item.f.cond||'condition'}`); }
+        else if (kw==='opt')  { lines.push(`  opt ${item.f.cond||'condition'}`); }
+      } else if (item._kind==='frag-close') {
+        lines.push('  end');
+      }
+    }
+    return lines.join('\n');
+  }
+}
+
+// Adapter registry (Adapter pattern)
+const adapters = {
+  plantuml: new PlantUMLAdapter(),
+  mermaid:  new MermaidAdapter(),
+};
+
+function getAdapter() { return adapters[uiState.format]; }
+function serialize()  {
+  return getAdapter().serialize(state.actors, state.messages, state.notes, state.fragments);
+}
+
+// ═══════════════════════════════════════════════════════
+//  MOCK OLLAMA API  (intercepts localhost:11434)
+// ═══════════════════════════════════════════════════════
+
+async function mockOllamaHandler(url, opts) {
+  await delay(400 + Math.random()*600);
+
+  let body = {};
+  try { body = JSON.parse(opts?.body || '{}'); } catch(e){}
+
+  const diagram = body.prompt || '';
+  const model   = body.model  || 'llama3.2';
+
+  // Simulate an intelligent mock response
+  const actors  = state.actors.map(a=>a.label).join(', ');
+  const msgCount = state.messages.length;
+  const format   = uiState.format.toUpperCase();
+
+  const mockText = [
+    `**Model:** ${model}  **Format:** ${format}`,
+    '',
+    `I've analyzed the sequence diagram containing ${state.actors.length} participants (${actors||'none yet'}) and ${msgCount} message${msgCount!==1?'s':''}.`,
+    '',
+    '**Observations:**',
+    state.actors.length < 2
+      ? '• Consider adding more participants to model realistic interactions.'
+      : `• The flow between ${actors} follows a clear request-response pattern.`,
+    msgCount === 0
+      ? '• No messages defined yet — add arrows between participants.'
+      : `• ${msgCount} message(s) detected. Check for missing error-handling paths.`,
+    '',
+    '**Suggestions:**',
+    '• Add alt/opt fragments to model conditional branches.',
+    '• Consider adding return messages to show responses explicitly.',
+    '• Use notes to document business rules or constraints inline.',
+    '',
+    `**Generated ${format} snippet received** (${diagram.length} chars)`,
+    `Processed at: ${new Date().toISOString()}`,
+  ].join('\n');
+
+  // Simulate Ollama streaming response format
+  const responseBody = {
+    model: model,
+    created_at: new Date().toISOString(),
+    message: { role: 'assistant', content: mockText },
+    done: true,
+    done_reason: 'stop',
+    total_duration: Math.floor(Math.random() * 2000000000),
+    load_duration:  Math.floor(Math.random() * 500000000),
+    prompt_eval_count: diagram.split(' ').length,
+    eval_count: mockText.split(' ').length,
+  };
+
+  return {
+    ok: true, status: 200,
+    json: async () => responseBody,
+    text: async () => JSON.stringify(responseBody),
+  };
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ═══════════════════════════════════════════════════════
+//  RENDERING
+// ═══════════════════════════════════════════════════════
+const svg = document.getElementById('canvas');
+const actorsLayer    = document.getElementById('actors-layer');
+const lifelinesLayer = document.getElementById('lifelines-layer');
+const messagesLayer  = document.getElementById('messages-layer');
+const notesLayer     = document.getElementById('notes-layer');
+const fragmentsLayer = document.getElementById('fragments-layer');
+const emptyHint      = document.getElementById('empty-hint');
+
+const ACTOR_W = 110, ACTOR_H = 42;
+const LIFELINE_START = 60, LIFELINE_END_MARGIN = 60;
+const MSG_SPACING = 52;
+
+function actorCenterX(a) { return a.x + ACTOR_W/2; }
+
+function calcCanvasHeight() {
+  const base = LIFELINE_START + (state.messages.length + state.notes.length + 1) * MSG_SPACING + LIFELINE_END_MARGIN + 60;
+  return Math.max(base, 500);
+}
+
+function render() {
+  // Clear layers
+  actorsLayer.innerHTML    = '';
+  lifelinesLayer.innerHTML = '';
+  messagesLayer.innerHTML  = '';
+  notesLayer.innerHTML     = '';
+  fragmentsLayer.innerHTML = '';
+
+  const canvasH = calcCanvasHeight();
+  const lifeEnd = canvasH - LIFELINE_END_MARGIN;
+
+  emptyHint.style.display = state.actors.length === 0 ? '' : 'none';
+
+  // ── Fragments ──
+  for (const f of state.fragments) {
+    const kw = f.kind.replace('frag-','');
+    const colors = {alt:'#c44af0', loop:'#4af0e0', opt:'#c44af0'};
+    const col = colors[kw] || '#c44af0';
+
+    const g = svgEl('g');
+    const rect = svgEl('rect', {
+      x:f.x, y:f.y, width:f.w, height:f.h,
+      rx:6, fill:'none',
+      stroke: col+'55', 'stroke-width':1.5, 'stroke-dasharray':'8 3'
+    });
+    const lbl = svgEl('text', {
+      x:f.x+6, y:f.y+15,
+      fill:col, 'font-family':'JetBrains Mono, monospace',
+      'font-size':11, 'font-weight':700
+    });
+    lbl.textContent = kw.toUpperCase();
+    const cond = svgEl('text', {
+      x:f.x+40, y:f.y+15,
+      fill:col+'99', 'font-family':'JetBrains Mono, monospace', 'font-size':10
+    });
+    cond.textContent = `[${f.cond||'condition'}]`;
+
+    g.dataset.id = f.id; g.dataset.type = 'fragment';
+    g.setAttribute('role','button');
+    g.setAttribute('aria-label',`${kw} fragment: ${f.cond||'condition'}`);
+    g.setAttribute('tabindex','0');
+    g.style.cursor = 'move';
+    const fragHover = svgHoverBounds(f.x, f.y, f.w, f.h, 4);
+    g.prepend(fragHover);
+    g.append(rect, lbl, cond);
+    fragmentsLayer.appendChild(g);
+  }
+
+  // ── Lifelines ──
+  for (const a of state.actors) {
+    const cx = actorCenterX(a);
+    const line = svgEl('line', {
+      x1:cx, y1:ACTOR_H + LIFELINE_START/2,
+      x2:cx, y2:lifeEnd,
+      class:'lifeline'
+    });
+    lifelinesLayer.appendChild(line);
+  }
+
+  // ── Messages (assign y positions) ──
+  // Collect all y-positioned items and sort
+  const allItems = [
+    ...state.messages.map((m,i) => ({ el:m, type:'msg',  y: m.y || (ACTOR_H + LIFELINE_START + i*MSG_SPACING) })),
+    ...state.notes.map((n,i)    => ({ el:n, type:'note', y: n.y || (ACTOR_H + LIFELINE_START + 20 + i*MSG_SPACING) })),
+  ].sort((a,b) => a.y - b.y);
+
+  // Re-assign y positions cleanly
+  let yPos = ACTOR_H + LIFELINE_START + 20;
+  for (const item of allItems) {
+    item.el.y = yPos;
+    yPos += MSG_SPACING;
+  }
+
+  for (const item of allItems) {
+    if (item.type === 'msg') renderMessage(item.el);
+    if (item.type === 'note') renderNote(item.el);
+  }
+
+  // ── Actors (on top) ──
+  for (const a of state.actors) {
+    renderActor(a);
+  }
+
+  updateStats();
+  updateOutput();
+  _saveDiagram();
+}
+
+function renderActor(a) {
+  const g = svgEl('g', { class:'actor-group' });
+  g.dataset.id = a.id; g.dataset.type = 'actor';
+  g.setAttribute('role','button');
+  g.setAttribute('aria-label',`Actor: ${a.label}`);
+  g.setAttribute('tabindex','0');
+
+  // Custom emoji takes precedence over type-based icon
+  const icon = a.emoji || { 'actor-person':'👤','actor-system':'⬜','actor-db':'🗄','actor-queue':'📥' }[a.type] || '⬜';
+
+  // Connect-source highlight + pending-actor (armed for message association)
+  const isConnectSource = uiState.mode === 'connect' && uiState.connectFrom === a.id;
+  const isPending       = uiState.pendingActorId === a.id;
+  const rectClass = 'actor-head'
+    + (uiState.selected?.id===a.id ? ' selected' : '')
+    + (isConnectSource ? ' connect-source' : '')
+    + (isPending       ? ' pending-actor'  : '');
+
+  const rect = svgEl('rect', {
+    x:a.x, y:8, width:ACTOR_W, height:ACTOR_H,
+    class: rectClass, rx:6
+  });
+
+  const lbl = svgEl('text', {
+    x:a.x + ACTOR_W/2 + 10, y:8+ACTOR_H/2,
+    class:'actor-label'
+  });
+  lbl.textContent = a.label||'Actor';
+
+  const ico = svgEl('text', {
+    x:a.x+14, y:8+ACTOR_H/2+1,
+    'font-size':12, 'dominant-baseline':'middle', 'text-anchor':'middle',
+    'pointer-events':'none'
+  });
+  ico.textContent = icon;
+
+  // bottom label (repeat)
+  const botRect = svgEl('rect', {
+    x:a.x, y:calcCanvasHeight()-LIFELINE_END_MARGIN+8, width:ACTOR_W, height:ACTOR_H,
+    class:'actor-head', rx:6
+  });
+  const botLbl = svgEl('text', {
+    x:a.x+ACTOR_W/2+10, y:calcCanvasHeight()-LIFELINE_END_MARGIN+8+ACTOR_H/2,
+    class:'actor-label'
+  });
+  botLbl.textContent = a.label||'Actor';
+  const botIco = svgEl('text', {
+    x:a.x+14, y:calcCanvasHeight()-LIFELINE_END_MARGIN+8+ACTOR_H/2+1,
+    'font-size':12, 'dominant-baseline':'middle', 'text-anchor':'middle',
+    'pointer-events':'none'
+  });
+  botIco.textContent = icon;
+
+  // Hover bounds covers the top actor box (ACTOR_W x ACTOR_H at x,8)
+  const hoverBounds = svgHoverBounds(a.x, 8, ACTOR_W, ACTOR_H, 4);
+  g.prepend(hoverBounds);
+  g.append(rect, lbl, ico, botRect, botLbl, botIco);
+
+  // Direct click — ensures selection works even when mousedown preventDefault fires
+  g.addEventListener('click', e => {
+    if (uiState.mode === 'connect') { handleConnectClick(a.id); return; }
+    e.stopPropagation();
+    setSelected(a, 'actor', true);
+    render();
+    dbg('actor-click', `selected ${a.id} ${a.label}`);
+  });
+
+  actorsLayer.appendChild(g);
+}
+
+function renderMessage(m) {
+  const dir = m.direction || 'right';
+  const fromActor = state.actors.find(a=>a.id===m.fromId);
+  const toActor   = state.actors.find(a=>a.id===m.toId);
+  if (!fromActor||!toActor) return;
+
+  // Always draw from fromActor → toActor regardless of direction.
+  // direction only controls which end(s) get arrowheads.
+  const x1 = actorCenterX(fromActor), x2 = actorCenterX(toActor);
+  const y  = m.y;
+  const isSelf = fromActor.id === toActor.id;
+
+  const g = svgEl('g');
+  g.dataset.id = m.id; g.dataset.type = 'message';
+  g.setAttribute('role','button');
+  g.setAttribute('aria-label',`${m.kind} message from ${fromActor.label} to ${toActor.label}: ${m.label||''}`);
+  g.setAttribute('tabindex','0');
+  g.style.cursor = 'pointer';
+
+  const sel = uiState.selected?.id === m.id;
+  const kindMap = { sync:'sync', async:'async', return:'return' };
+  const cls = `msg-line ${kindMap[m.kind]||'sync'}${sel?' selected':''}`;
+
+  // Marker IDs by kind
+  const kindKey = m.kind==='return' ? 'return' : m.kind==='async' ? 'async' : 'sync';
+  // direction='right': arrowhead at toActor end   →
+  // direction='left':  arrowhead at fromActor end ←
+  // direction='both':  arrowheads at both ends    ↔
+  const markerEnd   = (dir === 'right' || dir === 'both') ? `url(#arrow-${kindKey})`     : 'none';
+  const markerStart = (dir === 'left'  || dir === 'both') ? `url(#arrow-${kindKey}-rev)` : 'none';
+
+  let path;
+  if (isSelf) {
+    const ox = x1 + 40;
+    path = svgEl('path', {
+      d:`M${x1} ${y} C ${ox} ${y}, ${ox} ${y+28}, ${x1} ${y+28}`,
+      class:cls, 'marker-end':`url(#arrow-${kindKey})`
+    });
+  } else {
+    // wider invisible hit-area for easier clicking
+    const hit = svgEl('line', { x1, y1:y, x2, y2:y, stroke:'transparent', 'stroke-width':24 }); /* 2.5.8: 24px min target */
+    g.appendChild(hit);
+    path = svgEl('line', { x1, y1:y, x2, y2:y, class:cls,
+      'marker-end': markerEnd, 'marker-start': markerStart });
+  }
+
+  const lx = isSelf ? x1+44 : (x1+x2)/2;
+  const ly = isSelf ? y+18  : y-6;
+  const lbl = svgEl('text', { x:lx, y:ly, class:`msg-label ${m.kind||'sync'}` });
+  lbl.textContent = m.label||'message';
+
+  // Direction indicator — rendered as SVG elements not text for reliability
+  if (dir === 'left' || dir === 'both') {
+    // Left-pointing chevron above the line at fromActor end
+    const cx = isSelf ? x1 + 4 : x1 + 10;
+    const chev = svgEl('text', {
+      x: cx, y: ly + 12,
+      'font-size': 9, 'text-anchor': 'middle',
+      fill: 'var(--text3)', 'pointer-events': 'none'
+    });
+    chev.textContent = dir === 'both' ? '↔' : '←';
+    g.appendChild(chev);
+  }
+
+  // Network parts pre-calculated so hover bounds height can account for them
+  const netParts = [];
+  if (m.protocol) netParts.push(m.protocol);
+  if (m.port)     netParts.push(':' + m.port);
+  if (m.auth)     netParts.push(m.auth);
+
+  // Hover bounds — covers label (above line) + line + all badges below
+  // label sits at ly (y-6), text ~11px tall so top ≈ ly-12
+  const mx = Math.min(x1, x2), mw = Math.abs(x2 - x1) || 60;
+  const hoverTop    = ly - 14;
+  const hoverBottom = y + (dir !== 'right' ? 30 : 20)
+    + (netParts.length ? 12 : 0)
+    + (m.dataClass ? 12 : 0);
+  const msgHover = svgHoverBounds(mx, hoverTop, mw, hoverBottom - hoverTop, 8);
+  g.prepend(msgHover);
+
+  g.append(path, lbl);
+
+  // Click handler — single-click cycles kind, double-click cycles direction.
+  let _clickTimer = null;
+  g.addEventListener('click', e => {
+    if (uiState.mode === 'connect') return;
+    e.stopPropagation();
+    clearTimeout(_clickTimer);
+    _clickTimer = setTimeout(() => {
+      const ref = state.messages.find(msg => msg.id === m.id);
+      if (!ref) return;
+      _store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: m.id, kind: nextMessageKind(ref.kind) } });
+      setSelected(state.messages.find(msg => msg.id === m.id), 'message', true);
+      dbg('msg-click', `kind → ${ref.kind}`);
+      toast(`→ ${ref.kind}`);
+    }, 220);
+  });
+  const classColors = { Public:'#4af07a', Internal:'#f0c44a', Confidential:'#f07a4a', PII:'#ff6b8a', PHI:'#ff6b8a', Secret:'#556080' };
+  if (netParts.length > 0) {
+    const badgeTxt = svgEl('text', { x:lx, y:ly + (dir !== 'right' ? 24 : 14),
+      class:'net-badge', 'text-anchor':'middle' });
+    badgeTxt.textContent = netParts.join(' ');
+    g.appendChild(badgeTxt);
+  }
+  if (m.dataClass) {
+    const dcColor = classColors[m.dataClass] || 'var(--text3)';
+    const dcBadge = svgEl('text', { x:lx, y:ly + (netParts.length ? 24 : 14) + (dir !== 'right' ? 12 : 0),
+      class:'net-badge', 'text-anchor':'middle', fill:dcColor });
+    dcBadge.textContent = m.dataClass;
+    g.appendChild(dcBadge);
+  }
+
+  messagesLayer.appendChild(g);
+
+  // Double-click cycles direction: right → left → both → right
+  // Cancels the pending single-click kind-cycle timer first.
+  g.addEventListener('dblclick', e => {
+    e.stopPropagation();
+    clearTimeout(_clickTimer); // prevent kind-cycle firing
+    const ref = state.messages.find(msg => msg.id === m.id);
+    if (!ref) return;
+    const newDir = nextMessageDirection(ref.direction || 'right');
+    store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: ref.id, direction: newDir } });
+    render();
+    toast(`Direction: ${newDir}`);
+    dbg('msg-dblclick', `direction → ${newDir}`);
+  });
+}
+
+function renderNote(n) {
+  const g = svgEl('g');
+  g.dataset.id = n.id; g.dataset.type = 'note';
+  g.setAttribute('tabindex','0');
+  g.setAttribute('role','button');
+  g.setAttribute('aria-label',`Note: ${n.text||''}`);
+  g.style.cursor = 'move';
+
+  const W = 120, H = 36;
+  const x = n.x || 20;
+  const y = n.y;
+
+  const rect = svgEl('rect', { x, y:y-H/2, width:W, height:H, rx:4, class:'note-box' });
+  const txt  = svgEl('text', { x:x+8, y:y+4, class:'note-text' });
+  txt.textContent = n.text || 'note';
+
+  const sel = uiState.selected?.id === n.id;
+  if (sel) rect.setAttribute('stroke','#f0c44a');
+
+  const noteHover = svgHoverBounds(x, y - H/2, W, H, 4);
+  g.prepend(noteHover);
+  g.append(rect, txt);
+  notesLayer.appendChild(g);
+}
+
+function svgEl(tag, attrs={}) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+// Invisible padded hit-rect that shows as a dashed outline on hover/focus
+// Prepend to g so it sits behind content but covers the full bounding area
+function svgHoverBounds(x, y, w, h, pad=6) {
+  return svgEl('rect', {
+    x: x-pad, y: y-pad, width: w+pad*2, height: h+pad*2,
+    rx: 4, class: 'hover-bounds'
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  INTERACTION — drag & drop, click, keyboard
+// ═══════════════════════════════════════════════════════
+const canvasWrap = document.getElementById('canvas-wrap');
+
+// ── Palette drag ──
+// ── Palette preview: build a default object and show it in Properties ──
+function showPalettePreview(type) {
+  // Mark which item is previewing
+  document.querySelectorAll('.palette-item').forEach(el => el.classList.remove('previewing'));
+  const previewEl = document.querySelector(`.palette-item[data-type="${type}"]`);
+  if (previewEl) previewEl.classList.add('previewing');
+
+  // Build a synthetic default object — not added to state arrays
+  let obj, objType;
+  if (type.startsWith('actor')) {
+    obj = { id:'__preview__', x:0, label: labelForType(type), type, emoji: undefined, _preview: true };
+    objType = 'actor';
+  } else if (type.startsWith('msg')) {
+    const kind = type.replace('msg-','');
+    const fa = state.actors[0] || { id:'', label:'From' };
+    const ta = state.actors[1] || state.actors[0] || { id:'', label:'To' };
+    obj = { id:'__preview__', fromId: fa.id, toId: ta.id, label:'message', kind, direction:'right', y:0, _preview: true };
+    objType = 'message';
+  } else if (type === 'note') {
+    obj = { id:'__preview__', x:60, y:200, text:'note', _preview: true };
+    objType = 'note';
+  } else if (type.startsWith('frag')) {
+    obj = { id:'__preview__', x:60, y:200, w:200, h:100, kind: type, cond:'condition', _preview: true };
+    objType = 'fragment';
+  } else {
+    return;
+  }
+
+  // Set selected without triggering actor-arm or tab-switch side effects
+  _propDirty = false;
+  uiState.selected = _wrapSelected(obj, objType);
+  activateTab('tab-props');
+  renderProperties();
+  dbg('palette-preview', `type=${type}`);
+}
+
+// ── "+" button handler: add to canvas (using preview values if available) ──
+function addFromPaletteBtn(type) {
+  // If current preview matches this type, read edited values from props form
+  const isPreview = state.selected?._preview && uiState.selected?._type ===
+    (type.startsWith('actor') ? 'actor' : type.startsWith('msg') ? 'message' : type === 'note' ? 'note' : 'fragment');
+
+  if (isPreview) {
+    // Harvest current form values before calling addFromPalette
+    const ref = uiState.selected?._ref;
+    if (ref) {
+      if (uiState.selected?._type === 'actor') {
+        ref.label = document.getElementById('p-label')?.value || ref.label;
+        ref.emoji = document.getElementById('p-emoji')?.value?.trim() || undefined;
+        ref.type  = document.getElementById('p-atype')?.value || ref.type;
+      } else if (uiState.selected?._type === 'message') {
+        ref.label     = document.getElementById('p-mlabel')?.value || ref.label;
+        ref.kind      = document.getElementById('p-mkind')?.value  || ref.kind;
+        ref.direction = document.getElementById('p-mdir')?.value   || ref.direction;
+        ref.fromId    = document.getElementById('p-from')?.value   || ref.fromId;
+        ref.toId      = document.getElementById('p-to')?.value     || ref.toId;
+      } else if (uiState.selected?._type === 'note') {
+        ref.text = document.getElementById('p-ntext')?.value || ref.text;
+      } else if (uiState.selected?._type === 'fragment') {
+        ref.kind = document.getElementById('p-fkind')?.value || ref.kind;
+        ref.cond = document.getElementById('p-fcond')?.value || ref.cond;
+      }
+    }
+    // Add to canvas using harvested values
+    addFromPaletteWithDefaults(type, ref);
+  } else {
+    addFromPalette(type, getNextActorX());
+  }
+  // Clear preview highlight
+  document.querySelectorAll('.palette-item').forEach(el => el.classList.remove('previewing'));
+}
+
+function addFromPaletteWithDefaults(type, defaults) {
+  if (type.startsWith('actor')) {
+    _store.dispatch({ type: 'ADD_ACTOR', payload: {
+      label: defaults.label, type: defaults.type, emoji: defaults.emoji,
+    }});
+    toast(`Added ${defaults.label || 'Actor'}`);
+  } else if (type.startsWith('msg')) {
+    if (state.actors.length < 2) { toast('Need ≥2 actors first'); return; }
+    _store.dispatch({ type: 'ADD_MESSAGE', payload: {
+      fromId:    defaults.fromId    || state.actors[0].id,
+      toId:      defaults.toId      || state.actors[1]?.id || state.actors[0].id,
+      label:     defaults.label     || 'message',
+      kind:      defaults.kind      || 'sync',
+      direction: defaults.direction || 'right',
+    }});
+    toast('Message added');
+  } else if (type === 'note') {
+    _store.dispatch({ type: 'ADD_NOTE', payload: {
+      x: 60, y: calcCanvasHeight()/2, text: defaults.text || 'note',
+    }});
+    toast('Note added');
+  } else if (type.startsWith('frag')) {
+    _store.dispatch({ type: 'ADD_FRAGMENT', payload: {
+      x: 60, y: calcCanvasHeight()/2 - 50, w: 200, h: 100,
+      kind: defaults.kind || type, cond: defaults.cond || 'condition',
+    }});
+    toast('Fragment added');
+  }
+}
+
+// ── Wire palette items: click = preview, drag = still works ──
+document.querySelectorAll('.palette-item').forEach(item => {
+  const type = item.dataset.type;
+
+  // actor-custom: click opens modal directly (no preview step)
+  if (type === 'actor-custom') {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.palette-item').forEach(el => el.classList.remove('previewing'));
+      addFromPalette('actor-custom', getNextActorX());
+    });
+    item.addEventListener('keydown', e => {
+      if (e.key==='Enter'||e.key===' ') {
+        e.preventDefault();
+        document.querySelectorAll('.palette-item').forEach(el => el.classList.remove('previewing'));
+        addFromPalette('actor-custom', getNextActorX());
+      }
+    });
+    return;
+  }
+
+  // Drag still adds directly (drop on canvas)
+  item.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('type', type);
+    e.dataTransfer.effectAllowed = 'copy';
+  });
+
+  // Click = preview in Properties
+  item.addEventListener('click', () => showPalettePreview(type));
+
+  // Enter/Space = preview (keyboard)
+  item.addEventListener('keydown', e => {
+    if (e.key==='Enter'||e.key===' ') { e.preventDefault(); showPalettePreview(type); }
+  });
+});
+
+// ── Wire "+" buttons: click = add to canvas ──
+document.querySelectorAll('.palette-add-btn').forEach(btn => {
+  const type = btn.dataset.addType;
+  btn.addEventListener('click', e => {
+    e.stopPropagation(); // don't bubble to palette-item
+    addFromPaletteBtn(type);
+  });
+  btn.addEventListener('keydown', e => {
+    if (e.key==='Enter'||e.key===' ') { e.preventDefault(); addFromPaletteBtn(type); }
+  });
+});
+
+canvasWrap.addEventListener('dragover', e => {
+  e.preventDefault(); e.dataTransfer.dropEffect='copy';
+  canvasWrap.classList.add('drop-active');
+});
+canvasWrap.addEventListener('dragleave', () => canvasWrap.classList.remove('drop-active'));
+canvasWrap.addEventListener('drop', e => {
+  e.preventDefault(); canvasWrap.classList.remove('drop-active');
+  const type = e.dataTransfer.getData('type');
+  if (!type) return;
+  const rect = canvasWrap.getBoundingClientRect();
+  const x    = e.clientX - rect.left;
+  const y    = e.clientY - rect.top;
+  addFromPalette(type, x, y);
+});
+
+function getNextActorX() {
+  if (!state.actors.length) return 40;
+  const maxX = Math.max(...state.actors.map(a=>a.x));
+  return maxX + ACTOR_W + 60;
+}
+
+function addFromPalette(type, x, y) {
+  dbg('addFromPalette', `type=${type} x=${x} y=${y} actors=${state.actors.length}`);
+  if (type === 'actor-custom') {
+    showActorModal().then(result => {
+      if (!result) return;
+      _store.dispatch({ type: 'ADD_ACTOR', payload: {
+        label: result.label, type: 'actor-system', emoji: result.emoji,
+      }});
+      toast(`Added ${result.label}`);
+    });
+    return;
+  } else if (type.startsWith('actor')) {
+    _store.dispatch({ type: 'ADD_ACTOR', payload: {
+      label: labelForType(type), type,
+    }});
+    toast(`Added ${labelForType(type)}`);
+  } else if (type.startsWith('msg')) {
+    if (state.actors.length < 2) { toast('Need ≥2 actors first'); return; }
+    const sorted = [...state.actors].sort((a,b) => a.x - b.x);
+    let fromActor, toActor;
+    if (x !== undefined) {
+      const nearest = sorted.reduce((best, a) => {
+        const cx = a.x + ACTOR_W/2;
+        return Math.abs(cx - x) < Math.abs((best.x + ACTOR_W/2) - x) ? a : best;
+      }, sorted[0]);
+      const ni = sorted.indexOf(nearest);
+      fromActor = nearest;
+      toActor   = sorted[ni + 1] || sorted[ni - 1];
+    } else {
+      const last = getLastActor();
+      fromActor  = last;
+      const li   = sorted.indexOf(last);
+      toActor    = sorted[li + 1] || sorted[li - 1] || sorted.find(a => a.id !== last.id);
+    }
+    const kind = type.replace('msg-','');
+    _store.dispatch({ type: 'ADD_MESSAGE', payload: {
+      fromId: fromActor.id, toId: toActor.id,
+      label: 'message', kind, direction: 'right',
+    }});
+    toast('Message added — edit in Properties');
+  } else if (type === 'note') {
+    _store.dispatch({ type: 'ADD_NOTE', payload: {
+      x: Math.max(10, x||60), y: y||200, text: 'note',
+    }});
+    toast('Note added');
+  } else if (type.startsWith('frag')) {
+    _store.dispatch({ type: 'ADD_FRAGMENT', payload: {
+      x: Math.max(10,(x||60)-80), y: y||200, w: 200, h: 100, kind: type, cond: 'condition',
+    }});
+    toast('Fragment added');
+  }
+}
+
+function labelForType(t) {
+  return { 'actor-person':'User','actor-system':'System',
+           'actor-db':'Database','actor-queue':'Queue' }[t] || 'Actor';
+}
+
+// ── Canvas click / select ──
+svg.addEventListener('click', e => {
+  const g = e.target.closest('[data-id]');
+  dbg('canvas-click', `mode=${uiState.mode} target=${g ? g.dataset.type+'#'+g.dataset.id : 'none'}`);
+  if (!g) { uiState.pendingActorId = null; setSelected(null); render(); return; }
+
+  const id   = g.dataset.id;
+  const type = g.dataset.type;
+
+  if (uiState.mode==='connect') {
+    if (type==='actor') handleConnectClick(id);
+    return;
+  }
+
+  const found =
+    state.actors.find(a=>a.id===id) ||
+    state.messages.find(m=>m.id===id) ||
+    state.notes.find(n=>n.id===id) ||
+    state.fragments.find(f=>f.id===id);
+
+  if (found) setSelected(found, type, true);
+  render();
+});
+
+// ── Connect mode ──
+function handleConnectClick(actorId) {
+  dbg('handleConnectClick', `actorId=${actorId} connectFrom=${uiState.connectFrom}`);
+  const announce = document.getElementById('connect-announce');
+  if (!uiState.connectFrom) {
+    uiState.connectFrom = actorId;
+    const fromActor = state.actors.find(a => a.id === actorId);
+    const msg = `Drawing message from ${fromActor?.label || 'actor'}. Now click the destination actor.`;
+    if (announce) announce.textContent = msg;
+    toast('Click destination actor to complete');
+    render(); // re-render to show connect-source highlight
+  } else {
+    const fromActor = state.actors.find(a => a.id === uiState.connectFrom);
+    const toActor   = state.actors.find(a => a.id === actorId);
+    store.dispatch({ type: 'ADD_MESSAGE', payload: {
+      fromId: uiState.connectFrom, toId: actorId, label: 'message', kind: 'sync', direction: 'right',
+    }});
+    const connMsg = `Message created from ${fromActor?.label || 'actor'} to ${toActor?.label || 'actor'}.`;
+    if (announce) announce.textContent = connMsg;
+    uiState.connectFrom = null;
+    setMode('select');
+    render();
+  }
+}
+
+// ── Drag actors / notes / fragments / message rows ──
+let dragging = null, dragOffX = 0, dragOffY = 0;
+let draggingMsg = null, _msgMoved = false; // message Y-drag; _msgMoved guards undo
+
+svg.addEventListener('mousedown', e => {
+  if (uiState.mode === 'connect') return; // connect mode owns clicks
+  const g = e.target.closest('[data-id]');
+  if (!g) return;
+  const type = g.dataset.type;
+  const id   = g.dataset.id;
+  const canvasRect = canvasWrap.getBoundingClientRect();
+
+  // ── Message row drag (Y axis only) ──
+  // Do NOT pushUndo here — only push if the user actually moves it (see mousemove)
+  if (type === 'message') {
+    const msg = state.messages.find(m => m.id === id);
+    if (!msg) return;
+    e.preventDefault();
+    draggingMsg = msg;
+    _msgMoved   = false;
+    return;
+  }
+
+  // ── Actor / note / fragment drag (X+Y) ──
+  if (type!=='actor' && type!=='note' && type!=='fragment') return;
+  e.preventDefault();
+  const obj = state.actors.find(a=>a.id===id) ||
+              state.notes.find(n=>n.id===id) ||
+              state.fragments.find(f=>f.id===id);
+  if (!obj) return;
+  // Tag with _type so mousemove dispatch knows which action to call.
+  // Store handles pushSnapshot on the first undoable MOVE_* dispatch.
+  dragging       = obj;
+  dragging._type = type;  // 'actor' | 'note' | 'fragment'
+  dragOffX  = (e.clientX - canvasRect.left) / _zoom - obj.x;
+  dragOffY  = (e.clientY - canvasRect.top)  / _zoom - (obj.y||0);
+  g.style.opacity = '0.4';
+  dragging._ghostEl = g;
+});
+
+window.addEventListener('mousemove', e => {
+  const canvasRect = canvasWrap.getBoundingClientRect();
+
+  if (draggingMsg) {
+    _msgMoved = true;
+    const newY = Math.max(ACTOR_H + LIFELINE_START + 10, (e.clientY - canvasRect.top) / _zoom);
+    // Non-undoable mid-drag: logged, undo scanner skips it
+    store.dispatch({ type: 'MOVE_MESSAGE', payload: { id: draggingMsg.id, y: newY },
+                     meta: { undoable: false } });
+    requestRender();
+    return;
+  }
+
+  if (!dragging) return;
+  const newX = Math.max(0, (e.clientX - canvasRect.left) / _zoom - dragOffX);
+  const newY = Math.max(60, (e.clientY - canvasRect.top)  / _zoom - dragOffY);
+  // Non-undoable mid-drag dispatches
+  if (dragging._type === 'actor') {
+    store.dispatch({ type: 'MOVE_ACTOR',    payload: { id: dragging.id, x: newX },
+                     meta: { undoable: false } });
+  } else if (dragging._type === 'note') {
+    store.dispatch({ type: 'MOVE_NOTE',     payload: { id: dragging.id, x: newX, y: newY },
+                     meta: { undoable: false } });
+  } else if (dragging._type === 'fragment') {
+    store.dispatch({ type: 'MOVE_FRAGMENT', payload: { id: dragging.id, x: newX, y: newY },
+                     meta: { undoable: false } });
+  }
+  requestRender();
+});
+
+window.addEventListener('mouseup', e => {
+  if (draggingMsg) {
+    if (_msgMoved) {
+      // Snap fromId/toId to nearest actor pair at drop X — one undoable commit
+      const canvasRect = canvasWrap.getBoundingClientRect();
+      const dropX = e.clientX - canvasRect.left;
+      const sorted = [...state.actors].sort((a,b) => a.x - b.x);
+      if (sorted.length >= 2) {
+        const nearest = sorted.reduce((best, a) => {
+          const cx = a.x + ACTOR_W/2;
+          return Math.abs(cx - dropX) < Math.abs((best.x + ACTOR_W/2) - dropX) ? a : best;
+        }, sorted[0]);
+        const ni = sorted.indexOf(nearest);
+        const pairFrom = nearest;
+        const pairTo   = sorted[ni + 1] || sorted[ni - 1];
+        if (pairFrom && pairTo && pairFrom.id !== pairTo.id) {
+          store.dispatch({ type: 'UPDATE_MESSAGE', payload: {
+            id: draggingMsg.id, fromId: pairFrom.id, toId: pairTo.id, direction: 'right',
+          }});
+          const announce = document.getElementById('connect-announce');
+          if (announce) announce.textContent = `Message reassigned from ${pairFrom.label} to ${pairTo.label}`;
+          toast(`Reassigned: ${pairFrom.label} → ${pairTo.label}`);
+          dbg('msg-snap', `from=${pairFrom.label} to=${pairTo.label}`);
+        }
+      }
+      render();
+    }
+    // If not moved: plain click — let the svg click handler select it normally
+    draggingMsg = null;
+    _msgMoved   = false;
+    return;
+  }
+  if (dragging?._ghostEl) {
+    dragging._ghostEl.style.opacity = ''; // restore after drag
+    dragging._ghostEl = null;
+  }
+  dragging = null;
+});
+
+// ── Keyboard shortcuts ──
+window.addEventListener('keydown', e => {
+  if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+  if ((e.ctrlKey||e.metaKey) && e.key==='z') { e.preventDefault(); undo(); return; }
+  if ((e.ctrlKey||e.metaKey) && (e.key==='y' || (e.shiftKey && e.key==='Z'))) { e.preventDefault(); redo(); return; }
+  if (e.key==='a' || e.key==='A') { e.preventDefault(); addFromPalette('actor-system', getNextActorX()); }
+  if (e.key==='m' || e.key==='M') { e.preventDefault(); document.getElementById('btn-connect')?.click(); }
+  if (e.key==='n' || e.key==='N') { e.preventDefault(); addFromPalette('note', 60, calcCanvasHeight()/2); }
+  if (e.key==='f' || e.key==='F') { e.preventDefault(); addFromPalette('frag-alt', 60, calcCanvasHeight()/2); }
+  if (e.key==='Escape') { uiState.pendingActorId = null; setSelected(null); setMode('select'); render(); }
+  if ((e.key==='Delete'||e.key==='Backspace') && uiState.selected) deleteSelected();
+});
+
+// ── Connect mode toggle ──
+function toggleConnectMode() {
+  if (uiState.mode==='connect') setMode('select');
+  else setMode('connect');
+}
+
+// ── Selection — uiState only, no store mutation ──
+let _propDirty = false; // hoisted — must survive render() calls during editing
+function setSelected(obj, type, associateOnSelect=false) {
+  _propDirty = false;
+  uiState.selected = obj ? _wrapSelected(obj, type) : null;
+  if (obj) {
+    // Clear palette preview highlight when a real canvas element is selected
+    document.querySelectorAll('.palette-item.previewing').forEach(el => el.classList.remove('previewing'));
+
+    if (associateOnSelect) {
+      if (type === 'actor') {
+        // Arm this actor as pending for next message click
+        const wasPending = uiState.pendingActorId === obj.id;
+        uiState.pendingActorId = wasPending ? null : obj.id;
+        const label = obj.label || 'actor';
+        if (uiState.pendingActorId) {
+          toast(`${label} armed — click a message to set From`);
+          dbg('pending', `actor armed: ${label}`);
+        } else {
+          dbg('pending', 'actor disarmed');
+        }
+      } else if (type === 'message' && uiState.pendingActorId) {
+        // Consume pending actor → assign as fromId via dispatch
+        const sourceActor = state.actors.find(a => a.id === uiState.pendingActorId);
+        if (sourceActor) {
+          _store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: obj.id, fromId: sourceActor.id } });
+          uiState.selected = _wrapSelected(
+            state.messages.find(m => m.id === obj.id), 'message'
+          );
+          const announce = document.getElementById('connect-announce');
+          if (announce) announce.textContent = `Message from set to ${sourceActor.label}`;
+          toast(`From: ${sourceActor.label}`);
+          dbg('assoc', `msg.fromId → ${sourceActor.label}`);
+        }
+        uiState.pendingActorId = null;
+      } else if (type !== 'actor') {
+        uiState.pendingActorId = null;
+      }
+
+      // Fallback: associate with last-added actor (settings-gated)
+      if (type === 'message' && !uiState.pendingActorId && state_settings.associateOnClick) {
+        const lastActor = getLastActor();
+        const currentMsg = state.messages.find(m => m.id === obj.id);
+        if (lastActor && currentMsg && lastActor.id !== currentMsg.fromId) {
+          _store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: obj.id, fromId: lastActor.id } });
+          uiState.selected = _wrapSelected(state.messages.find(m => m.id === obj.id), 'message');
+          dbg('assoc-fallback', `msg.fromId → ${lastActor.label}`);
+          toast(`From: ${lastActor.label}`);
+        }
+      }
+
+      // Focus panel tab per settings
+      if (state_settings.clickFocusTab !== 'stay') {
+        activateTab('tab-' + state_settings.clickFocusTab);
+      }
+    }
+  } else {
+    uiState.pendingActorId = null;
+    document.querySelectorAll('.palette-item.previewing').forEach(el => el.classList.remove('previewing'));
+  }
+  renderProperties();
+
+  // Announce selection to screen readers via polite live region
+  const selectAnnounce = document.getElementById('select-announce');
+  if (selectAnnounce) {
+    if (obj) {
+      const s = uiState.selected;
+      const visitor = propertyVisitors[s._type];
+      const msg = visitor ? visitor.announce(s) : `${s._type} selected`;
+      selectAnnounce.textContent = `${msg}. Properties panel updated.`;
+    } else {
+      selectAnnounce.textContent = 'Selection cleared.';
+    }
+  }
+}
+
+function setMode(m) {
+  uiState.mode = m;
+  dbg('setMode', m);
+  const btnConnect = document.getElementById('btn-connect');
+  btnConnect.classList.toggle('active', m==='connect');
+  btnConnect.setAttribute('aria-pressed', String(m==='connect'));
+  canvasWrap.classList.toggle('connecting', m==='connect');
+  document.querySelector('#stat-mode b').textContent = m.charAt(0).toUpperCase()+m.slice(1);
+  if (m !== 'connect') uiState.connectFrom = null;
+}
+
+// ═══════════════════════════════════════════════════════
+//  PROPERTY VISITORS
+//  Each visitor provides:
+//    html(s)    — builds the properties panel HTML string for that type
+//    apply(s)   — reads the panel and dispatches the appropriate UPDATE_* action
+//    announce(s)— returns the screen-reader selection announcement string
+//  Adding a new element type = one new entry here, zero changes elsewhere.
+// ═══════════════════════════════════════════════════════
+const propertyVisitors = {
+
+  actor: {
+    announce: s => `Actor: ${s.label}`,
+    html: s => `
+    <div class="prop-group">
+      <label for="p-label">Label</label>
+      <input type="text" id="p-label" class="prop-input" value="${esc(s.label)}" aria-label="Actor label"/>
+    </div>
+    <div class="prop-group">
+      <label for="p-emoji">Icon / Emoji</label>
+      <input type="text" id="p-emoji" class="prop-input" value="${esc(s.emoji||'')}" placeholder="Paste any emoji, or leave blank for default" aria-label="Actor emoji icon" maxlength="4"/>
+    </div>
+    <div class="prop-group">
+      <label for="p-atype">Type</label>
+      <select id="p-atype" class="prop-select" aria-label="Actor type">
+        <option value="actor-person"  ${s.type==='actor-person' ?'selected':''}>👤 Person</option>
+        <option value="actor-system"  ${s.type==='actor-system' ?'selected':''}>⬜ System</option>
+        <option value="actor-db"      ${s.type==='actor-db'     ?'selected':''}>🗄 Database</option>
+        <option value="actor-queue"   ${s.type==='actor-queue'  ?'selected':''}>📥 Queue</option>
+      </select>
+    </div>`,
+    apply: s => {
+      const emojiVal = document.getElementById('p-emoji')?.value?.trim();
+      _store.dispatch({ type: 'UPDATE_ACTOR', payload: {
+        id:    s.id,
+        label: document.getElementById('p-label')?.value ?? s.label,
+        type:  document.getElementById('p-atype')?.value ?? s.type,
+        emoji: emojiVal || undefined,
+      }});
+      uiState.selected = _wrapSelected(state.actors.find(a => a.id === s.id), 'actor');
+    },
+  },
+
+  message: {
+    announce: s => {
+      const from = state.actors.find(a => a.id === s.fromId)?.label || s.fromId;
+      const to   = state.actors.find(a => a.id === s.toId)?.label   || s.toId;
+      return `Message: ${s.label} from ${from} to ${to}`;
+    },
+    html: s => {
+      const actorOpts  = state.actors.map(a =>
+        `<option value="${a.id}" ${a.id===s.fromId?'selected':''}>${esc(a.label)}</option>`).join('');
+      const actorOpts2 = state.actors.map(a =>
+        `<option value="${a.id}" ${a.id===s.toId?'selected':''}>${esc(a.label)}</option>`).join('');
+      return `
+    <div class="prop-group">
+      <label for="p-mlabel">Message Label</label>
+      <input type="text" id="p-mlabel" class="prop-input" value="${esc(s.label)}" aria-label="Message label"/>
+    </div>
+    <div class="prop-group">
+      <label for="p-from">From</label>
+      <select id="p-from" class="prop-select" aria-label="Source actor">${actorOpts}</select>
+    </div>
+    <div class="prop-group">
+      <label for="p-to">To</label>
+      <select id="p-to" class="prop-select" aria-label="Target actor">${actorOpts2}</select>
+    </div>
+    <div class="prop-group">
+      <label for="p-mkind">Kind</label>
+      <select id="p-mkind" class="prop-select" aria-label="Message kind">
+        <option value="sync"   ${s.kind==='sync'  ?'selected':''}>→ Synchronous</option>
+        <option value="async"  ${s.kind==='async' ?'selected':''}>⇢ Asynchronous</option>
+        <option value="return" ${s.kind==='return'?'selected':''}>← Return</option>
+      </select>
+    </div>
+    <div class="prop-group">
+      <label for="p-mdir">Direction</label>
+      <select id="p-mdir" class="prop-select" aria-label="Arrow direction">
+        <option value="right" ${(s.direction||'right')==='right'?'selected':''}>→ Right (from → to)</option>
+        <option value="left"  ${(s.direction||'right')==='left' ?'selected':''}>← Left  (to → from)</option>
+        <option value="both"  ${(s.direction||'right')==='both' ?'selected':''}>↔ Both  (bidirectional)</option>
+      </select>
+    </div>
+    <div class="prop-section-label">Network Details (InfoSec)</div>
+    <div class="prop-group">
+      <label for="p-protocol">Protocol</label>
+      <select id="p-protocol" class="prop-select" aria-label="Network protocol">
+        <option value="">— none —</option>
+        <option value="HTTPS">HTTPS</option>
+        <option value="HTTP">HTTP</option>
+        <option value="gRPC">gRPC</option>
+        <option value="gRPC-TLS">gRPC-TLS</option>
+        <option value="TCP">TCP</option>
+        <option value="TLS">TLS</option>
+        <option value="mTLS">mTLS</option>
+        <option value="MQTT">MQTT</option>
+        <option value="AMQP">AMQP</option>
+        <option value="WebSocket">WebSocket</option>
+        <option value="UDP">UDP</option>
+      </select>
+    </div>
+    <div class="prop-group">
+      <label for="p-port">Port</label>
+      <input type="text" id="p-port" class="prop-input" placeholder="e.g. 443" aria-label="Port number"/>
+    </div>
+    <div class="prop-group">
+      <label for="p-auth">Auth Mechanism</label>
+      <select id="p-auth" class="prop-select" aria-label="Authentication mechanism">
+        <option value="">— none —</option>
+        <option value="JWT">JWT</option>
+        <option value="mTLS">mTLS</option>
+        <option value="API Key">API Key</option>
+        <option value="OAuth2">OAuth2</option>
+        <option value="SAML">SAML</option>
+        <option value="Basic">Basic Auth</option>
+        <option value="None">None (unauthenticated)</option>
+      </select>
+    </div>
+    <div class="prop-group">
+      <label for="p-dataclass">Data Classification</label>
+      <select id="p-dataclass" class="prop-select" aria-label="Data classification">
+        <option value="">— unset —</option>
+        <option value="Public">&#x1F7E2; Public</option>
+        <option value="Internal">&#x1F7E1; Internal</option>
+        <option value="Confidential">&#x1F7E0; Confidential</option>
+        <option value="PII">&#x1F534; PII</option>
+        <option value="PHI">&#x1F534; PHI</option>
+        <option value="Secret">&#x26AB; Secret</option>
+      </select>`;
+    },
+    apply: s => {
+      _store.dispatch({ type: 'UPDATE_MESSAGE', payload: {
+        id:        s.id,
+        label:     document.getElementById('p-mlabel')?.value,
+        fromId:    document.getElementById('p-from')?.value,
+        toId:      document.getElementById('p-to')?.value,
+        kind:      document.getElementById('p-mkind')?.value,
+        direction: document.getElementById('p-mdir')?.value,
+        protocol:  document.getElementById('p-protocol')?.value || undefined,
+        port:      document.getElementById('p-port')?.value     || undefined,
+        auth:      document.getElementById('p-auth')?.value     || undefined,
+        dataClass: document.getElementById('p-dataclass')?.value|| undefined,
+      }});
+      uiState.selected = _wrapSelected(state.messages.find(m => m.id === s.id), 'message');
+    },
+    // Post-render hook: set network field values (select.value must be set after innerHTML)
+    afterRender: s => {
+      const sel = (id, val) => { const e = document.getElementById(id); if (e && val) e.value = val; };
+      sel('p-protocol', s.protocol);
+      sel('p-port',     s.port);
+      sel('p-auth',     s.auth);
+      sel('p-dataclass',s.dataClass);
+    },
+  },
+
+  note: {
+    announce: s => `Note: ${s.text}`,
+    html: s => `
+    <div class="prop-group">
+      <label for="p-ntext">Text</label>
+      <textarea id="p-ntext" class="prop-textarea" aria-label="Note text">${esc(s.text)}</textarea>
+    </div>`,
+    apply: s => {
+      _store.dispatch({ type: 'UPDATE_NOTE', payload: {
+        id:   s.id,
+        text: document.getElementById('p-ntext')?.value,
+      }});
+      uiState.selected = _wrapSelected(state.notes.find(n => n.id === s.id), 'note');
+    },
+  },
+
+  fragment: {
+    announce: s => `Fragment: ${s.kind.replace('frag-','')} — ${s.cond}`,
+    html: s => `
+    <div class="prop-group">
+      <label for="p-fkind">Fragment Type</label>
+      <select id="p-fkind" class="prop-select" aria-label="Fragment type">
+        <option value="frag-alt"  ${s.kind==='frag-alt' ?'selected':''}>alt — Alternative</option>
+        <option value="frag-loop" ${s.kind==='frag-loop'?'selected':''}>loop — Loop</option>
+        <option value="frag-opt"  ${s.kind==='frag-opt' ?'selected':''}>opt — Optional</option>
+      </select>
+    </div>
+    <div class="prop-group">
+      <label for="p-fcond">Condition</label>
+      <input type="text" id="p-fcond" class="prop-input" value="${esc(s.cond)}" aria-label="Fragment condition"/>
+    </div>`,
+    apply: s => {
+      _store.dispatch({ type: 'UPDATE_FRAGMENT', payload: {
+        id:   s.id,
+        kind: document.getElementById('p-fkind')?.value,
+        cond: document.getElementById('p-fcond')?.value,
+      }});
+      uiState.selected = _wrapSelected(state.fragments.find(f => f.id === s.id), 'fragment');
+    },
+  },
+};
+
+function renderProperties() {
+  const el = document.getElementById('props-content');
+  const s  = uiState.selected;
+
+  if (!s) {
+    el.innerHTML = `<div class="no-selection">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect x="4" y="4" width="32" height="32" rx="4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 3"/>
+        <circle cx="20" cy="18" r="5" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M12 32c0-4.4 3.6-8 8-8s8 3.6 8 8" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+      <p>Select an element<br>to edit its properties</p></div>`;
+    return;
+  }
+
+  const visitor = propertyVisitors[s._type];
+  if (!visitor) return;
+
+  el.innerHTML = visitor.html(s) +
+    `<button class="btn-danger" id="btn-delete" aria-label="Delete selected element">Delete Element</button>`;
+
+  visitor.afterRender?.(s);
+
+  // Wire live updates — one undo snapshot per edit session (focus in → focus out)
+  el.querySelectorAll('input, select, textarea').forEach(inp => {
+    inp.addEventListener('focus', () => { _propDirty = false; });
+    inp.addEventListener('input', () => {
+      if (!_propDirty) { _propDirty = true; }
+      applyPropertyChange();
+    });
+  });
+  document.getElementById('btn-delete')?.addEventListener('click', deleteSelected);
+}
+
+// applyPropertyChange — delegates to the active visitor
+function applyPropertyChange() {
+  const s = uiState.selected;
+  if (!s || s._preview) return;
+  propertyVisitors[s._type]?.apply(s);
+}
+
+function deleteSelected() {
+  const s = uiState.selected;
+  if (!s || s._preview) return;
+  const id = s.id;
+  const typeMap = {
+    actor:    'DELETE_ACTOR',
+    message:  'DELETE_MESSAGE',
+    note:     'DELETE_NOTE',
+    fragment: 'DELETE_FRAGMENT',
+  };
+  const actionType = typeMap[s._type];
+  if (!actionType) return;
+  _store.dispatch({ type: actionType, payload: { id } });
+  toast('Element deleted');
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+// ═══════════════════════════════════════════════════════
+//  OUTPUT CODE PANEL
+// ═══════════════════════════════════════════════════════
+function updateOutput() {
+  const code = serialize();
+  const el = document.getElementById('output-code');
+  el.innerHTML = syntaxHighlight(code, uiState.format);
+}
+
+function syntaxHighlight(code, fmt) {
+  if (fmt==='plantuml') {
+    return code
+      .replace(/(&lt;|<)!--.+?(--&gt;|-->)/g, m=>`<span class="cmt">${m}</span>`)
+      .replace(/\b(@startuml|@enduml|participant|actor|database|queue|alt|loop|opt|end|note|skinparam)\b/g,
+               m=>`<span class="kw">${m}</span>`)
+      .replace(/"([^"]+)"/g, (m,s)=>`"<span class="str">${s}</span>"`)
+      .replace(/(->|-->|->>)/g, m=>`<span class="sym">${m}</span>`);
+  } else {
+    return code
+      .replace(/\b(sequenceDiagram|participant|actor|activate|deactivate|Note|alt|else|end|loop|opt|par|and|rect|over|right of|left of)\b/g,
+               m=>`<span class="kw">${m}</span>`)
+      .replace(/(->|-->>|->>|-->)/g, m=>`<span class="sym">${m}</span>`)
+      .replace(/#.+/g, m=>`<span class="cmt">${m}</span>`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  TOOLBAR BUTTONS
+// ═══════════════════════════════════════════════════════
+document.getElementById('btn-add-actor')?.addEventListener('click', () => {
+  dbg('btn-add-actor', `clicked, actors=${state.actors.length}`);
+  addFromPalette('actor-system', getNextActorX());
+});
+document.getElementById('btn-connect')?.addEventListener('click', () => {
+  dbg('btn-connect', `clicked, mode=${uiState.mode} actors=${state.actors.length}`);
+  if (state.actors.length >= 2) {
+    // Direct add: same as dropping a sync message from palette
+    addFromPalette('msg-sync', undefined, undefined);
+  } else {
+    // Fallback: enter connect mode so user can place actors first
+    toggleConnectMode();
+    toast(state.actors.length === 0 ? 'Add actors first, then draw messages' : 'Need 2 actors — add one more, then draw');
+  }
+});
+document.getElementById('btn-note')?.addEventListener('click', () => addFromPalette('note', 60, calcCanvasHeight()/2));
+document.getElementById('btn-frag')?.addEventListener('click', () => addFromPalette('frag-alt', 60, calcCanvasHeight()/2));
+
+// ── Modal system (replaces blocked window.confirm) ──
+const _mBackdrop = document.getElementById('modal-backdrop');
+const _mOk       = document.getElementById('modal-ok');
+const _mCancel   = document.getElementById('modal-cancel');
+let   _mResolve  = null;
+
+if (!_mBackdrop || !_mOk || !_mCancel) {
+  console.error('SequenceForge: modal elements not found in DOM — check HTML order');
+}
+
+function showConfirmModal() {
+  return new Promise(resolve => {
+    _mResolve = resolve;
+    _mBackdrop.classList.add('open');
+    requestAnimationFrame(() => _mCancel.focus()); // safe default focus (WCAG 3.3.4)
+  });
+}
+function _closeModal(result) {
+  _mBackdrop.classList.remove('open');
+  if (_mResolve) { _mResolve(result); _mResolve = null; }
+}
+_mOk?.addEventListener('click',     () => _closeModal(true));
+_mCancel?.addEventListener('click', () => _closeModal(false));
+_mBackdrop?.addEventListener('click', e => { if (e.target === _mBackdrop) _closeModal(false); });
+_mBackdrop?.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { e.preventDefault(); _closeModal(false); }
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const focusable = [_mCancel, _mOk];
+    const i = focusable.indexOf(document.activeElement);
+    focusable[(i + (e.shiftKey ? -1 : 1) + 2) % 2].focus();
+  }
+});
+
+document.getElementById('btn-clear')?.addEventListener('click', async () => {
+  const ok = await showConfirmModal();
+  if (!ok) return;
+  store.dispatch({ type: 'CLEAR_DIAGRAM' });
+});
+
+// ── Undo button ──
+document.getElementById('btn-undo')?.addEventListener('click', undo);
+document.getElementById('btn-redo')?.addEventListener('click', redo);
+
+document.getElementById('btn-load-demo')?.addEventListener('click', loadDemo);
+
+// ═══════════════════════════════════════════════════════
+//  ZOOM (WCAG 1.4.4 — Resize Text / Reflow)
+// ═══════════════════════════════════════════════════════
+const ZOOM_MIN = 0.25, ZOOM_MAX = 3, ZOOM_STEP = 0.1;
+let _zoom = 1.0;
+
+const _viewport = document.getElementById('viewport');
+
+function applyZoom(z) {
+  _zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+  _viewport.setAttribute('transform', `scale(${_zoom})`);
+  const pct = Math.round(_zoom * 100);
+  document.getElementById('zoom-label').textContent = `${pct}%`;
+  document.getElementById('btn-zoom-out').disabled   = _zoom <= ZOOM_MIN;
+  document.getElementById('btn-zoom-in').disabled    = _zoom >= ZOOM_MAX;
+  dbg('zoom', `${pct}%`);
+}
+
+document.getElementById('btn-zoom-in')?.addEventListener('click',    () => applyZoom(_zoom + ZOOM_STEP));
+document.getElementById('btn-zoom-out')?.addEventListener('click',   () => applyZoom(_zoom - ZOOM_STEP));
+document.getElementById('btn-zoom-reset')?.addEventListener('click', () => applyZoom(1.0));
+
+// Ctrl+wheel to zoom
+canvasWrap.addEventListener('wheel', e => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault();
+  applyZoom(_zoom + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+}, { passive: false });
+
+// Ctrl++, Ctrl+-, Ctrl+0 keyboard shortcuts (extend existing keydown listener)
+window.addEventListener('keydown', e => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  if (e.key === '=' || e.key === '+') { e.preventDefault(); applyZoom(_zoom + ZOOM_STEP); }
+  if (e.key === '-')                  { e.preventDefault(); applyZoom(_zoom - ZOOM_STEP); }
+  if (e.key === '0')                  { e.preventDefault(); applyZoom(1.0); }
+});
+
+// ═══════════════════════════════════════════════════════
+//  CUSTOM ACTOR MODAL
+// ═══════════════════════════════════════════════════════
+const ACTOR_EMOJIS = [
+  '👤','👩','👨','🧑','👩‍💻','👨‍💻','🧑‍💼','👩‍🔬','🤖','🦾',
+  '🏢','🖥️','💻','📱','⬜','🖨️','📺','⌨️','🖱️','🔌',
+  '🗄️','💾','📀','🗃️','🗂️','📦','🗑️','🧱','⚙️','🔧',
+  '📥','📤','📬','📮','🔔','📡','📶','🌐','🔗','🔒',
+  '🔓','🛡️','🔑','🗝️','🔐','⚠️','🚨','🚧','🚦','✅',
+  '❌','⛔','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⬛',
+  '🌩️','☁️','🌐','🏠','🏗️','🏭','🏦','🏥','🚀','🛰️',
+  '📊','📈','📉','💹','💰','💳','🧾','📋','📝','📌',
+];
+
+let _actorModalResolve = null;
+let _actorSelectedEmoji = '⬜';
+
+function showActorModal() {
+  return new Promise(resolve => {
+    _actorModalResolve = resolve;
+    _actorSelectedEmoji = '⬜';
+    document.getElementById('actor-label-input').value = '';
+    document.getElementById('actor-emoji-preview').textContent = '⬜';
+
+    // Build emoji grid
+    const grid = document.getElementById('actor-emoji-grid');
+    grid.innerHTML = '';
+    ACTOR_EMOJIS.forEach(em => {
+      const btn = document.createElement('button');
+      btn.className = 'emoji-btn';
+      btn.textContent = em;
+      btn.setAttribute('aria-label', `Select emoji ${em}`);
+      btn.addEventListener('click', () => {
+        _actorSelectedEmoji = em;
+        document.getElementById('actor-emoji-preview').textContent = em;
+        grid.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+      grid.appendChild(btn);
+    });
+
+    const backdrop = document.getElementById('actor-modal-backdrop');
+    backdrop.classList.add('open');
+    requestAnimationFrame(() => document.getElementById('actor-label-input').focus());
+  });
+}
+
+function _closeActorModal(result) {
+  document.getElementById('actor-modal-backdrop').classList.remove('open');
+  if (_actorModalResolve) { _actorModalResolve(result); _actorModalResolve = null; }
+}
+
+document.getElementById('actor-modal-ok')?.addEventListener('click', () => {
+  const label = document.getElementById('actor-label-input').value.trim() || 'Actor';
+  _closeActorModal({ label, emoji: _actorSelectedEmoji });
+});
+document.getElementById('actor-modal-cancel')?.addEventListener('click', () => _closeActorModal(null));
+document.getElementById('actor-modal-backdrop')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('actor-modal-backdrop')) _closeActorModal(null);
+});
+document.getElementById('actor-label-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const label = e.target.value.trim() || 'Actor';
+    _closeActorModal({ label, emoji: _actorSelectedEmoji });
+  }
+  if (e.key === 'Escape') _closeActorModal(null);
+});
+
+// ── Format select (Output panel) ──
+const _fmtSelect = document.getElementById('fmt-select');
+
+function _applyFormat(fmt) {
+  uiState.format = fmt;
+  const statEl = document.getElementById('stat-fmt');
+  if (statEl) statEl.textContent = fmt === 'plantuml' ? 'PlantUML' : 'Mermaid';
+  const sel = document.getElementById('fmt-select');
+  if (sel) sel.value = fmt;
+  render();
+  dbg('format', fmt);
+}
+
+_fmtSelect?.addEventListener('change', () => {
+  _applyFormat(_fmtSelect.value);
+  // Format select in Output panel always saves as default (managed via Settings)
+  state_settings.defaultFormat = _fmtSelect.value;
+  _saveSettings();
+});
+
+// Copy output
+document.getElementById('btn-copy-output')?.addEventListener('click', () => {
+  const code = serialize();
+  navigator.clipboard.writeText(code).then(()=>toast('Copied to clipboard!')).catch(()=>{
+    const el = document.getElementById('output-code');
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    toast('Selected — press Ctrl+C');
+  });
+});
+
+document.getElementById('btn-regen')?.addEventListener('click', () => { render(); toast('Output regenerated'); });
+
+// ── Export / Import ──
+document.getElementById('btn-export')?.addEventListener('click', _exportDiagram);
+
+document.getElementById('btn-import')?.addEventListener('click', () => {
+  document.getElementById('import-file-input').value = '';  // reset so same file can re-trigger
+  document.getElementById('import-file-input').click();
+});
+
+document.getElementById('import-file-input')?.addEventListener('change', e => {
+  _importDiagram(e.target.files?.[0]);
+});
+
+// ═══════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════
+const _SETTINGS_KEY = 'sf-settings';
+
+const state_settings = {
+  clickFocusTab:   'props',      // 'props' | 'output' | 'stay'
+  associateOnClick: true,        // whether setSelected fires actor association
+  defaultFormat:   'plantuml',   // 'plantuml' | 'mermaid'
+};
+
+(function _loadSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(_SETTINGS_KEY) || '{}');
+    if (saved.clickFocusTab)                         state_settings.clickFocusTab   = saved.clickFocusTab;
+    if (typeof saved.associateOnClick === 'boolean') state_settings.associateOnClick = saved.associateOnClick;
+    if (saved.defaultFormat)                         state_settings.defaultFormat    = saved.defaultFormat;
+  } catch(e) {}
+  // Apply saved default format on boot
+  if (state_settings.defaultFormat) {
+    uiState.format = state_settings.defaultFormat;
+  }
+})();
+
+function _saveSettings() {
+  localStorage.setItem(_SETTINGS_KEY, JSON.stringify(state_settings));
+}
+
+// ═══════════════════════════════════════════════════════
+//  DIAGRAM PERSISTENCE  (localStorage + JSON import/export)
+// ═══════════════════════════════════════════════════════
+const _DIAGRAM_KEY = 'sf-diagram';
+
+// Save — called from render() so every committed mutation is persisted.
+// Undo history is intentionally not saved (in-memory only by design).
+function _saveDiagram() {
+  try {
+    localStorage.setItem(_DIAGRAM_KEY, JSON.stringify(store.state));
+  } catch(e) {
+    console.warn('[persist] save failed:', e.message);
+  }
+}
+
+// Load on boot — runs once before first render().
+// Silent on success; only toasts on corrupt data so normal boot is noise-free.
+(function _loadDiagram() {
+  try {
+    const raw = localStorage.getItem(_DIAGRAM_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (!saved?.actors) return;  // sanity: must at least have the actors array
+    store.dispatch({ type: 'LOAD_DIAGRAM', payload: { ...saved, _source: 'localStorage' } });
+  } catch(e) {
+    console.warn('[persist] corrupt diagram in localStorage — ignored:', e.message);
+  }
+})();
+
+// Export — serialises store.state to a downloadable JSON file.
+function _exportDiagram() {
+  const json = JSON.stringify(store.state, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'sequenceforge-diagram.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Diagram exported ✓');
+}
+
+// Import — reads a JSON file and loads it via LOAD_DIAGRAM.
+// Wired to a hidden <input type="file"> so no DOM polling is needed.
+function _importDiagram(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data?.actors) throw new Error('missing actors array');
+      store.dispatch({ type: 'LOAD_DIAGRAM', payload: { ...data, _source: 'import' } });
+    } catch(err) {
+      toast('Import failed — invalid diagram JSON');
+      console.error('[import]', err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Reusable tab activator — used by tab click AND setSelected
+function activateTab(tabId) {
+  document.querySelectorAll('.ptab').forEach(t => {
+    t.classList.remove('active');
+    t.setAttribute('aria-selected','false');
+  });
+  document.querySelectorAll('[role=tabpanel]').forEach(p => p.hidden = true);
+  const tab  = document.getElementById(tabId);
+  const pane = document.getElementById(tabId.replace('tab-','pane-'));
+  if (tab)  { tab.classList.add('active'); tab.setAttribute('aria-selected','true'); }
+  if (pane) { pane.hidden = false; }
+  if (tabId === 'tab-output') {
+    const sel = document.getElementById('fmt-select');
+    if (sel) sel.value = uiState.format;
+    updateOutput();
+  }
+}
+
+// Settings modal wiring
+const _settingsBackdrop = document.getElementById('settings-modal-backdrop');
+const _settingClickTab  = document.getElementById('setting-click-tab');
+const _settingAssoc     = document.getElementById('setting-assoc-on-click');
+
+const _settingDefaultFormat = document.getElementById('setting-default-format');
+
+document.getElementById('btn-settings')?.addEventListener('click', () => {
+  // Sync UI to current settings before opening
+  if (_settingClickTab)     _settingClickTab.value    = state_settings.clickFocusTab;
+  if (_settingAssoc)        _settingAssoc.checked     = state_settings.associateOnClick;
+  if (_settingDefaultFormat) _settingDefaultFormat.value = state_settings.defaultFormat;
+  if (_settingsBackdrop) {
+    _settingsBackdrop.style.display = 'flex';
+    requestAnimationFrame(() => _settingClickTab?.focus());
+  }
+});
+
+document.getElementById('settings-modal-close')?.addEventListener('click', () => {
+  if (_settingsBackdrop) _settingsBackdrop.style.display = 'none';
+});
+_settingsBackdrop?.addEventListener('click', e => {
+  if (e.target === _settingsBackdrop) _settingsBackdrop.style.display = 'none';
+});
+_settingsBackdrop?.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { _settingsBackdrop.style.display = 'none'; return; }
+  // 2.1.2 Tab trap — keep focus inside the settings modal
+  if (e.key === 'Tab') {
+    const focusable = Array.from(_settingsBackdrop.querySelectorAll(
+      'select, input, button, [tabindex="0"]'
+    )).filter(el => !el.disabled);
+    if (!focusable.length) return;
+    e.preventDefault();
+    const i = focusable.indexOf(document.activeElement);
+    focusable[(i + (e.shiftKey ? -1 : 1) + focusable.length) % focusable.length].focus();
+  }
+});
+
+_settingClickTab?.addEventListener('change', () => {
+  state_settings.clickFocusTab = _settingClickTab.value;
+  _saveSettings();
+  dbg('settings', `clickFocusTab → ${state_settings.clickFocusTab}`);
+});
+_settingAssoc?.addEventListener('change', () => {
+  state_settings.associateOnClick = _settingAssoc.checked;
+  _saveSettings();
+  dbg('settings', `associateOnClick → ${state_settings.associateOnClick}`);
+});
+
+_settingDefaultFormat?.addEventListener('change', () => {
+  state_settings.defaultFormat = _settingDefaultFormat.value;
+  _saveSettings();
+  _applyFormat(_settingDefaultFormat.value); // apply immediately to current session
+  dbg('settings', `defaultFormat → ${state_settings.defaultFormat}`);
+});
+
+// ── Tabs ──
+document.querySelectorAll('.ptab').forEach(tab => {
+  tab.addEventListener('click', () => activateTab(tab.id));
+  tab.addEventListener('keydown', e => {
+    const tabs = [...document.querySelectorAll('.ptab')];
+    const i = tabs.indexOf(tab);
+    if (e.key==='ArrowRight') { e.preventDefault(); tabs[(i+1)%tabs.length].click(); tabs[(i+1)%tabs.length].focus(); }
+    if (e.key==='ArrowLeft')  { e.preventDefault(); tabs[(i-1+tabs.length)%tabs.length].click(); tabs[(i-1+tabs.length)%tabs.length].focus(); }
+  });
+});
+
+// ── Send to API ──
+async function sendToAPI() {
+  const url    = document.getElementById('api-url').value;
+  const model  = document.getElementById('api-model').value;
+  const prefix = document.getElementById('api-prompt').value;
+  const code   = serialize();
+
+  const statusWrap = document.getElementById('api-status-wrap');
+  const respEl     = document.getElementById('api-response');
+
+  statusWrap.innerHTML = `<div class="api-status loading"><span class="dot pulse"></span> Sending to ${model}…</div>`;
+  respEl.textContent   = '…';
+
+  // Switch to API tab
+  document.getElementById('tab-api').click();
+
+  const payload = {
+    model,
+    prompt: `${prefix}\n\n---\n${code}\n---`,
+    stream: false,
+  };
+
+  try {
+    const isMock = url.includes('11434');
+    const res  = isMock
+      ? await mockOllamaHandler(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      : await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const data = await res.json();
+    statusWrap.innerHTML = `<div class="api-status ok"><span class="dot"></span> 200 OK — ${model}</div>`;
+    respEl.textContent = data.message?.content || JSON.stringify(data, null, 2);
+  } catch(err) {
+    statusWrap.innerHTML = `<div class="api-status err"><span class="dot"></span> Error</div>`;
+    respEl.textContent = String(err);
+  }
+}
+
+document.getElementById('btn-send-api')?.addEventListener('click', sendToAPI);
+document.getElementById('btn-api-send')?.addEventListener('click', sendToAPI);
+
+// ═══════════════════════════════════════════════════════
+//  STATUS BAR
+// ═══════════════════════════════════════════════════════
+function updateStats() {
+  const ac = state.actors.length;
+  const mc = state.messages.length;
+  const fc = state.fragments.length;
+  document.getElementById('stat-actors').textContent = ac;
+  document.getElementById('stat-msgs').textContent   = mc;
+  // Keep canvas aria-label in sync so screen readers report current diagram state
+  const canvas = document.getElementById('canvas');
+  if (canvas) {
+    const parts = [`${ac} actor${ac!==1?'s':''}`, `${mc} message${mc!==1?'s':''}`];
+    if (fc) parts.push(`${fc} fragment${fc!==1?'s':''}`);
+    canvas.setAttribute('aria-label', `Sequence diagram — ${parts.join(', ')}`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ═══════════════════════════════════════════════════════
+//  DEMO DATA — now delegated entirely to the store
+// ═══════════════════════════════════════════════════════
+function loadDemo() {
+  store.dispatch({ type: 'LOAD_DEMO', meta: { undoable: false } });
+}
+
+// ═══════════════════════════════════════════════════════
+//  CANVAS KEYBOARD NAVIGATION
+// ═══════════════════════════════════════════════════════
+canvasWrap.addEventListener('keydown', e => {
+  if (e.key==='Tab') return; // let Tab flow normally for accessibility
+
+  // Enter/Space on a focused SVG element = select it with association
+  if (e.key==='Enter' || e.key===' ') {
+    const focused = document.activeElement?.closest('[data-id]');
+    if (focused) {
+      e.preventDefault();
+      const id   = focused.dataset.id;
+      const type = focused.dataset.type;
+      const found = state.actors.find(a=>a.id===id) ||
+                    state.messages.find(m=>m.id===id) ||
+                    state.notes.find(n=>n.id===id) ||
+                    state.fragments.find(f=>f.id===id);
+      if (found) { setSelected(found, type, true); render(); }
+    }
+    return;
+  }
+
+  if (!uiState.selected) return;
+  const sel  = uiState.selected;
+  const step = e.shiftKey ? 10 : 1;
+  const type = sel._type;
+  const id   = sel.id;
+  const ref  = sel._ref;
+  if (!ref) return;
+
+  if (e.key==='ArrowLeft' || e.key==='ArrowRight') {
+    e.preventDefault();
+    const newX = Math.max(0, (ref.x||0) + (e.key==='ArrowLeft' ? -step : step));
+    if (type==='actor')    store.dispatch({ type:'MOVE_ACTOR',    payload:{ id, x:newX } });
+    else if (type==='note')     store.dispatch({ type:'MOVE_NOTE',     payload:{ id, x:newX, y:ref.y||0 } });
+    else if (type==='fragment') store.dispatch({ type:'MOVE_FRAGMENT', payload:{ id, x:newX, y:ref.y||0 } });
+    render();
+  }
+  if (e.key==='ArrowUp' || e.key==='ArrowDown') {
+    e.preventDefault();
+    if (!('y' in ref)) return;
+    const newY = Math.max(60, (ref.y||0) + (e.key==='ArrowUp' ? -step : step));
+    if (type==='message')  store.dispatch({ type:'MOVE_MESSAGE',  payload:{ id, y:newY } });
+    else if (type==='note')     store.dispatch({ type:'MOVE_NOTE',     payload:{ id, x:ref.x||0, y:newY } });
+    else if (type==='fragment') store.dispatch({ type:'MOVE_FRAGMENT', payload:{ id, x:ref.x||0, y:newY } });
+    render();
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+//  Boot sequence:
+//    1. _loadSettings()  — runs as IIFE in SETTINGS section
+//    2. _loadDiagram()   — runs as IIFE in PERSISTENCE section (LOAD_DIAGRAM if saved state exists)
+//    3. updateUndoBtn()  — sync undo button to (empty) snapshot stack
+//    4. render()         — first paint; also calls _saveDiagram() (no-op if state is empty)
+// ═══════════════════════════════════════════════════════
+updateUndoBtn();
+render();
+</script>
+
+</body>
+</html>
