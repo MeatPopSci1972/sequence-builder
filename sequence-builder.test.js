@@ -646,6 +646,249 @@ test('state:restored event carries direction field', () => {
 })
 
 // ═══════════════════════════════════════════════════════
+//  Suite 7 — _parseUML (PlantUML + Mermaid parser)
+// ═══════════════════════════════════════════════════════
+
+// Inline the parser so it runs in Node without a browser
+// (mirrors sequence-builder.html _parseUML exactly)
+function _parseUML(text) {
+  if (!text || !text.trim()) throw new Error('Empty input');
+
+  const lines = text.split(/\r?\n/);
+
+  // Detect format
+  const isMermaid  = lines.some(l => /^\s*sequenceDiagram\s*$/i.test(l));
+  const isPlantUML = !isMermaid && (
+    lines.some(l => /^\s*@startuml/i.test(l)) ||
+    lines.some(l => /--?>?>?\s/.test(l) || /<--?-?\s/.test(l))
+  );
+
+  if (!isMermaid && !isPlantUML) {
+    throw new Error(
+      'Format not recognised. Start with "@startuml" (PlantUML) or "sequenceDiagram" (Mermaid).'
+    );
+  }
+
+  const aliasMap   = {};
+  const actorOrder = [];
+  const warnings   = [];   // { lineNum, raw, hint }
+
+  function resolveActor(raw) {
+    const trimmed = raw.trim();
+    const label   = aliasMap[trimmed] ?? trimmed;
+    if (!actorOrder.includes(label)) actorOrder.push(label);
+    return label;
+  }
+
+  function registerActor(labelRaw, alias) {
+    const disp = labelRaw.replace(/^["']|["']$/g, '').trim();
+    const key  = (alias || disp).trim();
+    aliasMap[key] = disp;
+    if (!actorOrder.includes(disp)) actorOrder.push(disp);
+  }
+
+  const messages = [];
+
+  // Declaration: participant/actor, with optional 'as Alias'
+  const DECL_RE = /^\s*(?:participant|actor)\s+(.+?)(?:\s+as\s+(\S+))?\s*$/i;
+
+  // Arrow: optional label after colon; no-space Mermaid style supported
+  const ARROW_RE = /^\s*([^<>\-\s][^\s<>\-]*|[^<>\-\s])\s*(<-->|<->|--?>>?|<--?>>?|<--?-?|->|<-)\s*([^:\s]+)(?:\s*:\s*(.*?))?\s*$/;
+
+  // Known directives to skip silently (not user-authored diagram content)
+  const SKIP_RE = /^(@startuml|@enduml|sequenceDiagram|title\s|note\s|end\s|loop\s|alt\s|else\s|opt\s|group\s|box\s|skinparam\s|autonumber|activate\s|deactivate\s|return$)/i;
+
+  lines.forEach(function(raw, idx) {
+    var lineNum = idx + 1;
+    // Strip line comments
+    var line = raw.replace(/^\s*'.*$/, '').replace(/^\s*\/\/.*$/, '').trim();
+    if (!line) return;
+    if (SKIP_RE.test(line)) return;
+
+    var decl = DECL_RE.exec(line);
+    if (decl) {
+      var labelPart = decl[1].trim();
+      // Warn if looks like 'actor Label ShortAlias' without 'as' keyword
+      if (!decl[2] && /\s/.test(labelPart) && !/^["']/.test(labelPart)) {
+        var tokens = labelPart.split(/\s+/);
+        var suggestedAlias = tokens[tokens.length - 1];
+        var suggestedLabel = tokens.slice(0, -1).join(' ');
+        warnings.push({
+          lineNum: lineNum,
+          raw: raw.trim(),
+          hint: 'Use "as" for aliases — e.g.: ' +
+                line.split(/\s+/)[0] + ' "' + suggestedLabel + '" as ' + suggestedAlias
+        });
+      }
+      registerActor(decl[1], decl[2]);
+      return;
+    }
+
+    var arrow = ARROW_RE.exec(line);
+    if (arrow) {
+      var a        = arrow[1];
+      var arrowStr = arrow[2];
+      var b        = arrow[3];
+      var msgLabel = arrow[4];
+      var isBidirectional = arrowStr === '<->' || arrowStr === '<-->';
+      var isLeftward      = !isBidirectional && arrowStr.charAt(0) === '<';
+      var from = resolveActor(isLeftward ? b : a);
+      var to   = resolveActor(isLeftward ? a : b);
+
+      var kind = 'sync';
+      if (/-->>/.test(arrowStr))                             kind = 'return';
+      else if (/-->/.test(arrowStr) || arrowStr === '<-->') kind = 'async';
+      else if (/->>/.test(arrowStr))                        kind = 'async';
+
+      var direction = isBidirectional ? 'both' : 'right';
+      messages.push({ from: from, to: to, label: msgLabel || '', kind: kind, direction: direction });
+      return;
+    }
+
+    // Not blank, not comment, not directive, not decl, not arrow — user needs to fix it
+    warnings.push({ lineNum: lineNum, raw: raw.trim(), hint: null });
+  });
+
+  if (actorOrder.length === 0) {
+    throw new Error('No actors found. Declare actors with:\n  participant Alice\n  participant Bob as B');
+  }
+
+  return { actors: actorOrder.map(function(l) { return { label: l }; }), messages: messages, warnings: warnings };
+}
+
+console.log('\nSuite 7 — _parseUML')
+
+test('PlantUML: parses participant declarations and arrows', () => {
+    const result = _parseUML(`
+@startuml
+participant Alice
+participant Bob
+Alice -> Bob : Hello
+Bob --> Alice : Hi back
+@enduml
+    `)
+    assertEqual(result.actors.length, 2, 'two actors parsed')
+    assertEqual(result.actors[0].label, 'Alice', 'first actor is Alice')
+    assertEqual(result.actors[1].label, 'Bob', 'second actor is Bob')
+    assertEqual(result.messages.length, 2, 'two messages parsed')
+    assertEqual(result.messages[0].from, 'Alice', 'first message from Alice')
+    assertEqual(result.messages[0].to, 'Bob', 'first message to Bob')
+    assertEqual(result.messages[0].kind, 'sync', 'solid arrow is sync')
+    assertEqual(result.messages[1].kind, 'async', 'dashed arrow is async')
+  })
+
+  test('PlantUML: alias resolution maps arrows through declared alias', () => {
+    const result = _parseUML(`
+@startuml
+participant "Order Service" as OS
+participant "Payment Service" as PS
+OS -> PS : Charge
+PS -->> OS : Receipt
+@enduml
+    `)
+    assertEqual(result.actors[0].label, 'Order Service', 'alias resolves to full label')
+    assertEqual(result.messages[0].from, 'Order Service', 'from uses resolved label')
+    assertEqual(result.messages[1].kind, 'return', 'double-dashed double-arrow is return')
+  })
+
+  test('PlantUML: undeclared actors in arrows are auto-created', () => {
+    const result = _parseUML(`@startuml
+A -> B : go
+B -> C : forward
+@enduml`)
+    assertEqual(result.actors.length, 3, 'three actors auto-created from arrows')
+  })
+
+  test('Mermaid: parses sequenceDiagram with participant and arrows', () => {
+    const result = _parseUML(`
+sequenceDiagram
+  participant Alice
+  participant Bob
+  Alice->>Bob: Request
+  Bob-->>Alice: Response
+    `)
+    assertEqual(result.actors.length, 2, 'two actors from Mermaid')
+    assertEqual(result.messages[0].kind, 'async', '->> is async')
+    assertEqual(result.messages[1].kind, 'return', '-->> is return')
+    assertEqual(result.messages[0].label, 'Request', 'message label parsed')
+  })
+
+  test('Mermaid: participant with alias resolves correctly', () => {
+    const result = _parseUML(`
+sequenceDiagram
+  participant Alice as A
+  participant Bob as B
+  A->>B: ping
+    `)
+    assertEqual(result.actors[0].label, 'Alice', 'Mermaid alias resolves to label')
+    assertEqual(result.messages[0].from, 'Alice', 'from uses resolved label')
+  })
+
+  test('throws on empty input', () => {
+    let threw = false
+    try { _parseUML('') } catch(e) { threw = true }
+    assertEqual(threw, true, 'empty string throws')
+  })
+
+  test('throws on unrecognised format', () => {
+    let threw = false
+    try { _parseUML('some random text with no arrows') } catch(e) { threw = true }
+    assertEqual(threw, true, 'unrecognised format throws')
+})
+
+test('basic @startuml block with -> and <- and <-> parses correctly', () => {
+  const result = _parseUML(`
+@startuml
+participant Alice
+participant Bob
+Alice -> Bob : Request
+Bob <- Alice : Also request
+Alice <-> Bob : Bidirectional
+@enduml
+  `)
+  assertEqual(result.actors.length, 2, 'two actors')
+  assertEqual(result.actors[0].label, 'Alice', 'first actor Alice')
+  assertEqual(result.actors[1].label, 'Bob', 'second actor Bob')
+  assertEqual(result.messages.length, 3, 'three messages')
+  assertEqual(result.messages[0].from, 'Alice', 'msg[0] from Alice')
+  assertEqual(result.messages[0].to,   'Bob',   'msg[0] to Bob')
+  assertEqual(result.messages[1].from, 'Alice', 'msg[1] from Alice (left arrow reverses)')
+  assertEqual(result.messages[1].to,   'Bob',   'msg[1] to Bob')
+  assertEqual(result.messages[2].from, 'Alice', 'msg[2] from Alice (bidirectional)')
+  assertEqual(result.messages[2].to,   'Bob',   'msg[2] to Bob')
+})
+
+
+test('actor without "as" keyword produces a warning with a hint', () => {
+  const input = '@startuml\nactor Alice a\nA -> B : go\n@enduml'
+  const result = _parseUML(input)
+  assertEqual(result.warnings.length > 0, true, 'produces at least one warning')
+  assertEqual(result.warnings[0].hint !== null, true, 'warning includes a corrective hint')
+})
+
+test('valid input with "as" aliases and labelless arrows produces no warnings', () => {
+  const input = '@startuml\nactor Alice as a\nactor Bob as b\na -> b\na <- b\na <-> b\na --> b\na <-- b\na <--> b\na <-> a\nb <-> b\n@enduml'
+  const result = _parseUML(input)
+  assertEqual(result.actors.length, 2, 'two actors')
+  assertEqual(result.actors[0].label, 'Alice', 'first actor is Alice')
+  assertEqual(result.actors[1].label, 'Bob', 'second actor is Bob')
+  assertEqual(result.messages.length, 8, 'all eight arrow lines parsed')
+  assertEqual(result.messages[0].from, 'Alice', 'msg[0] -> from Alice')
+  assertEqual(result.messages[0].to,   'Bob',   'msg[0] -> to Bob')
+  assertEqual(result.messages[1].from, 'Bob',   'msg[1] <- flipped: from Bob')
+  assertEqual(result.messages[1].to,   'Alice', 'msg[1] <- flipped: to Alice')
+  assertEqual(result.messages[2].direction, 'both',  'msg[2] <-> direction=both')
+  assertEqual(result.messages[3].kind,      'async', 'msg[3] --> is async')
+  assertEqual(result.messages[5].kind,      'async', 'msg[5] <--> is async')
+  assertEqual(result.messages[5].direction, 'both',  'msg[5] <--> direction=both')
+  assertEqual(result.messages[6].from, 'Alice', 'msg[6] self-message Alice->Alice')
+  assertEqual(result.messages[6].to,   'Alice', 'msg[6] self-message to Alice')
+  assertEqual(result.messages[7].from, 'Bob',   'msg[7] self-message Bob->Bob')
+  assertEqual(result.messages[7].to,   'Bob',   'msg[7] self-message to Bob')
+  assertEqual(result.warnings.length, 0, 'no warnings on clean valid input')
+})
+
+// ═══════════════════════════════════════════════════════
 //  RESULTS
 // ═══════════════════════════════════════════════════════
 console.log(`\n${'─'.repeat(50)}`)

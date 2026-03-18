@@ -737,6 +737,14 @@
         </svg>
         Import
       </button>
+      <button class="tbtn" id="btn-import-uml" title="Import diagram from PlantUML or Mermaid text">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M8 10V2M5 5l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <text x="4" y="15.5" font-size="5" fill="currentColor" font-family="monospace" font-weight="bold">UML</text>
+        </svg>
+        Import UML
+      </button>
       <input type="file" id="import-file-input" accept=".json" style="display:none" aria-hidden="true">
     </div>
 
@@ -1118,6 +1126,32 @@
 
     <div class="modal-actions" style="margin-top:20px">
       <button class="modal-btn cancel" id="settings-modal-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- UML IMPORT MODAL -->
+<div id="uml-import-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="uml-import-modal-title"
+     style="display:none;position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:24px 28px;min-width:480px;max-width:600px;box-shadow:0 24px 64px rgba(0,0,0,.6);animation:modal-in .18s ease">
+    <h2 id="uml-import-modal-title" style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--text);margin-bottom:6px">
+      ⬇ Import UML Text
+    </h2>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.6">
+      Paste PlantUML or Mermaid sequence diagram syntax. Actors and messages will be imported.<br>
+      Notes and fragments are not yet supported.
+    </p>
+    <textarea id="uml-import-textarea"
+      rows="12"
+      placeholder="@startuml&#10;actor Alice as A&#10;actor Bob as B&#10;A -> B : sync message&#10;A --> B : async message&#10;A <-> B : bidirectional&#10;A <-- B : left arrow&#10;@enduml"
+      style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r1);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:10px 12px;resize:vertical;outline:none;line-height:1.6"
+      aria-label="UML diagram text input"
+    ></textarea>
+    <div id="uml-import-preview" style="min-height:18px;font-size:11px;margin-top:8px;font-family:'JetBrains Mono',monospace"></div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="modal-btn cancel" id="uml-import-btn-cancel">Cancel</button>
+      <button class="modal-btn cancel" id="uml-import-btn-parse" style="color:var(--violet)">Parse</button>
+      <button class="modal-btn confirm-ok" id="uml-import-btn-import" disabled>Import</button>
     </div>
   </div>
 </div>
@@ -3527,6 +3561,20 @@ document.getElementById('btn-copy-output')?.addEventListener('click', () => {
 
 document.getElementById('btn-regen')?.addEventListener('click', () => { render(); toast('Output regenerated'); });
 
+// ── UML Import ──
+document.getElementById('btn-import-uml')?.addEventListener('click', _openUMLImportModal);
+document.getElementById('uml-import-btn-cancel')?.addEventListener('click', _closeUMLImportModal);
+document.getElementById('uml-import-btn-parse')?.addEventListener('click', _umlImportPreview);
+document.getElementById('uml-import-btn-import')?.addEventListener('click', _umlImportCommit);
+// Close on backdrop click
+document.getElementById('uml-import-modal-backdrop')?.addEventListener('click', e => {
+  if (e.target === e.currentTarget) _closeUMLImportModal();
+});
+// Escape key closes
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') _closeUMLImportModal();
+});
+
 // ── Export / Import ──
 document.getElementById('btn-export')?.addEventListener('click', _exportDiagram);
 
@@ -3627,6 +3675,234 @@ function _importDiagram(file) {
     }
   };
   reader.readAsText(file);
+}
+
+// ── UML Text Import ──────────────────────────────────────────────────────────
+// Pure parser — no store dependency, no DOM access.
+// Accepts a PlantUML or Mermaid sequence diagram string.
+// Returns { actors: [{label}], messages: [{from, to, label, kind}] }
+// or throws with a descriptive message on unrecognisable input.
+//
+// Supported PlantUML syntax:
+//   @startuml / @enduml (optional — detected by arrow lines if absent)
+//   participant "Label" as Alias  |  participant Label
+//   actor "Label" as Alias        |  actor Label
+//   A -> B : label       (sync)
+//   A --> B : label      (async / dashed return)
+//   A ->> B : label      (async)
+//   A -->> B : label     (return)
+//   A <- B : label       (right-to-left sync)
+//
+// Supported Mermaid syntax:
+//   sequenceDiagram (required header)
+//   participant Label as Alias  |  participant Label
+//   actor Label as Alias        |  actor Label
+//   A->>B: label
+//   A-->>B: label
+//   A->B: label
+//   A-->B: label
+//
+// Notes:
+//   - Actor order follows first-appearance order (declarations first, then arrow lines).
+//   - Unknown actors referenced in arrows are auto-created.
+//   - Comments (lines starting with ' or //) are stripped.
+//   - nextId is not managed here — LOAD_DIAGRAM resets it from the store.
+//   - kind mapping: ->/->> = 'sync', -->/-->> = 'async'/'return'
+
+function _parseUML(text) {
+  if (!text || !text.trim()) throw new Error('Empty input');
+
+  const lines = text.split(/\r?\n/);
+
+  // Detect format
+  const isMermaid  = lines.some(l => /^\s*sequenceDiagram\s*$/i.test(l));
+  const isPlantUML = !isMermaid && (
+    lines.some(l => /^\s*@startuml/i.test(l)) ||
+    lines.some(l => /--?>?>?\s/.test(l) || /<--?-?\s/.test(l))
+  );
+
+  if (!isMermaid && !isPlantUML) {
+    throw new Error(
+      'Format not recognised. Start with "@startuml" (PlantUML) or "sequenceDiagram" (Mermaid).'
+    );
+  }
+
+  const aliasMap   = {};
+  const actorOrder = [];
+  const warnings   = [];   // { lineNum, raw, hint }
+
+  function resolveActor(raw) {
+    const trimmed = raw.trim();
+    const label   = aliasMap[trimmed] ?? trimmed;
+    if (!actorOrder.includes(label)) actorOrder.push(label);
+    return label;
+  }
+
+  function registerActor(labelRaw, alias) {
+    const disp = labelRaw.replace(/^["']|["']$/g, '').trim();
+    const key  = (alias || disp).trim();
+    aliasMap[key] = disp;
+    if (!actorOrder.includes(disp)) actorOrder.push(disp);
+  }
+
+  const messages = [];
+
+  // Declaration: participant/actor, with optional 'as Alias'
+  const DECL_RE = /^\s*(?:participant|actor)\s+(.+?)(?:\s+as\s+(\S+))?\s*$/i;
+
+  // Arrow: optional label after colon; no-space Mermaid style supported
+  const ARROW_RE = /^\s*([^<>\-\s][^\s<>\-]*|[^<>\-\s])\s*(<-->|<->|--?>>?|<--?>>?|<--?-?|->|<-)\s*([^:\s]+)(?:\s*:\s*(.*?))?\s*$/;
+
+  // Known directives to skip silently (not user-authored diagram content)
+  const SKIP_RE = /^(@startuml|@enduml|sequenceDiagram|title\s|note\s|end\s|loop\s|alt\s|else\s|opt\s|group\s|box\s|skinparam\s|autonumber|activate\s|deactivate\s|return$)/i;
+
+  lines.forEach(function(raw, idx) {
+    var lineNum = idx + 1;
+    // Strip line comments
+    var line = raw.replace(/^\s*'.*$/, '').replace(/^\s*\/\/.*$/, '').trim();
+    if (!line) return;
+    if (SKIP_RE.test(line)) return;
+
+    var decl = DECL_RE.exec(line);
+    if (decl) {
+      var labelPart = decl[1].trim();
+      // Warn if looks like 'actor Label ShortAlias' without 'as' keyword
+      if (!decl[2] && /\s/.test(labelPart) && !/^["']/.test(labelPart)) {
+        var tokens = labelPart.split(/\s+/);
+        var suggestedAlias = tokens[tokens.length - 1];
+        var suggestedLabel = tokens.slice(0, -1).join(' ');
+        warnings.push({
+          lineNum: lineNum,
+          raw: raw.trim(),
+          hint: 'Use "as" for aliases — e.g.: ' +
+                line.split(/\s+/)[0] + ' "' + suggestedLabel + '" as ' + suggestedAlias
+        });
+      }
+      registerActor(decl[1], decl[2]);
+      return;
+    }
+
+    var arrow = ARROW_RE.exec(line);
+    if (arrow) {
+      var a        = arrow[1];
+      var arrowStr = arrow[2];
+      var b        = arrow[3];
+      var msgLabel = arrow[4];
+      var isBidirectional = arrowStr === '<->' || arrowStr === '<-->';
+      var isLeftward      = !isBidirectional && arrowStr.charAt(0) === '<';
+      var from = resolveActor(isLeftward ? b : a);
+      var to   = resolveActor(isLeftward ? a : b);
+
+      var kind = 'sync';
+      if (/-->>/.test(arrowStr))                             kind = 'return';
+      else if (/-->/.test(arrowStr) || arrowStr === '<-->') kind = 'async';
+      else if (/->>/.test(arrowStr))                        kind = 'async';
+
+      var direction = isBidirectional ? 'both' : 'right';
+      messages.push({ from: from, to: to, label: msgLabel || '', kind: kind, direction: direction });
+      return;
+    }
+
+    // Not blank, not comment, not directive, not decl, not arrow — user needs to fix it
+    warnings.push({ lineNum: lineNum, raw: raw.trim(), hint: null });
+  });
+
+  if (actorOrder.length === 0) {
+    throw new Error('No actors found. Declare actors with:\n  participant Alice\n  participant Bob as B');
+  }
+
+  return { actors: actorOrder.map(function(l) { return { label: l }; }), messages: messages, warnings: warnings };
+}
+
+// Open the UML import modal
+function _openUMLImportModal() {
+  const backdrop = document.getElementById('uml-import-modal-backdrop');
+  if (!backdrop) return;
+  backdrop.style.display = 'flex';
+  document.getElementById('uml-import-textarea').value   = '';
+  document.getElementById('uml-import-preview').textContent = '';
+  document.getElementById('uml-import-btn-import').disabled = true;
+  setTimeout(() => document.getElementById('uml-import-textarea').focus(), 50);
+}
+
+function _closeUMLImportModal() {
+  const backdrop = document.getElementById('uml-import-modal-backdrop');
+  if (backdrop) backdrop.style.display = 'none';
+}
+
+// Parse button handler — validates and shows preview count; does NOT load yet
+function _umlImportPreview() {
+  const text    = document.getElementById('uml-import-textarea').value;
+  const preview = document.getElementById('uml-import-preview');
+  const btn     = document.getElementById('uml-import-btn-import');
+  try {
+    const result = _parseUML(text);
+    let html = '<span style="color:var(--green,#4ade80)">✓ ' +
+      result.actors.length + ' actor' + (result.actors.length !== 1 ? 's' : '') + ', ' +
+      result.messages.length + ' message' + (result.messages.length !== 1 ? 's' : '') +
+      '</span>';
+    if (result.warnings.length > 0) {
+      html += '<br><span style="color:var(--amber,#fbbf24)">⚠ ' +
+        result.warnings.length + ' line' + (result.warnings.length !== 1 ? 's' : '') +
+        ' skipped:</span>';
+      result.warnings.forEach(function(w) {
+        html += '<br><span style="color:var(--amber,#fbbf24);padding-left:10px">Line ' + w.lineNum + ': ' +
+          w.raw.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>';
+        if (w.hint) html += '<br><span style="color:var(--text3,#666);padding-left:18px;font-style:italic">' + w.hint + '</span>';
+      });
+    }
+    preview.innerHTML = html;
+    // Block import only on actionable warnings (those with a hint = fixable mistake).
+    // Unknown-line warnings (no hint) are informational — import still allowed.
+    var hasErrors = result.warnings.some(function(w) { return w.hint !== null; });
+    btn.disabled = hasErrors;
+    btn._parsed  = hasErrors ? null : result;
+  } catch (err) {
+    preview.innerHTML = '<span style="color:var(--red,#f87171)">✗ ' +
+      err.message.split('\n').join('<br>').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>';
+    btn.disabled = true;
+    btn._parsed  = null;
+  }
+}
+
+// Import button handler — builds store state from parsed result and loads it
+function _umlImportCommit() {
+  const btn    = document.getElementById('uml-import-btn-import');
+  const parsed = btn?._parsed;
+  if (!parsed) return;
+
+  // Assign ids and x positions to actors
+  let nextId = 1;
+  const ACTOR_W = 80, ACTOR_GAP = 80;
+  const actors = parsed.actors.map((a, i) => ({
+    id:    nextId++,
+    label: a.label,
+    type:  'person',
+    x:     40 + i * (ACTOR_W + ACTOR_GAP),
+  }));
+
+  // Build label->id map for message wiring
+  const labelToId = {};
+  actors.forEach(a => { labelToId[a.label] = a.id; });
+
+  // Assign ids and y positions to messages
+  const MSG_Y_START = 80, MSG_Y_GAP = 50;
+  const messages = parsed.messages.map((m, i) => ({
+    id:        nextId++,
+    fromId:    labelToId[m.from]  ?? actors[0]?.id,
+    toId:      labelToId[m.to]    ?? actors[0]?.id,
+    label:     m.label,
+    kind:      m.kind,
+    direction: 'right',
+    y:         MSG_Y_START + i * MSG_Y_GAP,
+  }));
+
+  store.dispatch({
+    type:    'LOAD_DIAGRAM',
+    payload: { actors, messages, notes: [], fragments: [], nextId, _source: 'import' },
+  });
+
+  _closeUMLImportModal();
 }
 
 // Reusable tab activator — used by tab click AND setSelected
