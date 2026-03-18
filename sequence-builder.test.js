@@ -130,6 +130,64 @@ test('dispatching ADD_ACTOR stores optional emoji field', () => {
   assertEqual(store.state.actors[0].emoji, '🤖', 'emoji should be stored on actor')
 })
 
+test('dispatching ADD_ACTOR honours payload.x when provided', () => {
+  const store = freshStore()
+
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system', x: 350 } })
+
+  assertEqual(store.state.actors[0].x, 350, 'actor should land at payload.x when supplied')
+})
+
+test('dispatching ADD_ACTOR falls back to getNextActorX() when payload.x is absent', () => {
+  const store = freshStore()
+
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B', type: 'actor-system' } })
+
+  const [a, b] = store.state.actors
+  assert(b.x > a.x, 'second actor without payload.x should be placed to the right of first')
+})
+
+test('REFLOW_ACTORS repositions all actors in one undoable step', () => {
+  const store = freshStore()
+
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B', type: 'actor-system' } })
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'C', type: 'actor-system' } })
+
+  const [a, b, c] = store.state.actors
+
+  store.dispatch({ type: 'REFLOW_ACTORS', payload: { positions: [
+    { id: a.id, x: 40  },
+    { id: b.id, x: 210 },
+    { id: c.id, x: 380 },
+  ]}})
+
+  assertEqual(store.state.actors.find(ac => ac.id === a.id).x, 40,  'A at 40')
+  assertEqual(store.state.actors.find(ac => ac.id === b.id).x, 210, 'B at 210')
+  assertEqual(store.state.actors.find(ac => ac.id === c.id).x, 380, 'C at 380')
+})
+
+test('REFLOW_ACTORS is undone in a single UNDO step', () => {
+  const store = freshStore()
+
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B', type: 'actor-system' } })
+
+  const [a, b] = store.state.actors
+  const origA = a.x, origB = b.x
+
+  store.dispatch({ type: 'REFLOW_ACTORS', payload: { positions: [
+    { id: a.id, x: 999 },
+    { id: b.id, x: 1200 },
+  ]}})
+
+  store.dispatch({ type: 'UNDO' })
+
+  assertEqual(store.state.actors.find(ac => ac.id === a.id).x, origA, 'A restored by single UNDO')
+  assertEqual(store.state.actors.find(ac => ac.id === b.id).x, origB, 'B restored by single UNDO')
+})
+
 // ═══════════════════════════════════════════════════════
 //  SUITE 2 — DELETE_ACTOR cascade
 //
@@ -466,6 +524,128 @@ test('multiple UNDO steps walk back through history correctly', () => {
 })
 
 // ═══════════════════════════════════════════════════════
+//  SUITE 6 — REDO
+//
+//  Forces: redo stack logic, branching history invalidation,
+//  redo-is-undoable, canRedo getter, empty-stack safety
+//  Depends on Suite 5 (UNDO) passing.
+// ═══════════════════════════════════════════════════════
+console.log('\nSuite 6 — REDO')
+
+test('dispatching REDO after UNDO restores the undone state', () => {
+  const store = freshStore()
+
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
+  const id = store.state.actors[0].id
+  store.dispatch({ type: 'UNDO' })
+  assertEqual(store.state.actors.length, 0, 'setup: actor removed by undo')
+
+  store.dispatch({ type: 'REDO' })
+
+  assertEqual(store.state.actors.length, 1, 'actor restored by redo')
+  assertEqual(store.state.actors[0].id,  id, 'restored actor has same id')
+})
+
+test('dispatching REDO when stack is empty does not throw', () => {
+  const store = freshStore()
+
+  let threw = false
+  try {
+    store.dispatch({ type: 'REDO' })
+  } catch (e) {
+    threw = true
+  }
+
+  assert(!threw, 'REDO on empty stack should not throw')
+  assertEqual(store.state.actors.length, 0, 'state should remain empty')
+})
+
+test('new mutation after UNDO clears the redo stack (branching history)', () => {
+  const store = freshStore()
+
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B', type: 'actor-system' } })
+  store.dispatch({ type: 'UNDO' })
+
+  assert(store.canRedo, 'setup: redo stack should be non-empty after undo')
+
+  // New mutation — branches history, redo stack must be cleared
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'C', type: 'actor-system' } })
+
+  assert(!store.canRedo, 'redo stack should be cleared after new mutation')
+
+  // REDO should be a no-op
+  store.dispatch({ type: 'REDO' })
+  assertEqual(store.state.actors.length, 2, 'redo is no-op — only A and C exist')
+  assertEqual(store.state.actors[1].label, 'C', 'second actor is C not B')
+})
+
+test('UNDO after REDO works — redo step is itself undoable', () => {
+  const store = freshStore()
+
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
+  store.dispatch({ type: 'UNDO' })
+  store.dispatch({ type: 'REDO' })
+
+  assertEqual(store.state.actors.length, 1, 'setup: redo restored actor')
+
+  store.dispatch({ type: 'UNDO' })
+
+  assertEqual(store.state.actors.length, 0, 'undo after redo removes the actor again')
+})
+
+test('canRedo getter reflects redo stack depth', () => {
+  const store = freshStore()
+
+  assert(!store.canRedo, 'canRedo is false on fresh store')
+
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
+  assert(!store.canRedo, 'canRedo is false before any undo')
+
+  store.dispatch({ type: 'UNDO' })
+  assert(store.canRedo,  'canRedo is true after undo')
+
+  store.dispatch({ type: 'REDO' })
+  assert(!store.canRedo, 'canRedo is false after redo exhausts stack')
+})
+
+test('multiple REDO steps walk forward through history correctly', () => {
+  const store = freshStore()
+
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B', type: 'actor-system' } })
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'C', type: 'actor-system' } })
+
+  store.dispatch({ type: 'UNDO' })
+  store.dispatch({ type: 'UNDO' })
+  store.dispatch({ type: 'UNDO' })
+  assertEqual(store.state.actors.length, 0, 'setup: all undone')
+
+  store.dispatch({ type: 'REDO' })
+  assertEqual(store.state.actors.length, 1, 'after 1 redo: 1 actor')
+
+  store.dispatch({ type: 'REDO' })
+  assertEqual(store.state.actors.length, 2, 'after 2 redos: 2 actors')
+
+  store.dispatch({ type: 'REDO' })
+  assertEqual(store.state.actors.length, 3, 'after 3 redos: 3 actors')
+})
+
+test('state:restored event carries direction field', () => {
+  const store = freshStore()
+  let lastRestoreDir = null
+
+  store.on('state:restored', p => { lastRestoreDir = p.direction })
+
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
+  store.dispatch({ type: 'UNDO' })
+  assertEqual(lastRestoreDir, 'undo', 'state:restored direction is undo after UNDO')
+
+  store.dispatch({ type: 'REDO' })
+  assertEqual(lastRestoreDir, 'redo', 'state:restored direction is redo after REDO')
+})
+
+// ═══════════════════════════════════════════════════════
 //  RESULTS
 // ═══════════════════════════════════════════════════════
 console.log(`\n${'─'.repeat(50)}`)
@@ -477,7 +657,7 @@ if (_failed > 0) {
   console.log('  and run again until all tests pass.\n')
   process.exit(1)
 } else {
-  console.log('  All tests pass. Phase 1 exit criterion met.')
+  console.log('  All tests pass. Phase 1 + Phase 2 entry criterion met.')
   console.log('  Proceed to Phase 2 — wire HTML to the store.\n')
   process.exit(0)
 }

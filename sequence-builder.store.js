@@ -181,7 +181,7 @@ function createStore() {
       if (meta.undoable) pushSnapshot()
       const actor = {
         id:    uid(),
-        x:     getNextActorX(),
+        x:     payload.x ?? getNextActorX(),
         label: payload.label || 'Actor',
         type:  payload.type  || 'actor-system',
         ...(payload.emoji !== undefined ? { emoji: payload.emoji } : {}),
@@ -196,6 +196,17 @@ function createStore() {
       if (!actor) return
       actor.x = payload.x
       emit('actor:moved', actor)
+    },
+
+    REFLOW_ACTORS({ payload, meta }) {
+      // payload.positions: [{ id, x }, ...]
+      // One snapshot covers the entire reflow — one Ctrl+Z undoes all moves.
+      if (meta.undoable) pushSnapshot()
+      for (const { id, x } of payload.positions) {
+        const actor = state.actors.find(a => a.id === id)
+        if (actor) actor.x = x
+      }
+      emit('actors:reflowed', state.actors)
     },
 
     UPDATE_ACTOR({ payload, meta }) {

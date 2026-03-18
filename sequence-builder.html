@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   SequenceForge — Visual Sequence Diagram Builder
-  Version: 0.9.1
+  Version: 0.9.9
   License: MIT
   Repository: https://github.com/GGemini/sequenceforge
 
@@ -257,6 +257,8 @@
   /* fragment boxes */
   .fragment-box { fill: none; stroke: #c44af044; stroke-width: 1.5; stroke-dasharray: 8 3; }
   .fragment-label { fill: #c44af0; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; }
+  .frag-resize-handle { fill: #c44af0; opacity: 0.7; cursor: se-resize; }
+  .frag-resize-handle:hover { opacity: 1; }
 
   /* ── Properties / Output panel ── */
   #panel {
@@ -414,26 +416,29 @@
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 
   /* ── Connection mode cursor ── */
-  #canvas-wrap.connecting { cursor: crosshair; }
+  #canvas-wrap.connecting   { cursor: crosshair; }
+  #canvas-wrap.placing-actor { cursor: crosshair; }
 
   /* ── Debug console ── */
   #debug-console {
-    position: fixed; bottom: 24px; left: 0; right: 0;
+    position: fixed; bottom: 0; left: 0; right: 0;
     height: 0; background: #0a0c10;
     border-top: 1px solid var(--border);
     display: flex; flex-direction: column;
-    z-index: 25; transition: height .2s ease;
+    z-index: 35; transition: height .2s ease;
     overflow: hidden;
   }
-  #debug-console.open { height: 180px; }
+  #debug-console.open { height: 210px; } /* 180px log + 24px statusbar + 6px toolbar */
   #debug-toolbar {
     display: flex; align-items: center; gap: 8px;
     padding: 4px 10px; border-bottom: 1px solid var(--border);
     flex-shrink: 0; background: var(--surface);
+    min-width: 0;
   }
   #debug-toolbar span {
     font-size: 10px; font-weight: 700; letter-spacing: .1em;
-    text-transform: uppercase; color: var(--text3); flex: 1;
+    text-transform: uppercase; color: var(--text3); margin-left: auto;
+    white-space: nowrap;
   }
   #debug-toolbar button {
     font-size: 10px; font-family: 'JetBrains Mono', monospace;
@@ -442,6 +447,7 @@
     cursor: pointer;
   }
   #debug-toolbar button:hover { color: var(--text); border-color: var(--border2); }
+  #debug-toolbar button.active { color: var(--accent); border-color: var(--accent); }
   #debug-log {
     flex: 1; overflow-y: auto; padding: 6px 10px;
     font-size: 10px; font-family: 'JetBrains Mono', monospace;
@@ -451,9 +457,9 @@
   .dlog-warn  { color: var(--amber); }
   .dlog-error { color: var(--red); }
   .dlog-ok    { color: var(--accent); }
-  .dlog-ts    { color: var(--text3); margin-right: 8px; user-select: none; }
-  body.debug-open #statusbar { bottom: 180px; }
-  body.debug-open #toast     { bottom: 216px; }
+  .dlog-ts    { color: var(--text3); margin-right: 8px; }
+  body.debug-open #statusbar { bottom: 210px; }
+  body.debug-open #toast     { bottom: 246px; }
 
   /* ── SVG element focus ring (2.4.7 / 2.4.11) ── */
   /* Targets actors, messages, notes, fragments that have tabindex=0 */
@@ -905,8 +911,8 @@
           </marker>
         </defs>
         <g id="viewport">
-          <g id="fragments-layer"></g>
           <g id="lifelines-layer"></g>
+          <g id="fragments-layer"></g>
           <g id="messages-layer"></g>
           <g id="notes-layer"></g>
           <g id="actors-layer"></g>
@@ -920,7 +926,7 @@
       </div>
 
       <div id="kb-hint" aria-hidden="true">
-        <b>A</b> actor · <b>M</b> msg · <b>Del</b> delete · <b>Esc</b> deselect · <b>Ctrl+Z</b> undo · <b>Ctrl+Y</b> redo · <b>dblclick</b> arrow direction
+        <b>A</b> actor · <b>M</b> msg · <b>Del</b> delete · <b>Esc</b> deselect · <b>Ctrl+Z</b> undo · <b>Ctrl+Y</b> redo · <b>click</b> msg selects · <b>dblclick</b> arrow direction
       </div>
     </main>
 
@@ -1020,9 +1026,11 @@
 <!-- DEBUG CONSOLE -->
 <div id="debug-console" role="log" aria-label="Debug console">
   <div id="debug-toolbar">
-    <span>🛠 Debug Console</span>
+    <button id="debug-select-all">Copy Log</button>
     <button id="debug-clear">Clear</button>
-    <button id="debug-close">✕ Close</button>
+    <button id="debug-verbose-toggle" title="Toggle high-frequency logging (save, msg-dblclick)">Verbose</button>
+    <button id="debug-close">✕</button>
+    <span>🛠 Debug Console</span>
   </div>
   <div id="debug-log"></div>
 </div>
@@ -1135,7 +1143,8 @@ const _debugEl  = document.getElementById('debug-log');
 const _debugCon = document.getElementById('debug-console');
 
 function _dbgWrite(level, args) {
-  const ts   = new Date().toTimeString().slice(0,8);
+  const now  = new Date();
+  const ts   = now.toTimeString().slice(0,8) + '.' + String(now.getMilliseconds()).padStart(3,'0');
   const text = args.map(a => {
     if (typeof a === 'object') { try { return JSON.stringify(a); } catch { return String(a); } }
     return String(a);
@@ -1164,6 +1173,22 @@ document.getElementById('btn-debug')?.addEventListener('click', () => {
   const open = _debugCon.classList.toggle('open');
   document.body.classList.toggle('debug-open', open);
 });
+document.getElementById('debug-select-all')?.addEventListener('click', () => {
+  const lines = [..._debugEl.querySelectorAll('div')].map(row => row.textContent).join('\n');
+  navigator.clipboard.writeText(lines).then(() => {
+    const btn = document.getElementById('debug-select-all');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 1200);
+  }).catch(() => {
+    // Clipboard API unavailable — fall back to range selection
+    const range = document.createRange();
+    range.selectNodeContents(_debugEl);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  });
+});
 document.getElementById('debug-close')?.addEventListener('click', () => {
   _debugCon.classList.remove('open');
   document.body.classList.remove('debug-open');
@@ -1171,9 +1196,19 @@ document.getElementById('debug-close')?.addEventListener('click', () => {
 document.getElementById('debug-clear')?.addEventListener('click', () => {
   _debugEl.innerHTML = '';
 });
+document.getElementById('debug-verbose-toggle')?.addEventListener('click', () => {
+  DEBUG_VERBOSE = !DEBUG_VERBOSE;
+  const btn = document.getElementById('debug-verbose-toggle');
+  btn.classList.toggle('active', DEBUG_VERBOSE);
+  dbg('verbose', DEBUG_VERBOSE ? 'ON — high-frequency logging enabled' : 'OFF');
+});
 
 // Boot message
-_dbgWrite('info', ['SequenceForge v0.9.1 — debug console ready']);
+_dbgWrite('info', ['SequenceForge v0.9.9 — debug console ready']);
+
+// Set true to enable high-frequency diagnostic logging (save, msg-dblclick).
+// Keep false in production — save fires on every render cycle.
+let DEBUG_VERBOSE = false;
 
 // ═══════════════════════════════════════════════════════
 //  DIAGRAMSTORE  (inline — matches sequence-builder.store.js)
@@ -1363,7 +1398,7 @@ function createStore() {
       if (meta.undoable) pushSnapshot()
       const actor = {
         id:    uid(),
-        x:     getNextActorX(),
+        x:     payload.x ?? getNextActorX(),
         label: payload.label || 'Actor',
         type:  payload.type  || 'actor-system',
         ...(payload.emoji !== undefined ? { emoji: payload.emoji } : {}),
@@ -1378,6 +1413,17 @@ function createStore() {
       if (!actor) return
       actor.x = payload.x
       emit('actor:moved', actor)
+    },
+
+    REFLOW_ACTORS({ payload, meta }) {
+      // payload.positions: [{ id, x }, ...]
+      // One snapshot covers the entire reflow — one Ctrl+Z undoes all moves.
+      if (meta.undoable) pushSnapshot()
+      for (const { id, x } of payload.positions) {
+        const actor = state.actors.find(a => a.id === id)
+        if (actor) actor.x = x
+      }
+      emit('actors:reflowed', state.actors)
     },
 
     UPDATE_ACTOR({ payload, meta }) {
@@ -1701,6 +1747,7 @@ const uiState = {
   connectFrom:    null,
   pendingActorId: null,
   format:         'plantuml',
+  placeGhostX:    null,   // X coordinate of actor placement ghost; non-null only in place-actor mode
 }
 
 // ── History button sync — reflects actual stack depths ──
@@ -1728,6 +1775,7 @@ function requestRender() {
 // All other events call render() directly (low-frequency, immediate feedback expected).
 _store.on('actor:added',      actor   => { uiState.selected = _wrapSelected(actor, 'actor'); activateTab('tab-props'); updateUndoBtn(); render() })
 _store.on('actor:moved',      ()      => { requestRender() })
+_store.on('actors:reflowed',  ()      => { render() })
 _store.on('actor:updated',    ()      => { render() })
 _store.on('actor:deleted',    id      => { if (uiState.selected?.id === id) uiState.selected = null; updateUndoBtn(); render() })
 _store.on('messages:orphaned',ids     => { if (ids.includes(uiState.selected?.id)) uiState.selected = null })
@@ -1741,6 +1789,7 @@ _store.on('note:updated',     ()      => { render() })
 _store.on('note:deleted',     id      => { if (uiState.selected?.id === id) uiState.selected = null; updateUndoBtn(); render() })
 _store.on('fragment:added',   frag    => { uiState.selected = _wrapSelected(frag, 'fragment'); activateTab('tab-props'); updateUndoBtn(); render() })
 _store.on('fragment:moved',   ()      => { requestRender() })
+_store.on('fragment:resized', ()      => { requestRender() })
 _store.on('fragment:updated', ()      => { render() })
 _store.on('fragment:deleted', id      => { if (uiState.selected?.id === id) uiState.selected = null; updateUndoBtn(); render() })
 _store.on('diagram:cleared',  ()      => { uiState.selected = null; updateUndoBtn(); render(); toast('Cleared — Ctrl+Z to undo') })
@@ -1759,7 +1808,12 @@ _store.on('state:restored',   p       => { uiState.selected = null; updateHistor
 // values from them before dispatch.
 function _wrapSelected(obj, type) {
   if (!obj) return null
-  const ref = obj._preview ? obj : Object.freeze(obj)
+  // Freeze a COPY for _ref — not obj itself.
+  // obj is a live store object; freezing it in place silently blocks subsequent
+  // UPDATE_* dispatches in non-strict script context (frozen property write is a
+  // silent no-op, not a throw). The copy gives _ref read-only enforcement without
+  // poisoning the store object that dispatch must still mutate.
+  const ref = obj._preview ? obj : Object.freeze({ ...obj })
   return { ...obj, _type: type, _ref: ref }
 }
 
@@ -2052,7 +2106,13 @@ function render() {
   emptyHint.style.display = state.actors.length === 0 ? '' : 'none';
 
   // ── Fragments ──
-  for (const f of state.fragments) {
+  // Selected fragment rendered last — paints on top of any overlapping fragments.
+  const selectedFragId = uiState.selected?._type === 'fragment' ? uiState.selected.id : null;
+  const fragsOrdered = selectedFragId
+    ? [...state.fragments.filter(f => f.id !== selectedFragId),
+       ...state.fragments.filter(f => f.id === selectedFragId)]
+    : state.fragments;
+  for (const f of fragsOrdered) {
     const kw = f.kind.replace('frag-','');
     const colors = {alt:'#c44af0', loop:'#4af0e0', opt:'#c44af0'};
     const col = colors[kw] || '#c44af0';
@@ -2083,6 +2143,20 @@ function render() {
     const fragHover = svgHoverBounds(f.x, f.y, f.w, f.h, 4);
     g.prepend(fragHover);
     g.append(rect, lbl, cond);
+
+    // SE resize handle — rendered only when this fragment is selected
+    if (uiState.selected?.id === f.id) {
+      const HANDLE = 8;
+      const handle = svgEl('rect', {
+        x: f.x + f.w - HANDLE, y: f.y + f.h - HANDLE,
+        width: HANDLE, height: HANDLE,
+        class: 'frag-resize-handle',
+        'data-id': f.id, 'data-type': 'frag-resize',
+        rx: 2,
+      });
+      g.appendChild(handle);
+    }
+
     fragmentsLayer.appendChild(g);
   }
 
@@ -2121,15 +2195,28 @@ function render() {
     renderActor(a);
   }
 
+  // ── Place-actor ghost ──
+  // Translucent preview shown while in place-actor mode, tracking the cursor.
+  if (uiState.mode === 'place-actor' && uiState.placeGhostX !== null) {
+    const gx = uiState.placeGhostX;
+    const ghost = svgEl('g', { class: 'actor-group', style: 'opacity:0.45; pointer-events:none' });
+    ghost.appendChild(svgEl('rect', {
+      x: gx, y: 8, width: ACTOR_W, height: ACTOR_H,
+      class: 'actor-head', rx: 6,
+      'stroke-dasharray': '5 3',
+    }));
+    const gLbl = svgEl('text', { x: gx + ACTOR_W/2 + 10, y: 8 + ACTOR_H/2, class: 'actor-label' });
+    gLbl.textContent = 'Actor';
+    ghost.appendChild(gLbl);
+    actorsLayer.appendChild(ghost);
+  }
+
   updateStats();
   updateOutput();
   _saveDiagram();
 }
 
-// Module-scope timer — shared across all renderMessage closures so dblclick
-// can reliably cancel the pending single-click kind-cycle regardless of which
-// render cycle created the current element.
-let _msgClickTimer = null;
+
 
 function renderActor(a) {
   const g = svgEl('g', { class:'actor-group' });
@@ -2283,19 +2370,14 @@ function renderMessage(m) {
 
   g.append(path, lbl);
 
-  // Click handler — single-click cycles kind, double-click cycles direction.
+  // Click — selects the message and opens Properties panel.
+  // Kind is changed via the Properties panel. Direction is changed via double-click.
   g.addEventListener('click', e => {
     if (uiState.mode === 'connect') return;
     e.stopPropagation();
-    clearTimeout(_msgClickTimer);
-    _msgClickTimer = setTimeout(() => {
-      const ref = state.messages.find(msg => msg.id === m.id);
-      if (!ref) return;
-      _store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: m.id, kind: nextMessageKind(ref.kind) } });
-      setSelected(state.messages.find(msg => msg.id === m.id), 'message', true);
-      dbg('msg-click', `kind → ${ref.kind}`);
-      toast(`→ ${ref.kind}`);
-    }, 220);
+    setSelected(state.messages.find(msg => msg.id === m.id), 'message', false);
+    activateTab('tab-props');
+    dbg('msg-click', `id=${m.id} selected`);
   });
   const classColors = { Public:'#4af07a', Internal:'#f0c44a', Confidential:'#f07a4a', PII:'#ff6b8a', PHI:'#ff6b8a', Secret:'#556080' };
   if (netParts.length > 0) {
@@ -2314,22 +2396,17 @@ function renderMessage(m) {
 
   messagesLayer.appendChild(g);
 
-  // Double-click cycles direction: right → left → both → right
-  // Cancels the pending single-click kind-cycle timer first.
+  // Double-click cycles direction: right → left → both → right.
+  // No debounce needed — click and dblclick are separate concerns with no shared state.
   g.addEventListener('dblclick', e => {
     e.stopPropagation();
-    clearTimeout(_msgClickTimer); // prevent kind-cycle firing
-    _msgClickTimer = null;
     const ref = state.messages.find(msg => msg.id === m.id);
     if (!ref) return;
-    const newDir = nextMessageDirection(ref.direction || 'right');
+    const wasDir = ref.direction || 'right';
+    const newDir = nextMessageDirection(wasDir);
     store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: ref.id, direction: newDir } });
-    // Defer render() — rebuilding the DOM inside the dblclick dispatch causes the
-    // newly created element's listener to receive the same event, firing direction
-    // twice. setTimeout(0) defers until the current event has fully propagated.
-    setTimeout(render, 0);
     toast(`Direction: ${newDir}`);
-    dbg('msg-dblclick', `direction → ${newDir}`);
+    if (DEBUG_VERBOSE) dbg('msg-dblclick', `was=${wasDir} → ${newDir} (store.dir=${state.messages.find(msg=>msg.id===m.id)?.direction})`);
   });
 }
 
@@ -2607,16 +2684,40 @@ function labelForType(t) {
            'actor-db':'Database','actor-queue':'Queue' }[t] || 'Actor';
 }
 
+// ── Place-actor ghost tracking ──
+svg.addEventListener('mousemove', e => {
+  if (uiState.mode !== 'place-actor') return;
+  const rect = canvasWrap.getBoundingClientRect();
+  uiState.placeGhostX = Math.max(0, (e.clientX - rect.left) / _zoom - ACTOR_W / 2);
+  requestRender();
+});
+svg.addEventListener('mouseleave', () => {
+  if (uiState.mode !== 'place-actor') return;
+  uiState.placeGhostX = null;
+  requestRender();
+});
+
 // ── Canvas click / select ──
 svg.addEventListener('click', e => {
   const g = e.target.closest('[data-id]');
   dbg('canvas-click', `mode=${uiState.mode} target=${g ? g.dataset.type+'#'+g.dataset.id : 'none'}`);
+
+  // Place-actor mode: any click on the canvas (empty or over an element) places the actor.
+  if (uiState.mode === 'place-actor') {
+    const rect = canvasWrap.getBoundingClientRect();
+    const x = Math.max(0, (e.clientX - rect.left) / _zoom - ACTOR_W / 2);
+    _store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Actor', type: 'actor-system', x } });
+    toast('Actor added — rename in Properties');
+    setMode('select');
+    return;
+  }
+
   if (!g) { uiState.pendingActorId = null; setSelected(null); render(); return; }
 
   const id   = g.dataset.id;
   const type = g.dataset.type;
 
-  // Messages handle their own click/dblclick, selection, and stopPropagation.
+  // Messages handle their own click (select) and dblclick (direction cycle) via stopPropagation.
   // If propagation reached here anyway (e.g. connect mode targeting an actor
   // overlapping a message), let connect mode handle it but skip message selection.
   if (type === 'message') {
@@ -2688,6 +2789,20 @@ svg.addEventListener('mousedown', e => {
     return;
   }
 
+  // ── Fragment SE-corner resize ──
+  if (type === 'frag-resize') {
+    const frag = state.fragments.find(f => f.id === id);
+    if (!frag) return;
+    e.preventDefault();
+    dragging           = frag;
+    dragging._type     = 'fragment';
+    dragging._resizeHandle = 'se';
+    // Offset from the SE corner so the handle tracks the pointer precisely
+    dragOffX = (e.clientX - canvasRect.left) / _zoom - (frag.x + frag.w);
+    dragOffY = (e.clientY - canvasRect.top)  / _zoom - (frag.y + frag.h);
+    return;
+  }
+
   // ── Actor / note / fragment drag (X+Y) ──
   if (type!=='actor' && type!=='note' && type!=='fragment') return;
   e.preventDefault();
@@ -2699,6 +2814,7 @@ svg.addEventListener('mousedown', e => {
   // Store handles pushSnapshot on the first undoable MOVE_* dispatch.
   dragging       = obj;
   dragging._type = type;  // 'actor' | 'note' | 'fragment'
+  dragging._resizeHandle = null;
   dragOffX  = (e.clientX - canvasRect.left) / _zoom - obj.x;
   dragOffY  = (e.clientY - canvasRect.top)  / _zoom - (obj.y||0);
   g.style.opacity = '0.4';
@@ -2721,6 +2837,20 @@ window.addEventListener('mousemove', e => {
   if (!dragging) return;
   const newX = Math.max(0, (e.clientX - canvasRect.left) / _zoom - dragOffX);
   const newY = Math.max(60, (e.clientY - canvasRect.top)  / _zoom - dragOffY);
+
+  // ── Fragment resize (SE handle) ──
+  if (dragging._resizeHandle === 'se') {
+    const seX = (e.clientX - canvasRect.left) / _zoom - dragOffX;
+    const seY = (e.clientY - canvasRect.top)  / _zoom - dragOffY;
+    const newW = Math.max(60, seX - dragging.x);
+    const newH = Math.max(40, seY - dragging.y);
+    store.dispatch({ type: 'RESIZE_FRAGMENT',
+      payload: { id: dragging.id, w: newW, h: newH },
+      meta: { undoable: false } });
+    requestRender();
+    return;
+  }
+
   // Non-undoable mid-drag dispatches
   if (dragging._type === 'actor') {
     store.dispatch({ type: 'MOVE_ACTOR',    payload: { id: dragging.id, x: newX },
@@ -2771,6 +2901,28 @@ window.addEventListener('mouseup', e => {
     dragging._ghostEl.style.opacity = ''; // restore after drag
     dragging._ghostEl = null;
   }
+  // Commit resize as a single undoable step
+  if (dragging?._resizeHandle === 'se') {
+    store.dispatch({ type: 'RESIZE_FRAGMENT',
+      payload: { id: dragging.id, w: dragging.w, h: dragging.h } });
+    render();
+  }
+  // Reflow actors on drop — if the dragged actor moved between others, push them apart.
+  // Sort all actors by current x, assign clean evenly-spaced positions, commit as one
+  // undoable REFLOW_ACTORS (single snapshot → single Ctrl+Z undoes all moves).
+  else if (dragging?._type === 'actor' && state.actors.length > 1) {
+    const SLOT = ACTOR_W + STORE_ACTOR_GAP;
+    const sorted = [...state.actors].sort((a, b) => a.x - b.x);
+    const positions = sorted.map((a, i) => ({ id: a.id, x: 40 + i * SLOT }));
+    // Only dispatch if anything actually changed position
+    const changed = positions.some(p => {
+      const cur = state.actors.find(a => a.id === p.id);
+      return cur && Math.round(cur.x) !== Math.round(p.x);
+    });
+    if (changed) {
+      store.dispatch({ type: 'REFLOW_ACTORS', payload: { positions } });
+    }
+  }
   dragging = null;
 });
 
@@ -2779,7 +2931,7 @@ window.addEventListener('keydown', e => {
   if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
   if ((e.ctrlKey||e.metaKey) && e.key==='z') { e.preventDefault(); undo(); return; }
   if ((e.ctrlKey||e.metaKey) && (e.key==='y' || (e.shiftKey && e.key==='Z'))) { e.preventDefault(); redo(); return; }
-  if (e.key==='a' || e.key==='A') { e.preventDefault(); addFromPalette('actor-system', getNextActorX()); }
+  if (e.key==='a' || e.key==='A') { e.preventDefault(); if (uiState.mode==='place-actor') setMode('select'); else setMode('place-actor'); }
   if (e.key==='m' || e.key==='M') { e.preventDefault(); document.getElementById('btn-connect')?.click(); }
   if (e.key==='n' || e.key==='N') { e.preventDefault(); addFromPalette('note', 60, calcCanvasHeight()/2); }
   if (e.key==='f' || e.key==='F') { e.preventDefault(); addFromPalette('frag-alt', 60, calcCanvasHeight()/2); }
@@ -2872,12 +3024,17 @@ function setSelected(obj, type, associateOnSelect=false) {
 function setMode(m) {
   uiState.mode = m;
   dbg('setMode', m);
-  const btnConnect = document.getElementById('btn-connect');
+  const btnConnect    = document.getElementById('btn-connect');
+  const btnAddActor   = document.getElementById('btn-add-actor');
   btnConnect.classList.toggle('active', m==='connect');
   btnConnect.setAttribute('aria-pressed', String(m==='connect'));
-  canvasWrap.classList.toggle('connecting', m==='connect');
-  document.querySelector('#stat-mode b').textContent = m.charAt(0).toUpperCase()+m.slice(1);
-  if (m !== 'connect') uiState.connectFrom = null;
+  btnAddActor.classList.toggle('active', m==='place-actor');
+  btnAddActor.setAttribute('aria-pressed', String(m==='place-actor'));
+  canvasWrap.classList.toggle('connecting',    m==='connect');
+  canvasWrap.classList.toggle('placing-actor', m==='place-actor');
+  document.querySelector('#stat-mode b').textContent = m === 'place-actor' ? 'Place Actor' : m.charAt(0).toUpperCase()+m.slice(1);
+  if (m !== 'connect')      uiState.connectFrom  = null;
+  if (m !== 'place-actor')  { uiState.placeGhostX = null; }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3166,7 +3323,8 @@ function syntaxHighlight(code, fmt) {
 // ═══════════════════════════════════════════════════════
 document.getElementById('btn-add-actor')?.addEventListener('click', () => {
   dbg('btn-add-actor', `clicked, actors=${state.actors.length}`);
-  addFromPalette('actor-system', getNextActorX());
+  if (uiState.mode === 'place-actor') setMode('select');
+  else setMode('place-actor');
 });
 document.getElementById('btn-connect')?.addEventListener('click', () => {
   dbg('btn-connect', `clicked, mode=${uiState.mode} actors=${state.actors.length}`);
@@ -3419,6 +3577,8 @@ const _DIAGRAM_KEY = 'sf-diagram';
 function _saveDiagram() {
   try {
     localStorage.setItem(_DIAGRAM_KEY, JSON.stringify(store.state));
+    const dirs = store.state.messages.map(m => m.id + ':' + m.direction).join(' ');
+    if (DEBUG_VERBOSE) dbg('save', dirs);
   } catch(e) {
     console.warn('[persist] save failed:', e.message);
   }
