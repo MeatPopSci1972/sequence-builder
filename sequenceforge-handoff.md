@@ -1,8 +1,9 @@
 # SequenceForge — Proto2Prod Handoff
-**Version:** 0.9.1  
+**Version:** 0.9.2  
 **Date:** 2026-03-17  
 **Audience:** Human + fresh AI instance  
-**Repo:** https://github.com/GGemini/sequenceforge
+**Repo:** https://github.com/MeatPopSci1972/sequence-builder
+**Local:** E:\uml2prompt\sequence-builder-prototype
 
 ---
 
@@ -17,13 +18,28 @@ Single-file, zero-dependency static HTML application for building UML sequence d
 ## File Layout
 
 ```
-sequence-builder.html        ~3360 lines — full application, single deployable
-sequence-builder.store.js     ~510 lines — store module, pure JS, no DOM, node-runnable
-sequence-builder.test.js       483 lines — contract tests, node-runnable, no browser needed
+sequence-builder.html        ~3678 lines — full application, single deployable
+sequence-builder.store.js      ~514 lines — store module, pure JS, no DOM, node-runnable
+sequence-builder.test.js       484 lines — contract tests, node-runnable, no browser needed
+build.js                        ~90 lines — syncs store.js → HTML between sentinel comments
 ```
 
 **Run tests:** `node sequence-builder.test.js`  
-**Syntax check:** `sed -n '/<script>/,/<\/script>/p' sequence-builder.html | sed '1s/<script>//' | sed '$s/<\/script>//' > sf-script.js && node --check sf-script.js`
+**Sync store → HTML:** `node build.js`  
+**Syntax check:** `sed -n '/<script>/,/<\/script>/p' sequence-builder.html | sed '1s/<script>//' | sed '$s/<\/script>//' > sf-script.js && node --check sf-script.js`  
+**Full gate:** `node build.js && sed -n '/<script>/,/<\/script>/p' sequence-builder.html | sed '1s/<script>//' | sed '$s/<\/script>//' > sf-script.js && node --check sf-script.js && node sequence-builder.test.js`
+
+**Current test suite (22 tests, 5 suites — Phase 1 complete):**
+
+| Suite | Action / Feature | Tests |
+|-------|-----------------|-------|
+| 1 | ADD_ACTOR | 5 |
+| 2 | DELETE_ACTOR cascade | 4 |
+| 3 | UPDATE_MESSAGE partial patch | 3 |
+| 4 | meta.undoable = false | 4 |
+| 5 | UNDO | 6 |
+
+**Test coverage gap:** REDO stack (added v0.9.0) has no contract tests. Suite 6 — REDO is a next-session candidate.
 
 `sequence-builder.html` internal structure:
 
@@ -272,7 +288,7 @@ The following criteria are addressed:
 
 **Typed schema validation.** `dispatch({ type: 'ADD_ACTOR', payload: { label: 123 } })` silently stores a number as a label. At current scale this is fine. At team scale, Zod schema validation on the payload inside `dispatch()` would catch this class of error immediately.
 
-**Responsive layout at large font sizes.** The topbar is a single flex row with fixed-height buttons. At browser font sizes above 150%, or with the zoom system at high magnification, the toolbar clips before it wraps. This is a CSS-only fix (`flex-wrap: wrap` on `#topbar`) but is best done after localStorage persistence, when the full set of toolbar controls is known.
+**Responsive layout at large font sizes.** Resolved in v0.9.1. Topbar uses `flex-wrap: wrap` with `tbtn-group` divs as wrap units. The `#app` grid row is `auto` so the workspace tracks topbar height.
 
 ---
 
@@ -284,6 +300,8 @@ The following criteria are addressed:
 | ~~`_ref` read-only enforcement~~ | ~~High~~ | **Done v0.8.1.** `Object.freeze()` applied conditionally in `_wrapSelected`: frozen for live store objects, unfrozen for `_preview: true` scratch objects (palette form harvests values from them before dispatch). Direct assignment call site in `showPalettePreview` consolidated into `_wrapSelected`. Verified: write to frozen `_ref` throws; preview writes succeed; store state unchanged after attempted bypass. |
 | ~~Redo stack~~ | ~~Med~~ | **Done v0.9.0.** `_redoStack` in store. `UNDO` pushes to redo stack before restoring. `REDO` pushes to undo stack (making redo itself undoable) then restores. `pushSnapshot()` clears redo stack on any new mutation (branching history). `LOAD_DIAGRAM` / `LOAD_DEMO` clear both stacks. `canRedo` getter live. Redo toolbar button + `Ctrl+Y` / `Ctrl+Shift+Z` shortcuts. `state:restored` event carries `direction: 'undo'|'redo'`. 24 contract tests green. |
 | ~~Responsive topbar~~ | ~~Med~~ | **Done v0.9.1.** `#topbar` gets `flex-wrap: wrap; min-height: 48px`. `#app` grid row changes from `48px` to `auto` so the workspace tracks topbar height. Buttons wrapped into 6 `tbtn-group` divs (Brand / Create / History / Actions / Settings+API / Zoom) — each group wraps as a unit, separated by `border-left`. Old `top-sep` elements hidden via CSS (`display:none`); group borders replace them. Full-width `spacer` div forces a row break between Create and History groups on narrow viewports, pushes them apart on wide ones. All 16 button IDs verified present exactly once. |
+| ~~Build script (`build.js`)~~ | ~~High~~ | **Done v0.9.2.** Reads `sequence-builder.store.js`, strips `module.exports` block, applies rename pass (`ACTOR_W`→`STORE_ACTOR_W`, `ACTOR_GAP`→`STORE_ACTOR_GAP`, `UNDO_LIMIT`→`STORE_UNDO_LIMIT`) to avoid collisions with app-level constants, splices into HTML between `// @@STORE-START` / `// @@STORE-END` sentinels. The three constants previously declared above the sentinel in the HTML (`STORE_ACTOR_W`, `STORE_ACTOR_GAP`, `STORE_UNDO_LIMIT`) were removed — the injected store block is now the sole declaration. Gate: `node build.js && node --check sf-script.js && node sequence-builder.test.js`. |
+| Suite 6 — REDO contract tests | High | REDO stack added v0.9.0 but has no tests. Cover: `REDO` after `UNDO` restores state; `REDO` when stack empty does not throw; new mutation after `UNDO` clears redo stack (branching history); `UNDO` after `REDO` works (redo is itself undoable); `canRedo` getter reflects stack depth; multiple redo steps walk forward correctly. Pattern matches Suite 5. |
 | Targeted SVG redraws | Med | For diagrams >30 actors. Update only the moved element's `transform` on drag rather than rebuilding the layer. Natural successor to rAF batching. |
 | Export to PNG/SVG file | Low | `XMLSerializer` for SVG export; `canvas.toBlob()` for PNG. |
 | Notes/fragments actor association | Low | `setSelected` has the hook. Visual behavior TBD. |
@@ -313,13 +331,19 @@ Preserves settled decisions. Do not relitigate without updating this section.
 
 **`tbtn-group` divs as the wrap unit, not individual buttons:** Chose wrapping groups rather than individual buttons so related controls always stay together on one row. A "Create" group that splits Actor/Message from Note/Fragment at a narrow viewport would be confusing. Each group wraps as an atomic unit via `flex-wrap: nowrap` on the group with `flex-wrap: wrap` on the topbar. `border-left` on `.tbtn-group + .tbtn-group` replaces the `top-sep` divs — a CSS rule rather than markup for visual separation, which is cleaner when groups reflow to new rows.
 
-**Full-width spacer as a row-break:** The old `flex: 1` spacer pushed Create left and everything else right on wide viewports. With `flex-wrap`, a `flex: 1 1 100%; height: 0` spacer takes the full row width (invisible, zero height), forcing subsequent groups onto a new row on narrow viewports, while on wide viewports it just stretches to fill the gap as before. Same element, two behaviors — no media queries needed. Chose snapshot capture over log replay. Log replay would require re-executing every action forward from a branch point, which is correct for CRDTs but fragile for a single-user editor — any handler with side effects would fire again. Snapshot capture is O(1) per redo step, deterministic, and consistent with how undo already works.
+**Full-width spacer as a row-break:** The old `flex: 1` spacer pushed Create left and everything else right on wide viewports. With `flex-wrap`, a `flex: 1 1 100%; height: 0` spacer takes the full row width (invisible, zero height), forcing subsequent groups onto a new row on narrow viewports, while on wide viewports it just stretches to fill the gap as before. Same element, two behaviors — no media queries needed.
+
+**Redo stack as a captured-snapshot stack, not a log replay:** Chose snapshot capture over log replay. Log replay would require re-executing every action forward from a branch point, which is correct for CRDTs but fragile for a single-user editor — any handler with side effects would fire again. Snapshot capture is O(1) per redo step, deterministic, and consistent with how undo already works.
 
 **Redo pushes to the undo stack before restoring:** A redo that cannot itself be undone would be a footgun — you could redo into a state you can't escape. `REDO` snapshots current state onto `_snapshots` before restoring, so the redo step appears in the undo stack and `Ctrl+Z` after `Ctrl+Y` always works.
 
 **`pushSnapshot()` as the single redo-invalidation point:** Any new undoable mutation calls `pushSnapshot()`. Clearing `_redoStack` there means every mutation path — ADD_ACTOR, UPDATE_MESSAGE, CLEAR_DIAGRAM, drag-end, etc. — invalidates the redo stack without any call site needing to know about it. The rule "new action kills forward history" is enforced once, not scattered.
 
-**`state:restored` carries `direction` field:** The event payload now includes `direction: 'undo' | 'redo'`. Listeners can branch on it for toast wording or future animation. The field is additive — existing listeners that ignore the payload are unaffected. Freeze is applied only when `obj._preview` is falsy — i.e. only on live store objects. Preview scratch objects (`_preview: true`) must stay writable because the palette form harvests edited values back from them before calling `dispatch`. Unconditional freeze would silently break the palette preview → add workflow. The `_preview` flag is already the correct discriminant; the freeze simply follows it. The direct `uiState.selected` assignment in `showPalettePreview` was also consolidated into `_wrapSelected` so there is now a single code path that enforces the freeze rule. Chose getters over `log.filter(...)` at call sites. The getter reads `_snapshots.length` directly — the actual source of truth for undo availability. Log scans count all-time undoable actions, which diverges from stack depth after the limit (50) is hit. `canRedo` is reserved as a false-returning getter so redo work has a clean hook without touching call sites.
+**`state:restored` carries `direction` field:** The event payload now includes `direction: 'undo' | 'redo'`. Listeners can branch on it for toast wording or future animation. The field is additive — existing listeners that ignore the payload are unaffected.
+
+**Conditional `Object.freeze()` on `_ref`, not unconditional:** Freeze is applied only when `obj._preview` is falsy — i.e. only on live store objects. Preview scratch objects (`_preview: true`) must stay writable because the palette form harvests edited values back from them before calling `dispatch`. Unconditional freeze would silently break the palette preview → add workflow. The `_preview` flag is already the correct discriminant; the freeze simply follows it. The direct `uiState.selected` assignment in `showPalettePreview` was also consolidated into `_wrapSelected` so there is now a single code path that enforces the freeze rule.
+
+**`canUndo` / `canRedo` as store getters, not log scans:** Chose getters over `log.filter(...)` at call sites. The getter reads `_snapshots.length` directly — the actual source of truth for undo availability. Log scans count all-time undoable actions, which diverges from stack depth after the limit (50) is hit. `canRedo` is reserved as a false-returning getter so redo work has a clean hook without touching call sites.
 
 **`_source` as a payload convention, not a store field:** `LOAD_DIAGRAM` accepts `payload._source` as a caller hint (`'localStorage' | 'import'`), forwards it in the `diagram:loaded` event payload, but never writes it to `store.state`. The state record stays clean — `_source` is routing metadata for the UI layer, not diagram data. `LOAD_DEMO` hardcodes `source: 'demo'` in the emit. Listeners branch on `p?.source` to pick the right toast message (or stay silent on boot restore).
 
@@ -327,7 +351,7 @@ Preserves settled decisions. Do not relitigate without updating this section.
 
 **Undo history intentionally not persisted:** `localStorage` saves `store.state` only. The snapshot stack is in-memory by design — `LOAD_DIAGRAM` clears it as a new baseline. This is documented in the INIT boot sequence comment and is expected behavior.
 
-**IIFE inlining for single-file deployment:** `sequence-builder.store.js` is the canonical source. The IIFE inside `sequence-builder.html` is a copy. Always update the `.js` file first (tests must pass), then inline. Never edit the IIFE directly without syncing back to the `.js` file.
+**IIFE inlining for single-file deployment:** `sequence-builder.store.js` is the canonical source. The content between `// @@STORE-START` and `// @@STORE-END` in `sequence-builder.html` is generated — do not edit it directly. Always edit `sequence-builder.store.js`, run `node sequence-builder.test.js`, then run `node build.js` to sync. `build.js` applies a rename pass on inject: `ACTOR_W`→`STORE_ACTOR_W`, `ACTOR_GAP`→`STORE_ACTOR_GAP`, `UNDO_LIMIT`→`STORE_UNDO_LIMIT` — these avoid collisions with app-level rendering constants declared outside the sentinel region. If store.js gains new module-level constants that collide, add them to the `RENAMES` array in `build.js`.
 
 ---
 
@@ -343,6 +367,6 @@ Preserves settled decisions. Do not relitigate without updating this section.
 
 3. **`render()` and `requestRender()` are both correct depending on context.** `render()` is for mutations (immediate). `requestRender()` is for drag (rAF-batched). Do not replace all `render()` calls with `requestRender()` — that would introduce a one-frame lag on every add/delete/undo. `_saveDiagram()` is called at the end of `render()` — it will not fire on drag frames, only on committed mutations.
 
-4. **The IIFE in the HTML and `sequence-builder.store.js` must stay in sync.** The `.js` file is the source of truth. Tests run against it. The IIFE is the deployment copy. If you modify store logic in the HTML, copy the change back to the `.js` file and run the contract tests to verify.
+4. **Never edit the `// @@STORE-START` … `// @@STORE-END` block in the HTML directly.** That region is generated by `build.js` from `sequence-builder.store.js`. Edit the `.js` file, run tests, then `node build.js`. The build applies a rename pass for constants that would collide with app-level names (`ACTOR_W`→`STORE_ACTOR_W`, etc.) — those renames live in the `RENAMES` array in `build.js`.
 
 **Syntax check gate:** always run `node --check` on the extracted `<script>` block before opening in a browser. The extraction command is in the File Layout section above. String replacement passes are the most common source of syntax errors — a missing brace or mismatched template literal is invisible until runtime.
