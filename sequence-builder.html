@@ -898,23 +898,23 @@
         <desc id="canvas-kb-hint">Interactive diagram canvas. Tab to select elements, arrow keys to move, Delete to remove, Escape to deselect.</desc>
         <defs>
           <!-- → forward arrowheads (marker-end, points right along line) -->
-          <marker id="arrow-sync"   markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+          <marker id="arrow-sync"   markerWidth="8" markerHeight="8" refX="8" refY="3.5" orient="auto">
             <polygon points="0 0, 8 3.5, 0 7" fill="#4af0c4"/>
           </marker>
-          <marker id="arrow-async"  markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+          <marker id="arrow-async"  markerWidth="8" markerHeight="8" refX="8" refY="3.5" orient="auto">
             <polyline points="0,0 7,3.5 0,7" fill="none" stroke="#7b6fff" stroke-width="1.5"/>
           </marker>
-          <marker id="arrow-return" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+          <marker id="arrow-return" markerWidth="8" markerHeight="8" refX="8" refY="3.5" orient="auto">
             <polyline points="0,0 7,3.5 0,7" fill="none" stroke="#ff6b8a" stroke-width="1.5"/>
           </marker>
           <!-- ← reversed arrowheads (marker-start, points back along line toward start) -->
-          <marker id="arrow-sync-rev"   markerWidth="8" markerHeight="8" refX="1" refY="3.5" orient="auto-start-reverse">
+          <marker id="arrow-sync-rev"   markerWidth="8" markerHeight="8" refX="0" refY="3.5" orient="auto-start-reverse">
             <polygon points="0 0, 8 3.5, 0 7" fill="#4af0c4"/>
           </marker>
-          <marker id="arrow-async-rev"  markerWidth="8" markerHeight="8" refX="1" refY="3.5" orient="auto-start-reverse">
+          <marker id="arrow-async-rev"  markerWidth="8" markerHeight="8" refX="0" refY="3.5" orient="auto-start-reverse">
             <polyline points="0,0 7,3.5 0,7" fill="none" stroke="#7b6fff" stroke-width="1.5"/>
           </marker>
-          <marker id="arrow-return-rev" markerWidth="8" markerHeight="8" refX="1" refY="3.5" orient="auto-start-reverse">
+          <marker id="arrow-return-rev" markerWidth="8" markerHeight="8" refX="0" refY="3.5" orient="auto-start-reverse">
             <polyline points="0,0 7,3.5 0,7" fill="none" stroke="#ff6b8a" stroke-width="1.5"/>
           </marker>
         </defs>
@@ -2330,7 +2330,9 @@ function renderMessage(m) {
 
   // Always draw from fromActor → toActor regardless of direction.
   // direction only controls which end(s) get arrowheads.
-  const x1 = actorCenterX(fromActor), x2 = actorCenterX(toActor);
+  const cx1 = actorCenterX(fromActor), cx2 = actorCenterX(toActor);
+  // Draw center-to-center. The arrowhead marker renders on top of the lifeline at the endpoint.
+  const x1 = cx1, x2 = cx2;
   const y  = m.y;
   const isSelf = fromActor.id === toActor.id;
 
@@ -2376,7 +2378,7 @@ function renderMessage(m) {
   // Direction indicator — rendered as SVG elements not text for reliability
   if (dir === 'left' || dir === 'both') {
     // Left-pointing chevron above the line at fromActor end
-    const cx = isSelf ? x1 + 4 : x1 + 10;
+    const cx = isSelf ? x1 + 4  : x1 + 10;
     const chev = svgEl('text', {
       x: cx, y: ly + 12,
       'font-size': 9, 'text-anchor': 'middle',
