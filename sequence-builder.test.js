@@ -888,6 +888,296 @@ test('valid input with "as" aliases and labelless arrows produces no warnings', 
   assertEqual(result.warnings.length, 0, 'no warnings on clean valid input')
 })
 
+
+// ═══════════════════════════════════════════════════════
+//  Suite 8 — End-to-End scenario
+//
+//  Exercises the full lifecycle against the store contract:
+//    1. Load demo
+//    2. Modify (add actor, update message, move message, add note)
+//    3. Snapshot state as "exported JSON"
+//    4. Clear canvas
+//    5. Load from snapshot (import)
+//    6. Validate structure and serialized output
+//
+//  No DOM, no browser. Pure store contract + serializer logic.
+//  The PlantUML serializer is inlined (mirrors HTML adapter).
+// ═══════════════════════════════════════════════════════
+
+console.log('\nSuite 8 — End-to-end scenario')
+
+// ── Inline PlantUML serializer (mirrors PlantUMLAdapter in HTML) ─────────────
+function serializePlantUML(actors, messages, notes, fragments) {
+  function esc(s) { return (s||'unnamed').replace(/"/g, '\\"') }
+  function kw(type) {
+    return { 'actor-person':'actor', 'actor-system':'participant',
+             'actor-db':'database', 'actor-queue':'queue' }[type] || 'participant'
+  }
+  const lines = ['@startuml', '']
+  const sorted = [...actors].sort((a,b) => a.x - b.x)
+  for (const a of sorted) lines.push(`${kw(a.type)} "${esc(a.label)}" as ${a.id}`)
+  if (sorted.length) lines.push('')
+
+  const items = [
+    ...messages.map(m => ({...m, _k:'msg'})),
+    ...notes.map(n => ({...n, _k:'note'})),
+  ]
+  for (const f of fragments) {
+    items.push({ y: f.y, _k:'frag-open', f })
+    items.push({ y: f.y + f.h, _k:'frag-close', f })
+  }
+  items.sort((a,b) => (a.y||0) - (b.y||0))
+
+  for (const item of items) {
+    if (item._k === 'msg') {
+      const from = actors.find(a => a.id === item.fromId)
+      const to   = actors.find(a => a.id === item.toId)
+      if (!from || !to) continue
+      const lbl = esc(item.label || 'message')
+      const dir = item.direction || 'right'
+      const [src, tgt] = dir === 'left' ? [to.id, from.id] : [from.id, to.id]
+      if (item.kind === 'sync')   lines.push(`${src} -> ${tgt} : ${lbl}`)
+      if (item.kind === 'async')  lines.push(`${src} ->> ${tgt} : ${lbl}`)
+      if (item.kind === 'return') lines.push(`${src} --> ${tgt} : ${lbl}`)
+    } else if (item._k === 'note') {
+      lines.push(`note right : ${item.text||'note'}`)
+    } else if (item._k === 'frag-open') {
+      lines.push(`${item.f.kind.replace('frag-','')} [${item.f.cond||'condition'}]`)
+    } else if (item._k === 'frag-close') {
+      lines.push('end')
+    }
+  }
+  lines.push('', '@enduml')
+  return lines.join('\n')
+}
+
+// ── Step 1: Load demo ────────────────────────────────────
+test('e2e: LOAD_DEMO produces expected actor/message/fragment/note counts', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  const s = store.state
+  assertEqual(s.actors.length,    4, '4 actors')
+  assertEqual(s.messages.length,  6, '6 messages')
+  assertEqual(s.fragments.length, 1, '1 fragment')
+  assertEqual(s.notes.length,     1, '1 note')
+})
+
+test('e2e: LOAD_DEMO actor labels are correct', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  const labels = store.state.actors.map(a => a.label)
+  assert(labels.includes('User'),         'has User')
+  assert(labels.includes('API Gateway'),  'has API Gateway')
+  assert(labels.includes('Auth Service'), 'has Auth Service')
+  assert(labels.includes('Database'),     'has Database')
+})
+
+test('e2e: LOAD_DEMO first message is POST /login sync right', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  const s = store.state
+  const user = s.actors.find(a => a.label === 'User')
+  const api  = s.actors.find(a => a.label === 'API Gateway')
+  const msg  = s.messages[0]
+  assertEqual(msg.label,     'POST /login', 'label')
+  assertEqual(msg.kind,      'sync',        'kind')
+  assertEqual(msg.direction, 'right',       'direction')
+  assertEqual(msg.fromId,    user.id,       'fromId')
+  assertEqual(msg.toId,      api.id,        'toId')
+})
+
+// ── Step 2: Modify ───────────────────────────────────────
+test('e2e: add actor after demo load increases actor count', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Cache', type: 'actor-db' } })
+  assertEqual(store.state.actors.length, 5, '5 actors after add')
+  assert(store.state.actors.some(a => a.label === 'Cache'), 'Cache actor present')
+})
+
+test('e2e: UPDATE_MESSAGE changes label on first message', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  const msgId = store.state.messages[0].id
+  store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: msgId, label: 'POST /auth/login' } })
+  assertEqual(store.state.messages[0].label, 'POST /auth/login', 'label updated')
+})
+
+test('e2e: MOVE_MESSAGE changes y position', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  const msgId = store.state.messages[0].id
+  store.dispatch({ type: 'MOVE_MESSAGE', payload: { id: msgId, y: 999 } })
+  assertEqual(store.state.messages[0].y, 999, 'y updated to 999')
+})
+
+test('e2e: ADD_NOTE after demo adds to note count', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  store.dispatch({ type: 'ADD_NOTE', payload: { x: 10, y: 50, text: 'Security boundary' } })
+  assertEqual(store.state.notes.length, 2, '2 notes')
+  assert(store.state.notes.some(n => n.text === 'Security boundary'), 'note text present')
+})
+
+// ── Step 3: Snapshot as exported JSON ───────────────────
+test('e2e: state snapshot is serializable and round-trips through JSON', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: store.state.messages[0].id, label: 'POST /auth/login' } })
+
+  // Simulate _exportDiagram: JSON.stringify(store.state)
+  const exported = JSON.stringify(store.state)
+  assert(exported.length > 0, 'export is non-empty')
+
+  // Round-trip: parse back
+  const parsed = JSON.parse(exported)
+  assertEqual(parsed.actors.length,   store.state.actors.length,   'actors preserved')
+  assertEqual(parsed.messages.length, store.state.messages.length, 'messages preserved')
+  assertEqual(parsed.messages[0].label, 'POST /auth/login',        'modified label preserved')
+})
+
+// ── Step 4: Clear canvas ─────────────────────────────────
+test('e2e: CLEAR_DIAGRAM resets actors, messages, notes, fragments to empty', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  store.dispatch({ type: 'CLEAR_DIAGRAM' })
+  const s = store.state
+  assertEqual(s.actors.length,    0, 'actors empty')
+  assertEqual(s.messages.length,  0, 'messages empty')
+  assertEqual(s.fragments.length, 0, 'fragments empty')
+  assertEqual(s.notes.length,     0, 'notes empty')
+})
+
+test('e2e: CLEAR_DIAGRAM is undoable — UNDO restores demo state', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  store.dispatch({ type: 'CLEAR_DIAGRAM' })
+  store.dispatch({ type: 'UNDO' })
+  assertEqual(store.state.actors.length,   4, 'actors restored after undo')
+  assertEqual(store.state.messages.length, 6, 'messages restored after undo')
+})
+
+// ── Step 5: Import (LOAD_DIAGRAM from snapshot) ──────────
+test('e2e: LOAD_DIAGRAM from exported snapshot restores full state', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: store.state.messages[0].id, label: 'POST /auth/login' } })
+
+  // Export
+  const snapshot = JSON.parse(JSON.stringify(store.state))
+
+  // Clear
+  store.dispatch({ type: 'CLEAR_DIAGRAM' })
+  assertEqual(store.state.actors.length, 0, 'cleared')
+
+  // Import
+  store.dispatch({ type: 'LOAD_DIAGRAM', payload: { ...snapshot, _source: 'import' } })
+
+  assertEqual(store.state.actors.length,    snapshot.actors.length,    'actors restored')
+  assertEqual(store.state.messages.length,  snapshot.messages.length,  'messages restored')
+  assertEqual(store.state.fragments.length, snapshot.fragments.length, 'fragments restored')
+  assertEqual(store.state.notes.length,     snapshot.notes.length,     'notes restored')
+  assertEqual(store.state.messages[0].label, 'POST /auth/login',       'modified label survives round-trip')
+})
+
+test('e2e: LOAD_DIAGRAM clears undo stack — UNDO after import is a no-op', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  const snapshot = JSON.parse(JSON.stringify(store.state))
+  store.dispatch({ type: 'CLEAR_DIAGRAM' })
+  store.dispatch({ type: 'LOAD_DIAGRAM', payload: { ...snapshot, _source: 'import' } })
+  // UNDO should not restore the cleared state — stack was reset by LOAD_DIAGRAM
+  store.dispatch({ type: 'UNDO' })
+  assertEqual(store.state.actors.length, 4, 'actors still present — undo did not clear import')
+})
+
+// ── Step 6: Validate serialized output ───────────────────
+test('e2e: PlantUML output contains all actor labels from demo', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  const { actors, messages, notes, fragments } = store.state
+  const output = serializePlantUML(actors, messages, notes, fragments)
+
+  assert(output.includes('@startuml'),    'has @startuml')
+  assert(output.includes('@enduml'),      'has @enduml')
+  assert(output.includes('User'),         'contains User')
+  assert(output.includes('API Gateway'),  'contains API Gateway')
+  assert(output.includes('Auth Service'), 'contains Auth Service')
+  assert(output.includes('Database'),     'contains Database')
+})
+
+test('e2e: PlantUML output contains all message labels from demo', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  const { actors, messages, notes, fragments } = store.state
+  const output = serializePlantUML(actors, messages, notes, fragments)
+
+  assert(output.includes('POST /login'),          'POST /login present')
+  assert(output.includes('validateCredentials'),   'validateCredentials present')
+  assert(output.includes('SELECT user WHERE'),     'SELECT message present')
+  assert(output.includes('user record'),           'user record present')
+  assert(output.includes('JWT token'),             'JWT token present')
+  assert(output.includes('200 OK + token'),        '200 OK present')
+})
+
+test('e2e: PlantUML output reflects modified label after UPDATE_MESSAGE', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  const msgId = store.state.messages[0].id
+  store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: msgId, label: 'POST /auth/login' } })
+  const { actors, messages, notes, fragments } = store.state
+  const output = serializePlantUML(actors, messages, notes, fragments)
+
+  assert(output.includes('POST /auth/login'), 'modified label in output')
+  assert(!output.includes('POST /login\n') && !output.includes('POST /login '),
+    'original label not present as standalone message')
+})
+
+test('e2e: PlantUML output contains fragment keyword from demo', () => {
+  const store = freshStore()
+  store.dispatch({ type: 'LOAD_DEMO' })
+  const { actors, messages, notes, fragments } = store.state
+  const output = serializePlantUML(actors, messages, notes, fragments)
+
+  assert(output.includes('alt'),                  'fragment alt keyword present')
+  assert(output.includes('valid credentials'),     'fragment condition present')
+  assert(output.includes('end'),                   'fragment end present')
+})
+
+test('e2e: full lifecycle — demo → modify → export → clear → import → serialize is consistent', () => {
+  const store = freshStore()
+
+  // Load demo
+  store.dispatch({ type: 'LOAD_DEMO' })
+
+  // Modify
+  const msgId = store.state.messages[0].id
+  store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: msgId, label: 'POST /auth/login' } })
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Cache', type: 'actor-db' } })
+
+  // Export
+  const snapshot = JSON.parse(JSON.stringify(store.state))
+  assertEqual(snapshot.actors.length,   5, 'snapshot has 5 actors')
+  assertEqual(snapshot.messages.length, 6, 'snapshot has 6 messages')
+
+  // Clear
+  store.dispatch({ type: 'CLEAR_DIAGRAM' })
+  assertEqual(store.state.actors.length, 0, 'cleared')
+
+  // Import
+  store.dispatch({ type: 'LOAD_DIAGRAM', payload: { ...snapshot, _source: 'import' } })
+  assertEqual(store.state.actors.length,   5, '5 actors after import')
+  assertEqual(store.state.messages.length, 6, '6 messages after import')
+
+  // Serialize — output must reflect the imported modifications
+  const { actors, messages, notes, fragments } = store.state
+  const output = serializePlantUML(actors, messages, notes, fragments)
+  assert(output.includes('POST /auth/login'), 'modified label in final output')
+  assert(output.includes('Cache'),            'added actor in final output')
+  assert(output.includes('@startuml'),        'valid PlantUML wrapper')
+  assert(output.includes('@enduml'),          'valid PlantUML wrapper close')
+})
+
 // ═══════════════════════════════════════════════════════
 //  RESULTS
 // ═══════════════════════════════════════════════════════
