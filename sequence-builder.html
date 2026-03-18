@@ -2823,8 +2823,11 @@ svg.addEventListener('mousedown', e => {
     const msg = state.messages.find(m => m.id === id);
     if (!msg) return;
     e.preventDefault();
-    draggingMsg = msg;
-    _msgMoved   = false;
+    draggingMsg          = msg;
+    draggingMsg._baseY   = msg.y;   // capture start Y for translate delta
+    draggingMsg._ghostEl = g;       // hold the live SVG element
+    g.style.opacity      = '0.4';
+    _msgMoved            = false;
     return;
   }
 
@@ -2851,9 +2854,11 @@ svg.addEventListener('mousedown', e => {
   if (!obj) return;
   // Tag with _type so mousemove dispatch knows which action to call.
   // Store handles pushSnapshot on the first undoable MOVE_* dispatch.
-  dragging       = obj;
-  dragging._type = type;  // 'actor' | 'note' | 'fragment'
+  dragging            = obj;
+  dragging._type      = type;  // 'actor' | 'note' | 'fragment'
   dragging._resizeHandle = null;
+  dragging._dragBaseX = obj.x;        // capture start position for translate delta
+  dragging._dragBaseY = obj.y || 0;
   dragOffX  = (e.clientX - canvasRect.left) / _zoom - obj.x;
   dragOffY  = (e.clientY - canvasRect.top)  / _zoom - (obj.y||0);
   g.style.opacity = '0.4';
@@ -2866,10 +2871,11 @@ window.addEventListener('mousemove', e => {
   if (draggingMsg) {
     _msgMoved = true;
     const newY = Math.max(ACTOR_H + LIFELINE_START + 10, (e.clientY - canvasRect.top) / _zoom);
-    // Non-undoable mid-drag: logged, undo scanner skips it
-    store.dispatch({ type: 'MOVE_MESSAGE', payload: { id: draggingMsg.id, y: newY },
-                     meta: { undoable: false } });
-    requestRender();
+    draggingMsg.y = newY;   // direct mutation — no dispatch, no full render
+    if (draggingMsg._ghostEl) {
+      const dy = newY - (draggingMsg._baseY ?? newY);
+      draggingMsg._ghostEl.setAttribute('transform', `translate(0, ${dy})`);
+    }
     return;
   }
 
@@ -2890,18 +2896,23 @@ window.addEventListener('mousemove', e => {
     return;
   }
 
-  // Non-undoable mid-drag dispatches
+  // Targeted redraw: mutate the live store object directly and translate the ghost element.
+  // No dispatch during drag — one undoable commit fires on mouseup.
+  // store.state is a live object; writing dragging.x/y updates it without going through
+  // the log, which is intentional (mid-drag positions are not undoable steps).
   if (dragging._type === 'actor') {
-    store.dispatch({ type: 'MOVE_ACTOR',    payload: { id: dragging.id, x: newX },
-                     meta: { undoable: false } });
+    dragging.x = newX;
   } else if (dragging._type === 'note') {
-    store.dispatch({ type: 'MOVE_NOTE',     payload: { id: dragging.id, x: newX, y: newY },
-                     meta: { undoable: false } });
+    dragging.x = newX; dragging.y = newY;
   } else if (dragging._type === 'fragment') {
-    store.dispatch({ type: 'MOVE_FRAGMENT', payload: { id: dragging.id, x: newX, y: newY },
-                     meta: { undoable: false } });
+    dragging.x = newX; dragging.y = newY;
   }
-  requestRender();
+  if (dragging._ghostEl) {
+    // Actors are X-only; notes and fragments move on both axes.
+    const dx = dragging.x - (dragging._dragBaseX ?? 0);
+    const dy = (dragging.y || 0) - (dragging._dragBaseY ?? 0);
+    dragging._ghostEl.setAttribute('transform', `translate(${dx}, ${dy})`);
+  }
 });
 
 window.addEventListener('mouseup', e => {
@@ -2932,6 +2943,11 @@ window.addEventListener('mouseup', e => {
       render();
     }
     // If not moved: plain click — let the svg click handler select it normally
+    if (draggingMsg?._ghostEl) {
+      draggingMsg._ghostEl.style.opacity = '';
+      draggingMsg._ghostEl.removeAttribute('transform');
+      draggingMsg._ghostEl = null;
+    }
     draggingMsg = null;
     _msgMoved   = false;
     return;
@@ -2961,6 +2977,13 @@ window.addEventListener('mouseup', e => {
     if (changed) {
       store.dispatch({ type: 'REFLOW_ACTORS', payload: { positions } });
     }
+    render(); // full render on actor drop — lifelines and messages must follow new positions
+  } else if (dragging?._type === 'note') {
+    store.dispatch({ type: 'MOVE_NOTE', payload: { id: dragging.id, x: dragging.x, y: dragging.y } });
+    render();
+  } else if (dragging?._type === 'fragment') {
+    store.dispatch({ type: 'MOVE_FRAGMENT', payload: { id: dragging.id, x: dragging.x, y: dragging.y } });
+    render();
   }
   dragging = null;
 });
