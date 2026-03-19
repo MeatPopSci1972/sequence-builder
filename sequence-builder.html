@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   SequenceForge — Visual Sequence Diagram Builder
-  Version: 0.9.30
+  Version: 0.9.31
   License: MIT
   Repository: https://github.com/GGemini/sequenceforge
 
@@ -675,7 +675,8 @@
   .panel-icon-btn:focus-visible { outline:none; box-shadow:var(--focus-ring); }
   .panel-icon-btn.active { color:var(--accent); }
   #sidebar.state-icons .sidebar-section h2 { display:none; }
-  #sidebar.state-icons .palette-item { justify-content:center; padding:8px 4px; }
+  #sidebar.state-icons .palette-item { justify-content:center; padding:8px 4px; width:100%; box-sizing:border-box; }
+  #sidebar.state-icons .palette-item > * { pointer-events:none; }
   #sidebar.state-icons .item-label { display:none; }
   #sidebar.state-icons .palette-add-btn { display:none; }
   #sidebar.state-icons .sidebar-inner { padding:8px 4px; gap:8px; }
@@ -1381,7 +1382,7 @@ document.getElementById('debug-verbose-toggle')?.addEventListener('click', () =>
 });
 
 // Boot message
-_dbgWrite('info', ['SequenceForge v0.9.30 — debug console ready']);
+_dbgWrite('info', ['SequenceForge v0.9.31 — debug console ready']);
 
 // Set true to enable high-frequency diagnostic logging (save, msg-dblclick).
 // Keep false in production — save fires on every render cycle.
@@ -2739,12 +2740,27 @@ document.querySelectorAll('.palette-item').forEach(item => {
     e.dataTransfer.effectAllowed = 'copy';
   });
 
-  // Click = preview in Properties
-  item.addEventListener('click', () => showPalettePreview(type));
+  // Click = add directly in icons mode, preview in expanded mode
+  item.addEventListener('click', () => {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && sidebar.classList.contains('state-icons')) {
+      addFromPaletteBtn(type);
+    } else {
+      showPalettePreview(type);
+    }
+  });
 
-  // Enter/Space = preview (keyboard)
+  // Enter/Space = same routing as click (keyboard)
   item.addEventListener('keydown', e => {
-    if (e.key==='Enter'||e.key===' ') { e.preventDefault(); showPalettePreview(type); }
+    if (e.key==='Enter'||e.key===' ') {
+      e.preventDefault();
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar && sidebar.classList.contains('state-icons')) {
+        addFromPaletteBtn(type);
+      } else {
+        showPalettePreview(type);
+      }
+    }
   });
 });
 
