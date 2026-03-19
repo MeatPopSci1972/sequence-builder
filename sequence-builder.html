@@ -1331,7 +1331,7 @@ document.getElementById('debug-verbose-toggle')?.addEventListener('click', () =>
 });
 
 // Boot message
-_dbgWrite('info', ['SequenceForge v0.9.9 — debug console ready']);
+_dbgWrite('info', ['SequenceForge v0.9.26 — debug console ready']);
 
 // Set true to enable high-frequency diagnostic logging (save, msg-dblclick).
 // Keep false in production — save fires on every render cycle.
@@ -2417,7 +2417,33 @@ function renderMessage(m) {
   const dir = m.direction || 'right';
   const fromActor = state.actors.find(a=>a.id===m.fromId);
   const toActor   = state.actors.find(a=>a.id===m.toId);
-  if (!fromActor||!toActor) return;
+  if (!fromActor || !toActor) {
+    // Placeholder row for unconnected messages — dashed line, clickable, selectable
+    const ug = svgEl('g');
+    ug.dataset.id = m.id; ug.dataset.type = 'message';
+    const isSelected = uiState.selected?.id === m.id;
+    const uColor = isSelected ? 'var(--accent)' : 'var(--text-muted, #666)';
+    const uLine = svgEl('line', {
+      x1: 80, y1: m.y, x2: 260, y2: m.y,
+      stroke: uColor, 'stroke-width': 1.5, 'stroke-dasharray': '6 4',
+    });
+    const uLabel = svgEl('text', {
+      x: 84, y: m.y - 6, fill: uColor,
+      'font-size': 11, 'font-style': 'italic', 'pointer-events': 'none',
+    });
+    uLabel.textContent = '⚠ ' + (m.label || 'message') + ' — unconnected';
+    const uHit = svgEl('rect', {
+      x: 80, y: m.y - 14, width: 200, height: 22, fill: 'transparent',
+    });
+    uHit.addEventListener('click', e => {
+      e.stopPropagation();
+      setSelected(m, 'message', true);
+      render();
+    });
+    ug.append(uLine, uLabel, uHit);
+    messagesLayer.appendChild(ug);
+    return;
+  }
 
   // Always draw from fromActor → toActor regardless of direction.
   // direction only controls which end(s) get arrowheads.
@@ -3167,9 +3193,11 @@ const propertyVisitors = {
       return `Message: ${s.label} from ${from} to ${to}`;
     },
     html: s => {
-      const actorOpts  = state.actors.map(a =>
+      const nullOpt    = `<option value="" ${!s.fromId?'selected':''}>— unset —</option>`;
+      const nullOpt2   = `<option value="" ${!s.toId?'selected':''}>— unset —</option>`;
+      const actorOpts  = nullOpt  + state.actors.map(a =>
         `<option value="${a.id}" ${a.id===s.fromId?'selected':''}>${esc(a.label)}</option>`).join('');
-      const actorOpts2 = state.actors.map(a =>
+      const actorOpts2 = nullOpt2 + state.actors.map(a =>
         `<option value="${a.id}" ${a.id===s.toId?'selected':''}>${esc(a.label)}</option>`).join('');
       return `
     <div class="prop-group">
@@ -3251,8 +3279,8 @@ const propertyVisitors = {
       _store.dispatch({ type: 'UPDATE_MESSAGE', payload: {
         id:        s.id,
         label:     document.getElementById('p-mlabel')?.value,
-        fromId:    document.getElementById('p-from')?.value,
-        toId:      document.getElementById('p-to')?.value,
+        fromId:    document.getElementById('p-from')?.value   || null,
+        toId:      document.getElementById('p-to')?.value     || null,
         kind:      document.getElementById('p-mkind')?.value,
         direction: document.getElementById('p-mdir')?.value,
         protocol:  document.getElementById('p-protocol')?.value || undefined,

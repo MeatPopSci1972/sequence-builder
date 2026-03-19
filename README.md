@@ -36,7 +36,7 @@ sequence-builder/
 ├── README.md                        ← this file
 ├── sequence-builder.html            ← deployable single-file application (~4130 lines)
 ├── sequence-builder.store.js        ← canonical store source (~525 lines) — edit here
-├── sequence-builder.test.js         ← node-runnable contract tests (~906 lines, 43 tests)
+├── sequence-builder.test.js         ← node-runnable contract tests (81 tests, 9 suites)
 ├── build.js                         ← syncs store.js into HTML (~174 lines)
 ├── sequenceforge-session-handoff.md ← session handoff for human + AI continuation
 └── sequenceforge-handoff.md         ← full design decisions log and architecture reference
@@ -62,6 +62,12 @@ sequence-builder/
 | v0.9.17 | UML text import — `_parseUML()` pure parser, modal with Parse/Import flow, Suite 7 tests added (40 total) |
 | v0.9.18 | Arrow regex fix — no-space Mermaid style (`A->>B`), `<->` bidirectional, `<-->` dashed bidirectional, labelless arrows |
 | v0.9.19 | Strict parser with per-line warnings — hint warnings block import, informational skips do not. 43 tests total |
+| v0.9.20–21 | Arrowhead/lifeline overlap fix — background rect occludes lifeline at arrow endpoint cleanly |
+| v0.9.22 | Zero-render dragging — direct SVG transform during drag, single undoable commit + render on mouseup |
+| v0.9.23 | Suite 8: 17 E2E lifecycle tests — `LOAD_DEMO` → modify → JSON round-trip → `CLEAR` → `LOAD`. 60 tests total |
+| v0.9.24 | Two-state panels (icons 60px / full 200px+340px), floating Edit button, `[`/`]` keyboard toggles, pin, drag-resize |
+| v0.9.25 | No-guard policy (messages add with `fromId: null, toId: null`), Edit button fixes for annotations, zero-movement dispatch guard. 81 tests total |
+| v0.9.26 | Message wiring via Properties (null-safe From/To dropdowns), unconnected message placeholder on canvas, version string fix |
 
 ---
 
@@ -86,8 +92,8 @@ To develop:
 ```powershell
 # After editing sequence-builder.store.js:
 node build.js                      # sync store into HTML
-node sequence-builder.test.js      # run 43 tests
-# Expected: 43 passed | 0 failed | 43 total
+node sequence-builder.test.js      # run 81 tests
+# Expected: 81 passed | 0 failed | 81 total
 ```
 
 Full gate (build + syntax check + tests):
@@ -98,6 +104,7 @@ sed -n '/<script>/,/<\/script>/p' sequence-builder.html `
   | sed '1s/<script>//' | sed '$s/<\/script>//' > sf-script.js && `
 node --check sf-script.js && `
 node sequence-builder.test.js
+# Expected: 81 passed | 0 failed | 81 total
 ```
 
 ---
