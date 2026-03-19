@@ -1899,21 +1899,21 @@ function requestRender() {
 // ── Store event listeners — UI side effects only, no store mutations ──
 // Move events use requestRender (high-frequency during drag).
 // All other events call render() directly (low-frequency, immediate feedback expected).
-_store.on('actor:added',      actor   => { uiState.selected = _wrapSelected(actor, 'actor'); activateTab('tab-props'); updateUndoBtn(); render() })
+_store.on('actor:added',      actor   => { setSelected(actor, 'actor'); activateTab('tab-props'); updateUndoBtn(); render() })
 _store.on('actor:moved',      ()      => { requestRender() })
 _store.on('actors:reflowed',  ()      => { render() })
 _store.on('actor:updated',    ()      => { render() })
 _store.on('actor:deleted',    id      => { if (uiState.selected?.id === id) uiState.selected = null; updateUndoBtn(); render() })
 _store.on('messages:orphaned',ids     => { if (ids.includes(uiState.selected?.id)) uiState.selected = null })
-_store.on('message:added',    message => { uiState.selected = _wrapSelected(message, 'message'); activateTab('tab-props'); updateUndoBtn(); render() })
+_store.on('message:added',    message => { setSelected(message, 'message'); activateTab('tab-props'); updateUndoBtn(); render() })
 _store.on('message:moved',    ()      => { requestRender() })
 _store.on('message:updated',  ()      => { render() })
 _store.on('message:deleted',  id      => { if (uiState.selected?.id === id) uiState.selected = null; updateUndoBtn(); render() })
-_store.on('note:added',       note    => { uiState.selected = _wrapSelected(note, 'note'); activateTab('tab-props'); updateUndoBtn(); render() })
+_store.on('note:added',       note    => { setSelected(note, 'note'); activateTab('tab-props'); updateUndoBtn(); render() })
 _store.on('note:moved',       ()      => { requestRender() })
 _store.on('note:updated',     ()      => { render() })
 _store.on('note:deleted',     id      => { if (uiState.selected?.id === id) uiState.selected = null; updateUndoBtn(); render() })
-_store.on('fragment:added',   frag    => { uiState.selected = _wrapSelected(frag, 'fragment'); activateTab('tab-props'); updateUndoBtn(); render() })
+_store.on('fragment:added',   frag    => { setSelected(frag, 'fragment'); activateTab('tab-props'); updateUndoBtn(); render() })
 _store.on('fragment:moved',   ()      => { requestRender() })
 _store.on('fragment:resized', ()      => { requestRender() })
 _store.on('fragment:updated', ()      => { render() })
@@ -2235,56 +2235,9 @@ function render() {
   // Selected fragment rendered last — paints on top of any overlapping fragments.
   const selectedFragId = uiState.selected?._type === 'fragment' ? uiState.selected.id : null;
   const fragsOrdered = selectedFragId
-    ? [...state.fragments.filter(f => f.id !== selectedFragId),
-       ...state.fragments.filter(f => f.id === selectedFragId)]
+    ? [...state.fragments.filter(f => f.id !== selectedFragId), ...state.fragments.filter(f => f.id === selectedFragId)]
     : state.fragments;
-  for (const f of fragsOrdered) {
-    const kw = f.kind.replace('frag-','');
-    const colors = {alt:'#c44af0', loop:'#4af0e0', opt:'#c44af0'};
-    const col = colors[kw] || '#c44af0';
-
-    const g = svgEl('g');
-    const rect = svgEl('rect', {
-      x:f.x, y:f.y, width:f.w, height:f.h,
-      rx:6, fill:'none',
-      stroke: col+'55', 'stroke-width':1.5, 'stroke-dasharray':'8 3'
-    });
-    const lbl = svgEl('text', {
-      x:f.x+6, y:f.y+15,
-      fill:col, 'font-family':'JetBrains Mono, monospace',
-      'font-size':11, 'font-weight':700
-    });
-    lbl.textContent = kw.toUpperCase();
-    const cond = svgEl('text', {
-      x:f.x+40, y:f.y+15,
-      fill:col+'99', 'font-family':'JetBrains Mono, monospace', 'font-size':10
-    });
-    cond.textContent = `[${f.cond||'condition'}]`;
-
-    g.dataset.id = f.id; g.dataset.type = 'fragment';
-    g.setAttribute('role','button');
-    g.setAttribute('aria-label',`${kw} fragment: ${f.cond||'condition'}`);
-    g.setAttribute('tabindex','0');
-    g.style.cursor = 'move';
-    const fragHover = svgHoverBounds(f.x, f.y, f.w, f.h, 4);
-    g.prepend(fragHover);
-    g.append(rect, lbl, cond);
-
-    // SE resize handle — rendered only when this fragment is selected
-    if (uiState.selected?.id === f.id) {
-      const HANDLE = 8;
-      const handle = svgEl('rect', {
-        x: f.x + f.w - HANDLE, y: f.y + f.h - HANDLE,
-        width: HANDLE, height: HANDLE,
-        class: 'frag-resize-handle',
-        'data-id': f.id, 'data-type': 'frag-resize',
-        rx: 2,
-      });
-      g.appendChild(handle);
-    }
-
-    fragmentsLayer.appendChild(g);
-  }
+  for (const f of fragsOrdered) renderFragment(f);
 
   // ── Lifelines ──
   for (const a of state.actors) {
@@ -2345,72 +2298,90 @@ function render() {
 
 
 
+// ── Template Method base ────────────────────────────────────────────────────────────
+// Every render function builds a <g> with identical boilerplate:
+//   dataset.id/type, role, aria-label, tabindex, hover bounds, click handler.
+// renderElement() owns that contract once. drawFn(g) appends type-specific
+// children; clickFn handles clicks (null for drag-only elements like notes).
+function renderElement(el, type, layer, ariaLabel, hoverArgs, drawFn, clickFn) {
+  const g = svgEl('g');
+  g.dataset.id   = el.id;
+  g.dataset.type = type;
+  g.setAttribute('role',       'button');
+  g.setAttribute('aria-label', ariaLabel);
+  g.setAttribute('tabindex',   '0');
+  g.prepend(svgHoverBounds(...hoverArgs));
+  drawFn(g);
+  if (clickFn) g.addEventListener('click', clickFn);
+  layer.appendChild(g);
+  return g;
+}
+
+function renderFragment(f) {
+  const kw  = f.kind.replace('frag-','');
+  const col = ({alt:'#c44af0', loop:'#4af0e0', opt:'#c44af0'})[kw] || '#c44af0';
+
+  renderElement(f, 'fragment', fragmentsLayer, `${kw} fragment: ${f.cond||'condition'}`,
+    [f.x, f.y, f.w, f.h, 4],
+    g => {
+      g.style.cursor = 'move';
+      const rect = svgEl('rect', { x:f.x, y:f.y, width:f.w, height:f.h, rx:6,
+        fill:'none', stroke:col+'55', 'stroke-width':1.5, 'stroke-dasharray':'8 3' });
+      const lbl  = svgEl('text', { x:f.x+6,  y:f.y+15, fill:col,
+        'font-family':'JetBrains Mono, monospace', 'font-size':11, 'font-weight':700 });
+      lbl.textContent = kw.toUpperCase();
+      const cond = svgEl('text', { x:f.x+40, y:f.y+15, fill:col+'99',
+        'font-family':'JetBrains Mono, monospace', 'font-size':10 });
+      cond.textContent = `[${f.cond||'condition'}]`;
+      g.append(rect, lbl, cond);
+      if (uiState.selected?.id === f.id) {
+        const HANDLE = 8;
+        g.appendChild(svgEl('rect', {
+          x:f.x+f.w-HANDLE, y:f.y+f.h-HANDLE, width:HANDLE, height:HANDLE,
+          class:'frag-resize-handle', 'data-id':f.id, 'data-type':'frag-resize', rx:2,
+        }));
+      }
+    },
+    e => {
+      e.stopPropagation();
+      setSelected(state.fragments.find(fr => fr.id === f.id), 'fragment', true);
+    }
+  );
+}
+
 function renderActor(a) {
-  const g = svgEl('g', { class:'actor-group' });
-  g.dataset.id = a.id; g.dataset.type = 'actor';
-  g.setAttribute('role','button');
-  g.setAttribute('aria-label',`Actor: ${a.label}`);
-  g.setAttribute('tabindex','0');
-
-  // Custom emoji takes precedence over type-based icon
-  const icon = a.emoji || { 'actor-person':'👤','actor-system':'⬜','actor-db':'🗄','actor-queue':'📥' }[a.type] || '⬜';
-
-  // Connect-source highlight
+  const icon = a.emoji || {'actor-person':'👤','actor-system':'⬜','actor-db':'🗄️','actor-queue':'📥'}[a.type] || '⬜';
   const isConnectSource = uiState.mode === 'connect' && uiState.connectFrom === a.id;
   const rectClass = 'actor-head'
     + (uiState.selected?.id===a.id ? ' selected' : '')
     + (isConnectSource ? ' connect-source' : '');
+  const botY = calcCanvasHeight() - LIFELINE_END_MARGIN + 8;
 
-  const rect = svgEl('rect', {
-    x:a.x, y:8, width:ACTOR_W, height:ACTOR_H,
-    class: rectClass, rx:6
-  });
-
-  const lbl = svgEl('text', {
-    x:a.x + ACTOR_W/2 + 10, y:8+ACTOR_H/2,
-    class:'actor-label'
-  });
-  lbl.textContent = a.label||'Actor';
-
-  const ico = svgEl('text', {
-    x:a.x+14, y:8+ACTOR_H/2+1,
-    'font-size':12, 'dominant-baseline':'middle', 'text-anchor':'middle',
-    'pointer-events':'none'
-  });
-  ico.textContent = icon;
-
-  // bottom label (repeat)
-  const botRect = svgEl('rect', {
-    x:a.x, y:calcCanvasHeight()-LIFELINE_END_MARGIN+8, width:ACTOR_W, height:ACTOR_H,
-    class:'actor-head', rx:6
-  });
-  const botLbl = svgEl('text', {
-    x:a.x+ACTOR_W/2+10, y:calcCanvasHeight()-LIFELINE_END_MARGIN+8+ACTOR_H/2,
-    class:'actor-label'
-  });
-  botLbl.textContent = a.label||'Actor';
-  const botIco = svgEl('text', {
-    x:a.x+14, y:calcCanvasHeight()-LIFELINE_END_MARGIN+8+ACTOR_H/2+1,
-    'font-size':12, 'dominant-baseline':'middle', 'text-anchor':'middle',
-    'pointer-events':'none'
-  });
-  botIco.textContent = icon;
-
-  // Hover bounds covers the top actor box (ACTOR_W x ACTOR_H at x,8)
-  const hoverBounds = svgHoverBounds(a.x, 8, ACTOR_W, ACTOR_H, 4);
-  g.prepend(hoverBounds);
-  g.append(rect, lbl, ico, botRect, botLbl, botIco);
-
-  // Direct click — ensures selection works even when mousedown preventDefault fires
-  g.addEventListener('click', e => {
-    if (uiState.mode === 'connect') { handleConnectClick(a.id); return; }
-    e.stopPropagation();
-    setSelected(a, 'actor', true);
-    render();
-    dbg('actor-click', `selected ${a.id} ${a.label}`);
-  });
-
-  actorsLayer.appendChild(g);
+  const g = renderElement(a, 'actor', actorsLayer, `Actor: ${a.label}`,
+    [a.x, 8, ACTOR_W, ACTOR_H, 4],
+    g => {
+      g.classList.add('actor-group');
+      const rect    = svgEl('rect', { x:a.x, y:8, width:ACTOR_W, height:ACTOR_H, class:rectClass, rx:6 });
+      const lbl     = svgEl('text', { x:a.x+ACTOR_W/2+10, y:8+ACTOR_H/2, class:'actor-label' });
+      lbl.textContent = a.label||'Actor';
+      const ico     = svgEl('text', { x:a.x+14, y:8+ACTOR_H/2+1, 'font-size':12,
+        'dominant-baseline':'middle', 'text-anchor':'middle', 'pointer-events':'none' });
+      ico.textContent = icon;
+      const botRect = svgEl('rect', { x:a.x, y:botY, width:ACTOR_W, height:ACTOR_H, class:'actor-head', rx:6 });
+      const botLbl  = svgEl('text', { x:a.x+ACTOR_W/2+10, y:botY+ACTOR_H/2, class:'actor-label' });
+      botLbl.textContent = a.label||'Actor';
+      const botIco  = svgEl('text', { x:a.x+14, y:botY+ACTOR_H/2+1, 'font-size':12,
+        'dominant-baseline':'middle', 'text-anchor':'middle', 'pointer-events':'none' });
+      botIco.textContent = icon;
+      g.append(rect, lbl, ico, botRect, botLbl, botIco);
+    },
+    e => {
+      if (uiState.mode === 'connect') { handleConnectClick(a.id); return; }
+      e.stopPropagation();
+      setSelected(a, 'actor', true);
+      dbg('actor-click', `selected ${a.id} ${a.label}`);
+    }
+  );
 }
 
 function renderMessage(m) {
@@ -2438,7 +2409,6 @@ function renderMessage(m) {
     uHit.addEventListener('click', e => {
       e.stopPropagation();
       setSelected(m, 'message', true);
-      render();
     });
     ug.append(uLine, uLabel, uHit);
     messagesLayer.appendChild(ug);
@@ -2528,7 +2498,7 @@ function renderMessage(m) {
   g.addEventListener('click', e => {
     if (uiState.mode === 'connect') return;
     e.stopPropagation();
-    setSelected(state.messages.find(msg => msg.id === m.id), 'message', false);
+    setSelected(state.messages.find(msg => msg.id === m.id), 'message');
     if (DEBUG_VERBOSE) dbg('msg-click', `id=${m.id} selected`);
   });
   const classColors = { Public:'#4af07a', Internal:'#f0c44a', Confidential:'#f07a4a', PII:'#ff6b8a', PHI:'#ff6b8a', Secret:'#556080' };
@@ -2552,28 +2522,23 @@ function renderMessage(m) {
 }
 
 function renderNote(n) {
-  const g = svgEl('g');
-  g.dataset.id = n.id; g.dataset.type = 'note';
-  g.setAttribute('tabindex','0');
-  g.setAttribute('role','button');
-  g.setAttribute('aria-label',`Note: ${n.text||''}`);
-  g.style.cursor = 'move';
-
   const W = 120, H = 36;
   const x = n.x || 20;
   const y = n.y;
-
-  const rect = svgEl('rect', { x, y:y-H/2, width:W, height:H, rx:4, class:'note-box' });
-  const txt  = svgEl('text', { x:x+8, y:y+4, class:'note-text' });
-  txt.textContent = n.text || 'note';
-
   const sel = uiState.selected?.id === n.id;
-  if (sel) rect.setAttribute('stroke','#f0c44a');
 
-  const noteHover = svgHoverBounds(x, y - H/2, W, H, 4);
-  g.prepend(noteHover);
-  g.append(rect, txt);
-  notesLayer.appendChild(g);
+  renderElement(n, 'note', notesLayer, `Note: ${n.text||''}`,
+    [x, y - H/2, W, H, 4],
+    g => {
+      g.style.cursor = 'move';
+      const rect = svgEl('rect', { x, y:y-H/2, width:W, height:H, rx:4, class:'note-box' });
+      if (sel) rect.setAttribute('stroke','#f0c44a');
+      const txt = svgEl('text', { x:x+8, y:y+4, class:'note-text' });
+      txt.textContent = n.text || 'note';
+      g.append(rect, txt);
+    },
+    null  // click handled by mousedown drag system
+  );
 }
 
 function svgEl(tag, attrs={}) {
@@ -2835,7 +2800,7 @@ svg.addEventListener('click', e => {
     return;
   }
 
-  if (!g) { setSelected(null); render(); return; }
+  if (!g) { setSelected(null, null, true); return; }
 
   const id   = g.dataset.id;
   const type = g.dataset.type;
@@ -3101,7 +3066,7 @@ function toggleConnectMode() {
 // ── Selection — uiState only, no store mutation ──
 let _propDirty = false;
 let _selectedKey = null; // tracks last rendered selection to avoid needless rebuilds // hoisted — must survive render() calls during editing
-function setSelected(obj, type) {
+function setSelected(obj, type, doRender = false) {
   _propDirty = false;
   uiState.selected = obj ? _wrapSelected(obj, type) : null;
   if (obj) {
@@ -3126,6 +3091,7 @@ function setSelected(obj, type) {
       selectAnnounce.textContent = 'Selection cleared.';
     }
   }
+  if (doRender) render();
 }
 
 function setMode(m) {
