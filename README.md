@@ -6,7 +6,11 @@ Draw actors, connect them with typed messages, export to PlantUML or Mermaid syn
 
 ## Live demo
 
-**[▶ Launch SequenceForge](https://meatpopsci1972.github.io/sequence-builder/sequence-builder.html)**
+**[▶ Launch SequenceForge - latest](https://meatpopsci1972.github.io/sequence-builder/sequence-builder.html)**
+Always tracks `main` — may include work in progress.
+
+**[▶ Launch SequenceForge v0.9.28 - stable snapshot](https://meatpopsci1972.github.io/sequence-builder/releases/v0.9.28/sequence-builder.html)**
+Known-good release. Archived, never changes.
 
 Hosted via GitHub Pages. No install, no build step.
 
