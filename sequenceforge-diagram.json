@@ -1,0 +1,142 @@
+{
+  "actors": [
+    {
+      "id": "e1",
+      "x": 40,
+      "label": "User",
+      "type": "actor-person",
+      "_type": "actor",
+      "_resizeHandle": null,
+      "_dragBaseX": 40,
+      "_dragBaseY": 0,
+      "_ghostEl": null
+    },
+    {
+      "id": "e2",
+      "x": 210,
+      "label": "API Gateway",
+      "type": "actor-system",
+      "_type": "actor",
+      "_resizeHandle": null,
+      "_dragBaseX": 210,
+      "_dragBaseY": 0,
+      "_ghostEl": null
+    },
+    {
+      "id": "e3",
+      "x": 380,
+      "label": "Auth Service",
+      "type": "actor-system",
+      "_type": "actor",
+      "_resizeHandle": null,
+      "_dragBaseX": 380,
+      "_dragBaseY": 0,
+      "_ghostEl": null
+    },
+    {
+      "id": "e4",
+      "x": 550,
+      "label": "Database",
+      "type": "actor-db",
+      "_type": "actor",
+      "_resizeHandle": null,
+      "_dragBaseX": 550,
+      "_dragBaseY": 0,
+      "_ghostEl": null
+    }
+  ],
+  "messages": [
+    {
+      "id": "e5",
+      "fromId": "e1",
+      "toId": "e2",
+      "label": "POST /login",
+      "kind": "sync",
+      "direction": "left",
+      "y": 122,
+      "_baseY": 122,
+      "_ghostEl": null
+    },
+    {
+      "id": "e6",
+      "fromId": "e2",
+      "toId": "e3",
+      "label": "validateCredentials",
+      "kind": "sync",
+      "direction": "right",
+      "y": 226
+    },
+    {
+      "id": "e7",
+      "fromId": "e3",
+      "toId": "e4",
+      "label": "SELECT user WHERE…",
+      "kind": "sync",
+      "direction": "right",
+      "y": 278,
+      "_baseY": 278,
+      "_ghostEl": null
+    },
+    {
+      "id": "e8",
+      "fromId": "e4",
+      "toId": "e3",
+      "label": "user record",
+      "kind": "return",
+      "direction": "right",
+      "y": 330,
+      "_baseY": 330,
+      "_ghostEl": null
+    },
+    {
+      "id": "e9",
+      "fromId": "e3",
+      "toId": "e2",
+      "label": "JWT token",
+      "kind": "return",
+      "direction": "right",
+      "y": 382,
+      "_baseY": 382,
+      "_ghostEl": null
+    },
+    {
+      "id": "e10",
+      "fromId": "e2",
+      "toId": "e1",
+      "label": "200 OK + token",
+      "kind": "return",
+      "direction": "right",
+      "y": 434
+    }
+  ],
+  "notes": [
+    {
+      "id": "e12",
+      "x": 20,
+      "y": 174,
+      "text": "Auth flow",
+      "_type": "note",
+      "_resizeHandle": null,
+      "_dragBaseX": 20,
+      "_dragBaseY": 174,
+      "_ghostEl": null
+    }
+  ],
+  "fragments": [
+    {
+      "id": "e11",
+      "x": 160,
+      "y": 170,
+      "w": 340,
+      "h": 175,
+      "kind": "frag-alt",
+      "cond": "valid credentials",
+      "_type": "fragment",
+      "_resizeHandle": null,
+      "_dragBaseX": 160,
+      "_dragBaseY": 170,
+      "_ghostEl": null
+    }
+  ],
+  "nextId": 13
+}

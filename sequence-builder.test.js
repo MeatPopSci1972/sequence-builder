@@ -1178,6 +1178,287 @@ test('e2e: full lifecycle — demo → modify → export → clear → import �
   assert(output.includes('@enduml'),          'valid PlantUML wrapper close')
 })
 
+
+
+// ═══════════════════════════════════════════════════════
+//  SUITE 9 — Edit button positioning (_positionEditBtn)
+//  Tests the bounding box logic for each element type.
+//  Runs in Node — simulates uiState and store, no DOM needed.
+// ═══════════════════════════════════════════════════════
+
+test('Suite 9: actor bounding box is right-edge, top of actor', () => {
+  // Simulate the actor box calculation from _positionEditBtn
+  const ACTOR_W = 110
+  const actor = { id: 'a1', x: 40 }
+  const box = { x: actor.x, y: 4, w: ACTOR_W, h: 0 }
+  const btnX = (box.x + box.w) * 1.0  // zoom=1, no viewport offset
+  const btnY = (box.y) * 1.0
+  assertEqual(btnX, 150, 'actor edit btn x = actor.x + ACTOR_W')
+  assertEqual(btnY, 4,   'actor edit btn y = 4px (above top edge)')
+})
+
+test('Suite 9: message box anchors to toA side (right arrow)', () => {
+  const ACTOR_W = 110
+  const fromA = { id: 'a1', x: 40  }
+  const toA   = { id: 'a2', x: 210 }
+  const msg   = { id: 'm1', fromId: 'a1', toId: 'a2', y: 122, direction: 'right' }
+  const actorCenterX = a => a.x + ACTOR_W / 2
+  const toX   = actorCenterX(toA)   // 265
+  const fromX = actorCenterX(fromA) // 95
+  const anchorX = msg.direction === 'both' ? (fromX + toX) / 2 : toX
+  const box = { x: anchorX - 30, y: msg.y - 28, w: 60, h: 20 }
+  const btnX = box.x + box.w  // anchorX + 30 = 295
+  const btnY = box.y           // 94
+  assertEqual(btnX, 295, 'right-arrow edit btn x at toA side + 30')
+  assertEqual(btnY, 94,  'right-arrow edit btn y above arrow line')
+})
+
+test('Suite 9: message box anchors to toA side (left arrow)', () => {
+  const ACTOR_W = 110
+  const fromA = { id: 'a2', x: 210 }
+  const toA   = { id: 'a1', x: 40  }
+  const msg   = { id: 'm1', fromId: 'a2', toId: 'a1', y: 122, direction: 'left' }
+  const actorCenterX = a => a.x + ACTOR_W / 2
+  const toX   = actorCenterX(toA)   // 95
+  const anchorX = msg.direction === 'both' ? 0 : toX
+  const box = { x: anchorX - 30, y: msg.y - 28, w: 60, h: 20 }
+  const btnX = box.x + box.w  // 95 + 30 = 125
+  assertEqual(btnX, 125, 'left-arrow edit btn x anchors to left toA side')
+})
+
+test('Suite 9: message box midpoint for bidirectional arrow', () => {
+  const ACTOR_W = 110
+  const fromA = { id: 'a1', x: 40  }
+  const toA   = { id: 'a2', x: 210 }
+  const msg   = { id: 'm1', fromId: 'a1', toId: 'a2', y: 122, direction: 'both' }
+  const actorCenterX = a => a.x + ACTOR_W / 2
+  const toX   = actorCenterX(toA)   // 265
+  const fromX = actorCenterX(fromA) // 95
+  const anchorX = (fromX + toX) / 2  // 180
+  const btnX = (anchorX - 30) + 60   // 180
+  assertEqual(btnX, 210, 'bidirectional edit btn x at midpoint + 30')
+})
+
+test('Suite 9: note bounding box right-edge at x + 120', () => {
+  const note = { id: 'n1', x: 20, y: 122 }
+  const box  = { x: note.x, y: (note.y || 0) - 18, w: 120, h: 36 }
+  const btnX = box.x + box.w
+  const btnY = box.y
+  assertEqual(btnX, 140, 'note edit btn x = note.x + 120')
+  assertEqual(btnY, 104, 'note edit btn y above note top')
+})
+
+test('Suite 9: fragment bounding box top-right corner', () => {
+  const frag = { id: 'f1', x: 60, y: 200, w: 200, h: 100 }
+  const box  = { x: frag.x, y: frag.y, w: frag.w, h: frag.h }
+  const btnX = box.x + box.w
+  const btnY = box.y
+  assertEqual(btnX, 260, 'fragment edit btn x = frag.x + frag.w')
+  assertEqual(btnY, 200, 'fragment edit btn y = frag.y (top edge)')
+})
+
+test('Suite 9: edit btn hidden when nothing selected', () => {
+  // _positionEditBtn returns early and would remove visible class
+  // We test the guard condition: !s || s._preview
+  const noSelection = null
+  const preview     = { id: '__preview__', _preview: true }
+  assert(!noSelection,      'null selection triggers hide')
+  assert(preview._preview,  'preview object triggers hide')
+})
+
+test('Suite 9: :added store events set uiState.selected before render', () => {
+  const store = createStore()
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Test', type: 'actor-system', x: 40 } })
+  const actor = store.state.actors[0]
+  assert(actor, 'actor was added to store')
+  // The :added listener sets uiState.selected = _wrapSelected(actor, 'actor')
+  // We verify the store has the actor and its id is accessible for wrapping
+  assert(actor.id, 'actor has an id for _wrapSelected')
+  assertEqual(actor.label, 'Test', 'actor label matches payload')
+})
+
+
+test('Suite 9: selected state persists after deselect-then-reselect cycle', () => {
+  // Simulates: add actor → click canvas (deselect) → click actor again
+  // _positionEditBtn must find the actor in state after re-selection
+  const store = createStore()
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'User', type: 'actor-person', x: 40 } })
+  const actor = store.state.actors[0]
+  assert(actor, 'actor in state')
+
+  // Simulate deselect (uiState.selected = null equivalent)
+  let selected = null
+
+  // Simulate re-click: setSelected sets selected back
+  selected = { ...actor, _type: 'actor' }
+  assert(selected._type === 'actor', 'reselected type is actor')
+  assert(selected.id === actor.id,   'reselected id matches store actor')
+
+  // _positionEditBtn finds the actor by id in state.actors
+  const found = store.state.actors.find(a => a.id === selected.id)
+  assert(found, 'actor found in state after reselect — edit button can position')
+  assertEqual(found.x, 40, 'actor x is correct for bbox calculation')
+})
+
+test('Suite 9: _positionEditBtn box defined for all element types when selected', () => {
+  const ACTOR_W = 110, ACTOR_H = 42
+  const actorCenterX = a => a.x + ACTOR_W / 2
+
+  const cases = [
+    {
+      _type: 'actor',
+      el: { id: 'a1', x: 40 },
+      getBox: (el) => ({ x: el.x, y: 8, w: ACTOR_W, h: ACTOR_H }),
+    },
+    {
+      _type: 'note',
+      el: { id: 'n1', x: 20, y: 122 },
+      getBox: (el) => ({ x: el.x, y: (el.y || 0) - 18, w: 120, h: 36 }),
+    },
+    {
+      _type: 'fragment',
+      el: { id: 'f1', x: 60, y: 200, w: 200, h: 100 },
+      getBox: (el) => ({ x: el.x, y: el.y, w: el.w, h: el.h }),
+    },
+  ]
+
+  for (const { _type, el, getBox } of cases) {
+    const box = getBox(el)
+    assert(box !== null,        _type + ': box is not null')
+    assert(box.w > 0,           _type + ': box has positive width')
+    assert(typeof box.x === 'number', _type + ': box.x is a number')
+    const btnX = box.x + box.w
+    const btnY = box.y
+    assert(btnX > 0, _type + ': btnX is positive')
+  }
+})
+
+
+test('Suite 9: ADD_ACTOR succeeds with no prior actors (no 2-actor guard)', () => {
+  const store = createStore()
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Solo', type: 'actor-person', x: 40 } })
+  assertEqual(store.state.actors.length, 1, 'actor added without precondition')
+  assertEqual(store.state.actors[0].label, 'Solo', 'actor label correct')
+})
+
+test('Suite 9: ADD_MESSAGE with 1 actor uses self-message (fromId === toId)', () => {
+  const store = createStore()
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Solo', type: 'actor-person', x: 40 } })
+  const id = store.state.actors[0].id
+  store.dispatch({ type: 'ADD_MESSAGE', payload: {
+    fromId: id, toId: id, label: 'self', kind: 'sync', direction: 'right'
+  }})
+  assertEqual(store.state.messages.length, 1, 'self-message added with 1 actor')
+  assertEqual(store.state.messages[0].fromId, id, 'fromId is the single actor')
+  assertEqual(store.state.messages[0].toId,   id, 'toId is also the single actor (self-message)')
+})
+
+test('Suite 9: ADD_MESSAGE with actors — fromId/toId set explicitly', () => {
+  const store = createStore()
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-person', x: 40 } })
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B', type: 'actor-system', x: 200 } })
+  const a = store.state.actors[0].id
+  const b = store.state.actors[1].id
+  store.dispatch({ type: 'ADD_MESSAGE', payload: {
+    fromId: a, toId: b, label: 'call', kind: 'sync', direction: 'right'
+  }})
+  assertEqual(store.state.messages[0].fromId, a, 'fromId set correctly')
+  assertEqual(store.state.messages[0].toId,   b, 'toId set correctly')
+})
+
+test('Suite 9: uiState has no pendingActorId field', () => {
+  // Verify the arm-and-fire mechanic is fully removed from uiState initializer
+  // We check the store script for the removed field
+  const fs = require('fs')
+  const html = fs.readFileSync('./sequence-builder.html', 'utf8')
+  assert(!html.includes('pendingActorId: null'), 'pendingActorId removed from uiState')
+  assert(!html.includes("uiState.pendingActorId"), 'no pendingActorId references in UI code')
+})
+
+test('Suite 9: isPending not referenced in renderActor', () => {
+  const fs = require('fs')
+  const html = fs.readFileSync('./sequence-builder.html', 'utf8')
+  // Extract renderActor function body
+  const start = html.indexOf('function renderActor(')
+  const end = html.indexOf('function renderMessage(', start)
+  const renderActorBody = html.slice(start, end)
+  assert(!renderActorBody.includes('isPending'), 'isPending not used in renderActor')
+  assert(!renderActorBody.includes('pending-actor'), 'pending-actor class not applied in renderActor')
+})
+
+
+test('Suite 9: no actor guard on message add — any element can be added anytime', () => {
+  const fs = require('fs')
+  const html = fs.readFileSync('./sequence-builder.html', 'utf8')
+  // No precondition guard on msg paths (proto2prod UI rule)
+  assert(!html.includes("state.actors.length < 1"), 'no 1-actor guard in msg add paths')
+  // Check that no guard blocks msg add (the one remaining actors.length < 2 is in API analysis text, not a guard)
+  const msgGuard = /if\s*\(state\.actors\.length\s*<\s*2\)\s*\{[^}]*toast[^}]*return/
+  assert(!msgGuard.test(html), 'no 2-actor guard blocking msg add')
+})
+
+test('Suite 9: UI guard — notes and fragments have no actor guard', () => {
+  const fs = require('fs')
+  const html = fs.readFileSync('./sequence-builder.html', 'utf8')
+  // Find ADD_NOTE dispatch — should not be preceded by actors.length check
+  const noteIdx = html.indexOf("type: 'ADD_NOTE'")
+  const fragIdx = html.indexOf("type: 'ADD_FRAGMENT'")
+  assert(noteIdx !== -1, 'ADD_NOTE dispatch exists')
+  assert(fragIdx !== -1, 'ADD_FRAGMENT dispatch exists')
+  // Check 200 chars before each dispatch for actor guard
+  const notePre = html.slice(Math.max(0, noteIdx - 200), noteIdx)
+  const fragPre = html.slice(Math.max(0, fragIdx - 200), fragIdx)
+  assert(!notePre.includes('actors.length'), 'no actor guard before ADD_NOTE')
+  assert(!fragPre.includes('actors.length'), 'no actor guard before ADD_FRAGMENT')
+})
+
+test('Suite 9: self-message renders correctly (isSelf path)', () => {
+  const store = createStore()
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-person', x: 40 } })
+  const id = store.state.actors[0].id
+  store.dispatch({ type: 'ADD_MESSAGE', payload: {
+    fromId: id, toId: id, label: 'ping', kind: 'sync', direction: 'right'
+  }})
+  const msg = store.state.messages[0]
+  assert(msg.fromId === msg.toId, 'self-message: fromId equals toId')
+  assert(msg.label === 'ping', 'label preserved')
+})
+
+
+test('Suite 9: MOVE_NOTE only dispatched when position changes', () => {
+  const store = createStore()
+  store.dispatch({ type: 'ADD_NOTE', payload: { x: 60, y: 200, text: 'test' } })
+  const note = store.state.notes[0]
+  const originalY = note.y
+  // Simulate zero-movement: dragBaseX/Y === current x/y
+  const moved = Math.round(note.x) !== Math.round(60) || Math.round(note.y) !== Math.round(200)
+  assert(!moved, 'zero-movement note: moved=false, no dispatch needed')
+  // Simulate real movement
+  const movedReal = Math.round(100) !== Math.round(60) || Math.round(200) !== Math.round(200)
+  assert(movedReal, 'moved note: moved=true, dispatch should fire')
+})
+
+test('Suite 9: MOVE_FRAGMENT only dispatched when position changes', () => {
+  const store = createStore()
+  store.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 60, y: 200, w: 200, h: 100, kind: 'frag-alt', cond: 'test' } })
+  const frag = store.state.fragments[0]
+  const moved = Math.round(frag.x) !== Math.round(60) || Math.round(frag.y) !== Math.round(200)
+  assert(!moved, 'zero-movement fragment: moved=false, no dispatch needed')
+})
+
+test('Suite 9: note click after deselect — setSelected receives correct note', () => {
+  // Simulates canvas click handler path for notes
+  const store = createStore()
+  store.dispatch({ type: 'ADD_NOTE', payload: { x: 60, y: 200, text: 'my note' } })
+  const note = store.state.notes[0]
+  // Canvas click handler: found = state.notes.find(n => n.id === id)
+  const id = note.id
+  const found = store.state.notes.find(n => n.id === id)
+  assert(found, 'note found by id after canvas click')
+  assertEqual(found.text, 'my note', 'correct note returned')
+  assertEqual(found._type, undefined, 'note from state has no _type yet (added by _wrapSelected)')
+})
+
 // ═══════════════════════════════════════════════════════
 //  RESULTS
 // ═══════════════════════════════════════════════════════

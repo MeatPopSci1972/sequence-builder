@@ -120,15 +120,19 @@
   /* ── Main workspace ── */
   #workspace {
     display: grid;
-    grid-template-columns: 200px 1fr 340px;
+    grid-template-columns: var(--sidebar-w, 200px) 1fr var(--panel-w, 340px);
     overflow: hidden;
   }
 
   /* ── Sidebar ── */
   #sidebar {
     background: var(--surface); border-right: 1px solid var(--border);
-    overflow-y: auto; padding: 12px 8px;
+    display: flex; flex-direction: column; gap: 0;
+    position: relative; min-width: 0;
+  }
+  #sidebar .sidebar-inner {
     display: flex; flex-direction: column; gap: 16px;
+    padding: 12px 8px; overflow-y: auto; flex: 1;
   }
   .sidebar-section h2 {
     font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700;
@@ -264,6 +268,7 @@
   #panel {
     background: var(--surface); border-left: 1px solid var(--border);
     display: flex; flex-direction: column; overflow: hidden;
+    position: relative; min-width: 0;
   }
 
   /* tabs */
@@ -278,6 +283,7 @@
     background: transparent; border: none; cursor: pointer;
     transition: all .15s; font-family: 'JetBrains Mono', monospace;
     border-bottom: 2px solid transparent; margin-bottom: -1px;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
   }
   .ptab:hover { color: var(--text2); }
   .ptab.active { color: var(--accent); border-bottom-color: var(--accent); }
@@ -631,6 +637,70 @@
       transition-duration: 0.01ms !important;
     }
   }
+
+  /* ══ PANEL SYSTEM + EDIT BUTTON v0.9.24 ══ */
+  #workspace { transition: grid-template-columns 0.18s ease; }
+  @media (prefers-reduced-motion: reduce) { #workspace { transition: none; } }
+  #sidebar::after {
+    content:''; position:absolute; top:0; right:-1px;
+    width:6px; height:100%; cursor:col-resize; z-index:20;
+    background:transparent; transition:background .15s;
+  }
+  #sidebar:hover::after, #sidebar.resizing::after { background:var(--accent)33; }
+  #panel::before {
+    content:''; position:absolute; top:0; left:-1px;
+    width:6px; height:100%; cursor:col-resize; z-index:20;
+    background:transparent; transition:background .15s;
+  }
+  #panel:hover::before, #panel.resizing::before { background:var(--accent)33; }
+  .panel-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 8px; height:34px; flex-shrink:0;
+    border-bottom:1px solid var(--border);
+  }
+  .panel-header-title {
+    font-size:9px; font-weight:700; letter-spacing:.15em;
+    text-transform:uppercase; color:var(--text3);
+    font-family:'JetBrains Mono',monospace; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis;
+  }
+  .panel-header-actions { display:flex; gap:2px; flex-shrink:0; }
+  .panel-icon-btn {
+    width:24px; height:24px; border-radius:var(--r);
+    border:none; background:transparent; color:var(--text3);
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:all .15s; flex-shrink:0; padding:0;
+  }
+  .panel-icon-btn:hover { background:var(--surface3); color:var(--text); }
+  .panel-icon-btn:focus-visible { outline:none; box-shadow:var(--focus-ring); }
+  .panel-icon-btn.active { color:var(--accent); }
+  #sidebar.state-icons .sidebar-section h2 { display:none; }
+  #sidebar.state-icons .palette-item { justify-content:center; padding:8px 4px; }
+  #sidebar.state-icons .item-label { display:none; }
+  #sidebar.state-icons .palette-add-btn { display:none; }
+  #sidebar.state-icons .sidebar-inner { padding:8px 4px; gap:8px; }
+  #sidebar.state-icons .panel-header-title { display:none; }
+  #sidebar.state-icons .panel-header { justify-content:center; }
+  #panel.state-icons .tab-label { display:none; }
+  #panel.state-icons .ptab { padding:10px 0; }
+  #panel.state-icons .panel-body { display:none; }
+  #panel.state-icons [role=tabpanel] { display:none; }
+  #panel.state-icons .panel-header-title { display:none; }
+  #panel.state-icons .panel-header { justify-content:center; }
+  #edit-btn {
+    display:none; position:absolute; z-index:100;
+    background:var(--accent); color:#000;
+    border:none; border-radius:var(--r);
+    padding:3px 10px; font-size:10px; font-weight:700;
+    font-family:'JetBrains Mono',monospace;
+    cursor:pointer; pointer-events:all;
+    letter-spacing:.05em;
+    box-shadow:0 2px 8px rgba(0,0,0,.4);
+    transition:opacity .1s;
+  }
+  #edit-btn:hover { filter:brightness(1.15); }
+  #edit-btn:focus-visible { outline:none; box-shadow:var(--focus-ring); }
+  #edit-btn.visible { display:block; }
 </style>
 </head>
 <body>
@@ -797,37 +867,44 @@
 
     <!-- PALETTE SIDEBAR -->
     <aside id="sidebar" role="complementary" aria-label="Element palette">
-
+      <div class="panel-header" id="sidebar-header">
+        <span class="panel-header-title">Palette</span>
+        <div class="panel-header-actions">
+          <button class="panel-icon-btn active" id="sidebar-pin-btn" title="Pin palette open" aria-label="Pin palette open" aria-pressed="true"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M9 2L14 7L9.5 11.5L9 14L7 12L4 9L6.5 6.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/><line x1="2" y1="14" x2="5" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+          <button class="panel-icon-btn" id="sidebar-toggle-btn" title="Toggle palette ([ key)" aria-label="Toggle palette"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path id="sidebar-toggle-icon" d="M10 3L6 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
+      <div class="sidebar-inner">
       <div class="sidebar-section">
         <h2>Actors</h2>
         <div class="palette-grid">
           <div class="palette-row">
             <div class="palette-item" draggable="true" data-type="actor-person" tabindex="0" role="button" aria-label="Preview person actor properties">
-              <span class="pill pill-actor">👤</span> Person
+              <span class="pill pill-actor">👤</span><span class="item-label"> Person</span>
             </div>
             <button class="palette-add-btn" data-add-type="actor-person" tabindex="0" title="Add person actor" aria-label="Add person actor to canvas">+</button>
           </div>
           <div class="palette-row">
             <div class="palette-item" draggable="true" data-type="actor-system" tabindex="0" role="button" aria-label="Preview system actor properties">
-              <span class="pill pill-actor">⬜</span> System
+              <span class="pill pill-actor">⬜</span><span class="item-label"> System</span>
             </div>
             <button class="palette-add-btn" data-add-type="actor-system" tabindex="0" title="Add system actor" aria-label="Add system actor to canvas">+</button>
           </div>
           <div class="palette-row">
             <div class="palette-item" draggable="true" data-type="actor-db" tabindex="0" role="button" aria-label="Preview database actor properties">
-              <span class="pill pill-actor">🗄</span> Database
+              <span class="pill pill-actor">🗄</span><span class="item-label"> Database</span>
             </div>
             <button class="palette-add-btn" data-add-type="actor-db" tabindex="0" title="Add database actor" aria-label="Add database actor to canvas">+</button>
           </div>
           <div class="palette-row">
             <div class="palette-item" draggable="true" data-type="actor-queue" tabindex="0" role="button" aria-label="Preview queue actor properties">
-              <span class="pill pill-actor">📥</span> Queue
+              <span class="pill pill-actor">📥</span><span class="item-label"> Queue</span>
             </div>
             <button class="palette-add-btn" data-add-type="actor-queue" tabindex="0" title="Add queue actor" aria-label="Add queue actor to canvas">+</button>
           </div>
           <div class="palette-row">
             <div class="palette-item" data-type="actor-custom" tabindex="0" role="button" aria-label="Add custom actor with emoji">
-              <span class="pill pill-actor">✨</span> Custom…
+              <span class="pill pill-actor">✨</span><span class="item-label"> Custom…</span>
             </div>
           </div>
         </div>
@@ -838,19 +915,19 @@
         <div class="palette-grid">
           <div class="palette-row">
             <div class="palette-item" draggable="true" data-type="msg-sync" tabindex="0" role="button" aria-label="Preview sync message properties">
-              <span class="pill pill-sync">→</span> Sync Call
+              <span class="pill pill-sync">→</span><span class="item-label"> Sync Call</span>
             </div>
             <button class="palette-add-btn" data-add-type="msg-sync" tabindex="0" title="Add sync message" aria-label="Add sync message to canvas">+</button>
           </div>
           <div class="palette-row">
             <div class="palette-item" draggable="true" data-type="msg-async" tabindex="0" role="button" aria-label="Preview async message properties">
-              <span class="pill pill-async">⇢</span> Async
+              <span class="pill pill-async">⇢</span><span class="item-label"> Async</span>
             </div>
             <button class="palette-add-btn" data-add-type="msg-async" tabindex="0" title="Add async message" aria-label="Add async message to canvas">+</button>
           </div>
           <div class="palette-row">
             <div class="palette-item" draggable="true" data-type="msg-return" tabindex="0" role="button" aria-label="Preview return message properties">
-              <span class="pill pill-return">←</span> Return
+              <span class="pill pill-return">←</span><span class="item-label"> Return</span>
             </div>
             <button class="palette-add-btn" data-add-type="msg-return" tabindex="0" title="Add return message" aria-label="Add return message to canvas">+</button>
           </div>
@@ -862,31 +939,32 @@
         <div class="palette-grid">
           <div class="palette-row">
             <div class="palette-item" draggable="true" data-type="note" tabindex="0" role="button" aria-label="Preview note properties">
-              <span class="pill pill-note">📝</span> Note
+              <span class="pill pill-note">📝</span><span class="item-label"> Note</span>
             </div>
             <button class="palette-add-btn" data-add-type="note" tabindex="0" title="Add note" aria-label="Add note to canvas">+</button>
           </div>
           <div class="palette-row">
             <div class="palette-item" draggable="true" data-type="frag-alt" tabindex="0" role="button" aria-label="Preview alt fragment properties">
-              <span class="pill pill-alt">alt</span> Alt
+              <span class="pill pill-alt">alt</span><span class="item-label"> Alt</span>
             </div>
             <button class="palette-add-btn" data-add-type="frag-alt" tabindex="0" title="Add alt fragment" aria-label="Add alt fragment to canvas">+</button>
           </div>
           <div class="palette-row">
             <div class="palette-item" draggable="true" data-type="frag-loop" tabindex="0" role="button" aria-label="Preview loop fragment properties">
-              <span class="pill pill-loop">⟳</span> Loop
+              <span class="pill pill-loop">⟳</span><span class="item-label"> Loop</span>
             </div>
             <button class="palette-add-btn" data-add-type="frag-loop" tabindex="0" title="Add loop fragment" aria-label="Add loop fragment to canvas">+</button>
           </div>
           <div class="palette-row">
             <div class="palette-item" draggable="true" data-type="frag-opt" tabindex="0" role="button" aria-label="Preview opt fragment properties">
-              <span class="pill pill-alt">opt</span> Opt
+              <span class="pill pill-alt">opt</span><span class="item-label"> Opt</span>
             </div>
             <button class="palette-add-btn" data-add-type="frag-opt" tabindex="0" title="Add opt fragment" aria-label="Add opt fragment to canvas">+</button>
           </div>
         </div>
       </div>
 
+      </div><!-- /.sidebar-inner -->
     </aside>
 
     <!-- CANVAS -->
@@ -937,16 +1015,24 @@
       </div>
 
       <div id="kb-hint" aria-hidden="true">
-        <b>A</b> actor · <b>M</b> msg · <b>Del</b> delete · <b>Esc</b> deselect · <b>Ctrl+Z</b> undo · <b>Ctrl+Y</b> redo · <b>click</b> msg selects · <b>dblclick</b> arrow direction
+        <b>A</b> actor · <b>M</b> msg · <b>Del</b> delete · <b>Esc</b> deselect · <b>Ctrl+Z</b> undo · <b>Ctrl+Y</b> redo · <b>click</b> selects · <b>Edit</b> opens properties
       </div>
+      <button id="edit-btn" aria-label="Edit selected element properties">Edit</button>
     </main>
 
     <!-- PROPERTIES PANEL -->
     <aside id="panel" role="complementary" aria-label="Properties and output panel">
+      <div class="panel-header" id="panel-header">
+        <span class="panel-header-title">Inspector</span>
+        <div class="panel-header-actions">
+          <button class="panel-icon-btn active" id="panel-pin-btn" title="Pin inspector open" aria-label="Pin inspector open" aria-pressed="true"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M9 2L14 7L9.5 11.5L9 14L7 12L4 9L6.5 6.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/><line x1="2" y1="14" x2="5" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+          <button class="panel-icon-btn" id="panel-toggle-btn" title="Toggle inspector (] key)" aria-label="Toggle inspector"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path id="panel-toggle-icon" d="M6 3L10 8L6 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
       <div id="panel-tabs" role="tablist">
-        <button class="ptab active" id="tab-props" role="tab" aria-selected="true" aria-controls="pane-props">Properties</button>
-        <button class="ptab" id="tab-output" role="tab" aria-selected="false" aria-controls="pane-output">Output</button>
-        <button class="ptab" id="tab-api" role="tab" aria-selected="false" aria-controls="pane-api">API</button>
+        <button class="ptab active" id="tab-props" role="tab" aria-selected="true" aria-controls="pane-props"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="flex-shrink:0"><circle cx="8" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/><line x1="8" y1="12" x2="8" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="tab-label">Properties</span></button>
+        <button class="ptab" id="tab-output" role="tab" aria-selected="false" aria-controls="pane-output"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="flex-shrink:0"><polyline points="2,4 2,14 14,14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><polyline points="5,10 8,6 11,9 14,4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg><span class="tab-label">Output</span></button>
+        <button class="ptab" id="tab-api" role="tab" aria-selected="false" aria-controls="pane-api"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="flex-shrink:0"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M5 8L11 8M9 5.5L11.5 8L9 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="tab-label">API</span></button>
       </div>
 
       <!-- PROPERTIES PANE -->
@@ -1080,7 +1166,7 @@
 <!-- SETTINGS MODAL -->
 <div id="settings-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title"
      style="display:none;position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:center;justify-content:center">
-  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:24px 28px;min-width:320px;max-width:400px;box-shadow:0 24px 64px rgba(0,0,0,.6);animation:modal-in .18s ease">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:24px 28px;min-width:320px;max-width:400px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.6);animation:modal-in .18s ease">
     <h2 id="settings-modal-title" style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--text);margin-bottom:20px">
       ⚙ Settings
     </h2>
@@ -1089,7 +1175,7 @@
       <label style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:8px">
         On element click, focus panel
       </label>
-      <select id="setting-click-tab" class="prop-select" aria-label="Panel tab to focus when clicking an element">
+      <select id="setting-click-tab-REMOVED" hidden class="prop-select" aria-label="Panel tab to focus when clicking an element">
         <option value="props">Properties (default)</option>
         <option value="output">Output</option>
         <option value="stay">Stay on current tab</option>
@@ -1104,7 +1190,7 @@
         Associate on click
       </label>
       <div class="prop-row">
-        <input type="checkbox" id="setting-assoc-on-click" aria-label="Associate message with last actor on click"/>
+        <input type="checkbox" id="setting-assoc-REMOVED" hidden aria-label="Associate message with last actor on click"/>
         <label for="setting-assoc-on-click" style="font-size:11px;color:var(--text2)">
           Set message From to last-added actor on click
         </label>
@@ -1127,7 +1213,11 @@
       </small>
     </div>
 
-    <div class="modal-actions" style="margin-top:20px">
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <p style="font-size:10px;color:var(--text3);margin-bottom:8px">Reset all UI preferences and reload.</p>
+      <button class="modal-btn" id="settings-reset-ui-btn" style="background:var(--surface2);color:var(--red,#f87171);border:1px solid var(--red,#f87171)33;font-size:10px">Reset UI to defaults</button>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
       <button class="modal-btn cancel" id="settings-modal-close">Close</button>
     </div>
   </div>
@@ -1782,7 +1872,6 @@ const uiState = {
   selected:       null,   // { ...obj, _type, _ref, _preview? }
   mode:           'select',
   connectFrom:    null,
-  pendingActorId: null,
   format:         'plantuml',
   placeGhostX:    null,   // X coordinate of actor placement ghost; non-null only in place-actor mode
 }
@@ -2251,6 +2340,7 @@ function render() {
   updateStats();
   updateOutput();
   _saveDiagram();
+  if (typeof _positionEditBtn === 'function') _positionEditBtn();
 }
 
 
@@ -2265,13 +2355,11 @@ function renderActor(a) {
   // Custom emoji takes precedence over type-based icon
   const icon = a.emoji || { 'actor-person':'👤','actor-system':'⬜','actor-db':'🗄','actor-queue':'📥' }[a.type] || '⬜';
 
-  // Connect-source highlight + pending-actor (armed for message association)
+  // Connect-source highlight
   const isConnectSource = uiState.mode === 'connect' && uiState.connectFrom === a.id;
-  const isPending       = uiState.pendingActorId === a.id;
   const rectClass = 'actor-head'
     + (uiState.selected?.id===a.id ? ' selected' : '')
-    + (isConnectSource ? ' connect-source' : '')
-    + (isPending       ? ' pending-actor'  : '');
+    + (isConnectSource ? ' connect-source' : '');
 
   const rect = svgEl('rect', {
     x:a.x, y:8, width:ACTOR_W, height:ACTOR_H,
@@ -2415,8 +2503,7 @@ function renderMessage(m) {
     if (uiState.mode === 'connect') return;
     e.stopPropagation();
     setSelected(state.messages.find(msg => msg.id === m.id), 'message', false);
-    activateTab('tab-props');
-    dbg('msg-click', `id=${m.id} selected`);
+    if (DEBUG_VERBOSE) dbg('msg-click', `id=${m.id} selected`);
   });
   const classColors = { Public:'#4af07a', Internal:'#f0c44a', Confidential:'#f07a4a', PII:'#ff6b8a', PHI:'#ff6b8a', Secret:'#556080' };
   if (netParts.length > 0) {
@@ -2435,18 +2522,7 @@ function renderMessage(m) {
 
   messagesLayer.appendChild(g);
 
-  // Double-click cycles direction: right → left → both → right.
-  // No debounce needed — click and dblclick are separate concerns with no shared state.
-  g.addEventListener('dblclick', e => {
-    e.stopPropagation();
-    const ref = state.messages.find(msg => msg.id === m.id);
-    if (!ref) return;
-    const wasDir = ref.direction || 'right';
-    const newDir = nextMessageDirection(wasDir);
-    store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: ref.id, direction: newDir } });
-    toast(`Direction: ${newDir}`);
-    if (DEBUG_VERBOSE) dbg('msg-dblclick', `was=${wasDir} → ${newDir} (store.dir=${state.messages.find(msg=>msg.id===m.id)?.direction})`);
-  });
+  // Direction changed via Properties panel only.
 }
 
 function renderNote(n) {
@@ -2574,15 +2650,14 @@ function addFromPaletteWithDefaults(type, defaults) {
     }});
     toast(`Added ${defaults.label || 'Actor'}`);
   } else if (type.startsWith('msg')) {
-    if (state.actors.length < 2) { toast('Need ≥2 actors first'); return; }
     _store.dispatch({ type: 'ADD_MESSAGE', payload: {
-      fromId:    defaults.fromId    || state.actors[0].id,
-      toId:      defaults.toId      || state.actors[1]?.id || state.actors[0].id,
+      fromId:    defaults.fromId    || null,
+      toId:      defaults.toId      || null,
       label:     defaults.label     || 'message',
       kind:      defaults.kind      || 'sync',
       direction: defaults.direction || 'right',
     }});
-    toast('Message added');
+    toast('Message added — set From/To in Properties');
   } else if (type === 'note') {
     _store.dispatch({ type: 'ADD_NOTE', payload: {
       x: 60, y: calcCanvasHeight()/2, text: defaults.text || 'note',
@@ -2682,29 +2757,12 @@ function addFromPalette(type, x, y) {
     }});
     toast(`Added ${labelForType(type)}`);
   } else if (type.startsWith('msg')) {
-    if (state.actors.length < 2) { toast('Need ≥2 actors first'); return; }
-    const sorted = [...state.actors].sort((a,b) => a.x - b.x);
-    let fromActor, toActor;
-    if (x !== undefined) {
-      const nearest = sorted.reduce((best, a) => {
-        const cx = a.x + ACTOR_W/2;
-        return Math.abs(cx - x) < Math.abs((best.x + ACTOR_W/2) - x) ? a : best;
-      }, sorted[0]);
-      const ni = sorted.indexOf(nearest);
-      fromActor = nearest;
-      toActor   = sorted[ni + 1] || sorted[ni - 1];
-    } else {
-      const last = getLastActor();
-      fromActor  = last;
-      const li   = sorted.indexOf(last);
-      toActor    = sorted[li + 1] || sorted[li - 1] || sorted.find(a => a.id !== last.id);
-    }
     const kind = type.replace('msg-','');
     _store.dispatch({ type: 'ADD_MESSAGE', payload: {
-      fromId: fromActor.id, toId: toActor.id,
+      fromId: null, toId: null,
       label: 'message', kind, direction: 'right',
     }});
-    toast('Message added — edit in Properties');
+    toast('Message added — set From/To in Properties');
   } else if (type === 'note') {
     _store.dispatch({ type: 'ADD_NOTE', payload: {
       x: Math.max(10, x||60), y: y||200, text: 'note',
@@ -2751,7 +2809,7 @@ svg.addEventListener('click', e => {
     return;
   }
 
-  if (!g) { uiState.pendingActorId = null; setSelected(null); render(); return; }
+  if (!g) { setSelected(null); render(); return; }
 
   const id   = g.dataset.id;
   const type = g.dataset.type;
@@ -2774,10 +2832,7 @@ svg.addEventListener('click', e => {
     state.notes.find(n=>n.id===id) ||
     state.fragments.find(f=>f.id===id);
 
-  if (found) setSelected(found, type, true);
-  // Defer render — avoids rebuilding the DOM mid-event-dispatch which can cause
-  // dblclick handlers on newly created elements to fire for the current event.
-  setTimeout(render, 0);
+  if (found) { setSelected(found, type, true); render(); }
 });
 
 // ── Connect mode ──
@@ -2976,14 +3031,24 @@ window.addEventListener('mouseup', e => {
     });
     if (changed) {
       store.dispatch({ type: 'REFLOW_ACTORS', payload: { positions } });
+      // Defer render so click event can fire on the current DOM before rebuild
+      setTimeout(render, 0);
     }
-    render(); // full render on actor drop — lifelines and messages must follow new positions
+    // No render needed if nothing changed — click will fire normally
   } else if (dragging?._type === 'note') {
-    store.dispatch({ type: 'MOVE_NOTE', payload: { id: dragging.id, x: dragging.x, y: dragging.y } });
-    render();
+    const noteMoved = Math.round(dragging.x) !== Math.round(dragging._dragBaseX) ||
+                      Math.round(dragging.y) !== Math.round(dragging._dragBaseY);
+    if (noteMoved) {
+      store.dispatch({ type: 'MOVE_NOTE', payload: { id: dragging.id, x: dragging.x, y: dragging.y } });
+      setTimeout(render, 0);
+    }
   } else if (dragging?._type === 'fragment') {
-    store.dispatch({ type: 'MOVE_FRAGMENT', payload: { id: dragging.id, x: dragging.x, y: dragging.y } });
-    render();
+    const fragMoved = Math.round(dragging.x) !== Math.round(dragging._dragBaseX) ||
+                      Math.round(dragging.y) !== Math.round(dragging._dragBaseY);
+    if (fragMoved) {
+      store.dispatch({ type: 'MOVE_FRAGMENT', payload: { id: dragging.id, x: dragging.x, y: dragging.y } });
+      setTimeout(render, 0);
+    }
   }
   dragging = null;
 });
@@ -2997,7 +3062,7 @@ window.addEventListener('keydown', e => {
   if (e.key==='m' || e.key==='M') { e.preventDefault(); document.getElementById('btn-connect')?.click(); }
   if (e.key==='n' || e.key==='N') { e.preventDefault(); addFromPalette('note', 60, calcCanvasHeight()/2); }
   if (e.key==='f' || e.key==='F') { e.preventDefault(); addFromPalette('frag-alt', 60, calcCanvasHeight()/2); }
-  if (e.key==='Escape') { uiState.pendingActorId = null; setSelected(null); setMode('select'); render(); }
+  if (e.key==='Escape') { setSelected(null); setMode('select'); render(); }
   if ((e.key==='Delete'||e.key==='Backspace') && uiState.selected) deleteSelected();
 });
 
@@ -3008,65 +3073,19 @@ function toggleConnectMode() {
 }
 
 // ── Selection — uiState only, no store mutation ──
-let _propDirty = false; // hoisted — must survive render() calls during editing
-function setSelected(obj, type, associateOnSelect=false) {
+let _propDirty = false;
+let _selectedKey = null; // tracks last rendered selection to avoid needless rebuilds // hoisted — must survive render() calls during editing
+function setSelected(obj, type) {
   _propDirty = false;
   uiState.selected = obj ? _wrapSelected(obj, type) : null;
   if (obj) {
     // Clear palette preview highlight when a real canvas element is selected
     document.querySelectorAll('.palette-item.previewing').forEach(el => el.classList.remove('previewing'));
 
-    if (associateOnSelect) {
-      if (type === 'actor') {
-        // Arm this actor as pending for next message click
-        const wasPending = uiState.pendingActorId === obj.id;
-        uiState.pendingActorId = wasPending ? null : obj.id;
-        const label = obj.label || 'actor';
-        if (uiState.pendingActorId) {
-          toast(`${label} armed — click a message to set From`);
-          dbg('pending', `actor armed: ${label}`);
-        } else {
-          dbg('pending', 'actor disarmed');
-        }
-      } else if (type === 'message' && uiState.pendingActorId) {
-        // Consume pending actor → assign as fromId via dispatch
-        const sourceActor = state.actors.find(a => a.id === uiState.pendingActorId);
-        if (sourceActor) {
-          _store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: obj.id, fromId: sourceActor.id } });
-          uiState.selected = _wrapSelected(
-            state.messages.find(m => m.id === obj.id), 'message'
-          );
-          const announce = document.getElementById('connect-announce');
-          if (announce) announce.textContent = `Message from set to ${sourceActor.label}`;
-          toast(`From: ${sourceActor.label}`);
-          dbg('assoc', `msg.fromId → ${sourceActor.label}`);
-        }
-        uiState.pendingActorId = null;
-      } else if (type !== 'actor') {
-        uiState.pendingActorId = null;
-      }
-
-      // Fallback: associate with last-added actor (settings-gated)
-      if (type === 'message' && !uiState.pendingActorId && state_settings.associateOnClick) {
-        const lastActor = getLastActor();
-        const currentMsg = state.messages.find(m => m.id === obj.id);
-        if (lastActor && currentMsg && lastActor.id !== currentMsg.fromId) {
-          _store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: obj.id, fromId: lastActor.id } });
-          uiState.selected = _wrapSelected(state.messages.find(m => m.id === obj.id), 'message');
-          dbg('assoc-fallback', `msg.fromId → ${lastActor.label}`);
-          toast(`From: ${lastActor.label}`);
-        }
-      }
-
-      // Focus panel tab per settings
-      if (state_settings.clickFocusTab !== 'stay') {
-        activateTab('tab-' + state_settings.clickFocusTab);
-      }
-    }
   } else {
-    uiState.pendingActorId = null;
     document.querySelectorAll('.palette-item.previewing').forEach(el => el.classList.remove('previewing'));
   }
+  if (typeof _positionEditBtn === 'function') _positionEditBtn();
   renderProperties();
 
   // Announce selection to screen readers via polite live region
@@ -3298,6 +3317,11 @@ const propertyVisitors = {
 function renderProperties() {
   const el = document.getElementById('props-content');
   const s  = uiState.selected;
+  // Skip full rebuild only if same element AND inputs already rendered
+  const key = s ? (s.id + ':' + s._type) : null;
+  const sameElement = key && key === _selectedKey && el.querySelector('input, select, textarea');
+  _selectedKey = key;
+  if (sameElement) return;
 
   if (!s) {
     el.innerHTML = `<div class="no-selection">
@@ -3396,7 +3420,6 @@ document.getElementById('btn-connect')?.addEventListener('click', () => {
   } else {
     // Fallback: enter connect mode so user can place actors first
     toggleConnectMode();
-    toast(state.actors.length === 0 ? 'Add actors first, then draw messages' : 'Need 2 actors — add one more, then draw');
   }
 });
 document.getElementById('btn-note')?.addEventListener('click', () => addFromPalette('note', 60, calcCanvasHeight()/2));
@@ -3621,17 +3644,21 @@ document.getElementById('import-file-input')?.addEventListener('change', e => {
 const _SETTINGS_KEY = 'sf-settings';
 
 const state_settings = {
-  clickFocusTab:   'props',      // 'props' | 'output' | 'stay'
-  associateOnClick: true,        // whether setSelected fires actor association
-  defaultFormat:   'plantuml',   // 'plantuml' | 'mermaid'
+  defaultFormat:    'plantuml',
+  sidebarState:     'full',
+  panelState:       'full',
+  sidebarPinned:    true,
+  panelPinned:      true,
 };
 
 (function _loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem(_SETTINGS_KEY) || '{}');
-    if (saved.clickFocusTab)                         state_settings.clickFocusTab   = saved.clickFocusTab;
-    if (typeof saved.associateOnClick === 'boolean') state_settings.associateOnClick = saved.associateOnClick;
     if (saved.defaultFormat)                         state_settings.defaultFormat    = saved.defaultFormat;
+    if (saved.sidebarState === 'icons' || saved.sidebarState === 'full') state_settings.sidebarState = saved.sidebarState;
+    if (saved.panelState   === 'icons' || saved.panelState   === 'full') state_settings.panelState   = saved.panelState;
+    if (typeof saved.sidebarPinned === 'boolean') state_settings.sidebarPinned = saved.sidebarPinned;
+    if (typeof saved.panelPinned   === 'boolean') state_settings.panelPinned   = saved.panelPinned;
   } catch(e) {}
   // Apply saved default format on boot
   if (state_settings.defaultFormat) {
@@ -3682,8 +3709,11 @@ function _exportDiagram() {
   const a    = document.createElement('a');
   a.href     = url;
   a.download = 'sequenceforge-diagram.json';
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 100);
   toast('Diagram exported ✓');
 }
 
@@ -3953,19 +3983,14 @@ function activateTab(tabId) {
 
 // Settings modal wiring
 const _settingsBackdrop = document.getElementById('settings-modal-backdrop');
-const _settingClickTab  = document.getElementById('setting-click-tab');
-const _settingAssoc     = document.getElementById('setting-assoc-on-click');
-
 const _settingDefaultFormat = document.getElementById('setting-default-format');
 
 document.getElementById('btn-settings')?.addEventListener('click', () => {
   // Sync UI to current settings before opening
-  if (_settingClickTab)     _settingClickTab.value    = state_settings.clickFocusTab;
-  if (_settingAssoc)        _settingAssoc.checked     = state_settings.associateOnClick;
   if (_settingDefaultFormat) _settingDefaultFormat.value = state_settings.defaultFormat;
   if (_settingsBackdrop) {
     _settingsBackdrop.style.display = 'flex';
-    requestAnimationFrame(() => _settingClickTab?.focus());
+    requestAnimationFrame(() => {});
   }
 });
 
@@ -3989,16 +4014,6 @@ _settingsBackdrop?.addEventListener('keydown', e => {
   }
 });
 
-_settingClickTab?.addEventListener('change', () => {
-  state_settings.clickFocusTab = _settingClickTab.value;
-  _saveSettings();
-  dbg('settings', `clickFocusTab → ${state_settings.clickFocusTab}`);
-});
-_settingAssoc?.addEventListener('change', () => {
-  state_settings.associateOnClick = _settingAssoc.checked;
-  _saveSettings();
-  dbg('settings', `associateOnClick → ${state_settings.associateOnClick}`);
-});
 
 _settingDefaultFormat?.addEventListener('change', () => {
   state_settings.defaultFormat = _settingDefaultFormat.value;
@@ -4152,6 +4167,228 @@ canvasWrap.addEventListener('keydown', e => {
 // ═══════════════════════════════════════════════════════
 updateUndoBtn();
 render();
+
+// ══════════════════════════════════════════════════════════════
+//  PANEL SYSTEM  v0.9.24
+// ══════════════════════════════════════════════════════════════
+
+var _PW = { icons: 60, sidebar_full: 200, panel_full: 340 };
+var _SNAP = 130;
+var _panelResizing = null;
+
+function _applyPanelState(side, newState) {
+  var isSidebar   = side === 'sidebar';
+  var el          = document.getElementById(isSidebar ? 'sidebar' : 'panel');
+  var prop        = isSidebar ? '--sidebar-w' : '--panel-w';
+  var stateKey    = isSidebar ? 'sidebarState' : 'panelState';
+  var pinnedKey   = isSidebar ? 'sidebarPinned' : 'panelPinned';
+  var fullW       = isSidebar ? _PW.sidebar_full : _PW.panel_full;
+  var toggleIcon  = document.getElementById(isSidebar ? 'sidebar-toggle-icon' : 'panel-toggle-icon');
+  var pinBtn      = document.getElementById(isSidebar ? 'sidebar-pin-btn' : 'panel-pin-btn');
+  var workspace   = document.getElementById('workspace');
+  if (!el || !workspace) return;
+  var prev = state_settings[stateKey];
+  state_settings[stateKey] = newState;
+  workspace.style.setProperty(prop, (newState === 'icons' ? _PW.icons : fullW) + 'px');
+  el.classList.remove('state-icons', 'state-full');
+  el.classList.add('state-' + newState);
+  if (toggleIcon) {
+    toggleIcon.setAttribute('d', isSidebar
+      ? (newState === 'full' ? 'M10 3L6 8L10 13' : 'M6 3L10 8L6 13')
+      : (newState === 'full' ? 'M6 3L10 8L6 13'  : 'M10 3L6 8L10 13')
+    );
+  }
+  if (pinBtn) {
+    pinBtn.classList.toggle('active', state_settings[pinnedKey]);
+    pinBtn.setAttribute('aria-pressed', String(state_settings[pinnedKey]));
+  }
+  if (prev !== newState) dbg('panel', side + ': ' + prev + ' -> ' + newState);
+  _saveSettings();
+}
+
+function _togglePanel(side) {
+  var key = side === 'sidebar' ? 'sidebarState' : 'panelState';
+  _applyPanelState(side, state_settings[key] === 'full' ? 'icons' : 'full');
+}
+
+function _startPanelResize(side, clientX) {
+  var isSidebar = side === 'sidebar';
+  var key = isSidebar ? 'sidebarState' : 'panelState';
+  var fullW = isSidebar ? _PW.sidebar_full : _PW.panel_full;
+  var curW = state_settings[key] === 'icons' ? _PW.icons : fullW;
+  _panelResizing = { side: side, startX: clientX, startW: curW };
+  var el = document.getElementById(isSidebar ? 'sidebar' : 'panel');
+  if (el) el.classList.add('resizing');
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+}
+
+window.addEventListener('mousemove', function(e) {
+  if (!_panelResizing) return;
+  var isSidebar = _panelResizing.side === 'sidebar';
+  var dx = isSidebar ? e.clientX - _panelResizing.startX : _panelResizing.startX - e.clientX;
+  var newW = Math.max(_PW.icons, Math.min(480, _panelResizing.startW + dx));
+  var workspace = document.getElementById('workspace');
+  if (workspace) workspace.style.setProperty(isSidebar ? '--sidebar-w' : '--panel-w', newW + 'px');
+});
+
+window.addEventListener('mouseup', function(e) {
+  if (!_panelResizing) return;
+  var side = _panelResizing.side;
+  var isSidebar = side === 'sidebar';
+  var moved = Math.abs(e.clientX - _panelResizing.startX);
+  var workspace = document.getElementById('workspace');
+  var rawW = workspace ? (parseInt(workspace.style.getPropertyValue(isSidebar ? '--sidebar-w' : '--panel-w')) || 0) : 0;
+  var el = document.getElementById(isSidebar ? 'sidebar' : 'panel');
+  if (el) el.classList.remove('resizing');
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  _panelResizing = null;
+  if (moved < 6) return;
+  _applyPanelState(side, rawW < _SNAP ? 'icons' : 'full');
+});
+
+document.getElementById('sidebar').addEventListener('mousedown', function(e) {
+  var rect = this.getBoundingClientRect();
+  if (e.clientY >= rect.top && e.clientY <= rect.bottom &&
+      e.clientX >= rect.right - 7 && e.clientX <= rect.right + 2) {
+    e.preventDefault(); e.stopPropagation(); _startPanelResize('sidebar', e.clientX);
+  }
+});
+
+document.getElementById('panel').addEventListener('mousedown', function(e) {
+  var rect = this.getBoundingClientRect();
+  if (e.clientY >= rect.top && e.clientY <= rect.bottom &&
+      e.clientX >= rect.left - 2 && e.clientX <= rect.left + 7) {
+    e.preventDefault(); e.stopPropagation(); _startPanelResize('panel', e.clientX);
+  }
+});
+
+document.getElementById('sidebar-toggle-btn').addEventListener('click', function() { _togglePanel('sidebar'); });
+document.getElementById('panel-toggle-btn').addEventListener('click', function() { _togglePanel('panel'); });
+
+document.getElementById('sidebar-pin-btn').addEventListener('click', function() {
+  state_settings.sidebarPinned = !state_settings.sidebarPinned;
+  this.classList.toggle('active', state_settings.sidebarPinned);
+  this.setAttribute('aria-pressed', String(state_settings.sidebarPinned));
+  _saveSettings();
+});
+
+document.getElementById('panel-pin-btn').addEventListener('click', function() {
+  state_settings.panelPinned = !state_settings.panelPinned;
+  this.classList.toggle('active', state_settings.panelPinned);
+  this.setAttribute('aria-pressed', String(state_settings.panelPinned));
+  _saveSettings();
+});
+
+document.getElementById('settings-reset-ui-btn').addEventListener('click', function() {
+  localStorage.removeItem('sf-settings'); location.reload();
+});
+
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+  if (e.key === '[' || e.key === '{') { e.preventDefault(); _togglePanel('sidebar'); }
+  if (e.key === ']' || e.key === '}') { e.preventDefault(); _togglePanel('panel'); }
+});
+
+(function _panelBoot() {
+  _applyPanelState('sidebar', state_settings.sidebarState || 'full');
+  _applyPanelState('panel',   state_settings.panelState   || 'full');
+}());
+
+// ══════════════════════════════════════════════════════════════
+//  EDIT BUTTON
+//  Appears at top-right of selected element bounding box.
+//  Click opens Properties panel.
+// ══════════════════════════════════════════════════════════════
+
+var _editBtn = document.getElementById('edit-btn');
+
+function _positionEditBtn() {
+  if (!_editBtn) return;
+  var s = uiState.selected;
+  if (!s || s._preview) {
+    if (DEBUG_VERBOSE) dbg('edit-btn-hide', s ? 'preview' : 'no selection');
+    _editBtn.classList.remove('visible');
+    return;
+  }
+
+  var box = null;
+
+  if (s._type === 'actor') {
+    var actor = state.actors.find(function(a) { return a.id === s.id; });
+    if (actor) {
+      box = { x: actor.x, y: 8, w: ACTOR_W, h: ACTOR_H };
+    }
+  } else if (s._type === 'message') {
+    var msg = state.messages.find(function(m) { return m.id === s.id; });
+    if (msg) {
+      var fromA = state.actors.find(function(a) { return a.id === msg.fromId; });
+      var toA   = state.actors.find(function(a) { return a.id === msg.toId; });
+      if (fromA && toA) {
+        // Place button above the arrowhead (toA side), not always at right edge
+        var toX = actorCenterX(toA);
+        var fromX = actorCenterX(fromA);
+        // For bidirectional use midpoint; otherwise use the to-side
+        var anchorX = (msg.direction === 'both')
+          ? (fromX + toX) / 2
+          : toX;
+        box = { x: anchorX - 30, y: msg.y - 28, w: 60, h: 20 };
+      }
+    }
+  } else if (s._type === 'note') {
+    var note = state.notes.find(function(n) { return n.id === s.id; });
+    if (note) {
+      box = { x: note.x, y: (note.y || 0) - 18, w: 120, h: 36 };
+    }
+  } else if (s._type === 'fragment') {
+    var frag = state.fragments.find(function(f) { return f.id === s.id; });
+    if (frag) {
+      box = { x: frag.x, y: frag.y, w: frag.w, h: frag.h };
+    }
+  }
+
+  if (!box) {
+    dbg('edit-btn', 'no box for ' + s._type + ':' + s.id);
+    _editBtn.classList.remove('visible');
+    return;
+  }
+
+  var vp = document.getElementById('viewport');
+  var vpTransform = vp ? (vp.getAttribute('transform') || '') : '';
+  var tm = vpTransform.match(/translate\(([-\d.]+),\s*([-\d.]+)\)/);
+  var vpX = tm ? parseFloat(tm[1]) : 0;
+  var vpY = tm ? parseFloat(tm[2]) : 0;
+
+  var btnX = (box.x + box.w + vpX) * _zoom;
+  var btnY = (box.y + vpY) * _zoom;
+
+  var wrapW = document.getElementById('canvas-wrap').offsetWidth;
+  if (wrapW > 0) btnX = Math.min(btnX, wrapW - 60);
+  btnX = Math.max(btnX, 4);
+  btnY = Math.max(btnY, 4);
+
+  _editBtn.style.left = btnX + 'px';
+  _editBtn.style.top  = btnY + 'px';
+  _editBtn.classList.add('visible');
+  dbg('edit-btn', s._type + ' -> x:' + Math.round(btnX) + ' y:' + Math.round(btnY));
+}
+
+_editBtn && _editBtn.addEventListener('click', function() {
+  if (state_settings.panelState === 'icons') {
+    _applyPanelState('panel', 'full');
+  }
+  activateTab('tab-props');
+  setTimeout(function() {
+    var pane = document.getElementById('pane-props');
+    if (pane) {
+      var first = pane.querySelector('input, select, textarea, button:not([disabled])');
+      if (first) first.focus();
+    }
+  }, 220);
+});
+
+
 </script>
 
 </body>
