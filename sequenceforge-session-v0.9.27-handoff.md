@@ -1,0 +1,183 @@
+# SequenceForge — Session Handoff
+**Version:** v0.9.27
+**Date:** 2026-03-19
+**Repo:** https://github.com/MeatPopSci1972/sequence-builder
+**Local:** `E:\\uml2prompt\\sequence-builder-prototype`
+
+---
+
+## Step 0 — Start of session checklist
+
+```powershell
+cd E:\uml2prompt\sequence-builder-prototype
+git pull origin main
+node sf-server.js        # window 1 — leave running all session
+```
+
+Then open http://localhost:3799/test in Chrome — this runs build.js + all tests
+and serves a live HTML report. Green badge = safe to proceed.
+
+> PowerShell uses semicolons not &&
+> sf-script.js syntax check step requires Unix sed — skip on Windows
+> Gate = node build.js then node sequence-builder.test.js (or just /test endpoint)
+
+---
+
+## Dev server (sf-server.js)
+
+Serves all project files at http://localhost:3799
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| / | GET | List all files |
+| /test | GET | Run build.js + tests, serve HTML report |
+| /<file> | GET | Read file |
+| /<file> | PUT | Write file |
+| /<file> | DELETE | Delete file |
+
+Temp inspection files use _*.txt prefix — gitignored, deleteable via DELETE.
+
+---
+
+## What this project is
+
+Single-file, zero-dependency static HTML application for building UML sequence
+diagrams visually. Outputs PlantUML or Mermaid syntax. Runs entirely in browser.
+Deployment: git push → GitHub Pages serves sequence-builder.html directly.
+
+---
+
+## The four files
+
+```
+sequence-builder.html      ~4400 lines — deployable. DO NOT edit @@STORE-START...@@STORE-END
+sequence-builder.store.js  ~525 lines  — CANONICAL store source. Edit here, build.js syncs.
+sequence-builder.test.js               — 81 tests, 9 suites. All must stay green.
+build.js                   ~174 lines  — syncs store.js into HTML. Zero dependencies.
+```
+
+---
+
+## Where we left off (v0.9.27)
+
+### What shipped this session
+
+**Template Method — renderElement() base function**
+All four render functions (actor, message, note, fragment) share identical <g>
+scaffolding: dataset.id/type, role, aria-label, tabindex, hover bounds, click handler.
+renderElement(el, type, layer, ariaLabel, hoverArgs, drawFn, clickFn) owns that
+contract once. drawFn(g) appends type-specific children. clickFn handles clicks
+(null for drag-only elements like notes). Every click bug in history lived in
+this duplicated scaffolding — it now has one owner.
+
+**renderFragment() extracted**
+Fragment rendering was inline inside render(). Now a standalone function matching
+the pattern of renderActor/Message/Note. render() loop is now one line:
+  for (const f of fragsOrdered) renderFragment(f);
+
+**Facade — setSelected() bypass closed**
+The four :added store listeners were directly writing uiState.selected = _wrapSelected(...)
+bypassing setSelected() and skipping: palette preview clear, edit button positioning,
+renderProperties(), and screen reader announcement. All four now call setSelected().
+setSelected() gained a doRender=false param — callers that need a render pass true,
+eliminating the trailing render() call pattern at every site.
+
+**Live test runner**
+http://localhost:3799/test runs build.js + test suite and serves a colour-coded
+HTML report. Suites are collapsible, raw output available. Re-run button.
+I can now run and verify the gate without touching PowerShell.
+
+**Housekeeping**
+- _*.txt added to .gitignore (temp inspection files)
+- DELETE handler added to sf-server.js
+- Temp files removed from commit history via --amend
+
+---
+
+## Architecture in one diagram
+
+```
+User event
+    |
+    v
+store.dispatch(action)          <- ONLY mutation entry point
+    |
+    |-- log.push(action)
+    |-- pushSnapshot()
+    |-- handler mutates state
+    +-- emit(event, payload)
+              |
+              v
+        store.on() listeners
+              |
+              |-- setSelected()  <- ONLY selection entry point (v0.9.27)
+              +-- render() or requestRender()
+                      |
+                      v
+                  renderElement(el, type, layer, ...)  <- ONLY scaffolding (v0.9.27)
+                      |
+                      +-- drawFn(g)      type-specific content
+                      +-- clickFn(e)     type-specific click
+```
+
+---
+
+## State model
+
+```js
+// store.state — serializable, persistable
+{
+  actors:    [{ id, x, label, type, emoji? }],
+  messages:  [{ id, fromId, toId, label, kind, direction, y,
+                protocol?, port?, auth?, dataClass? }],
+  notes:     [{ id, x, y, text }],
+  fragments: [{ id, x, y, w, h, kind, cond }],
+  nextId:    Number
+}
+// uiState — never persisted
+{
+  selected:    null | { ...obj, _type, _ref, _preview? },
+  mode:        'select' | 'connect' | 'place-actor',
+  connectFrom: null | actorId,
+  format:      'plantuml' | 'mermaid',
+  placeGhostX: null | Number
+}
+```
+
+---
+
+## Six things most likely to confuse a fresh AI instance
+
+1. Never edit @@STORE-START...@@STORE-END in HTML — generated by build.js
+2. _wrapSelected freezes a COPY: Object.freeze({ ...obj }) not obj
+3. render() is immediate, requestRender() is rAF-batched — never swap
+4. state = _store.state is a live alias — writing directly bypasses undo
+5. REFLOW_ACTORS for batch moves — one undoable step, not N
+6. _parseUML returns { actors, messages, warnings } — warnings always present
+
+---
+
+## Priority queue for next session
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Verify message wiring end-to-end | High | Add message with no actors → see dashed placeholder → add actors → wire From/To in Properties → confirm arrow renders. Manual UI test. |
+| renderMessage refactor | Med | renderMessage is the longest render fn (137 lines). Now that renderElement owns the scaffolding, the self-loop path and network badge logic can be cleaner. |
+| Double [save] in verbose logs | Low | render() firing twice per cycle in some paths — investigate once features are stable |
+| Touch/mobile drag | Low | Mouse events only |
+
+---
+
+## Test suite summary (81 tests, 9 suites)
+
+| Suite | Coverage | Count |
+|-------|----------|-------|
+| 1 | ADD_ACTOR, REFLOW_ACTORS | 9 |
+| 2 | DELETE_ACTOR cascade | 4 |
+| 3 | UPDATE_MESSAGE, pure helpers | 4 |
+| 4 | meta.undoable, log, timestamps | 4 |
+| 5 | UNDO | 6 |
+| 6 | REDO, branching history | 7 |
+| 7 | _parseUML | 9 |
+| 8 | E2E lifecycle | 17 |
+| 9 | No-guard policy, edit button, selection | 21 |
