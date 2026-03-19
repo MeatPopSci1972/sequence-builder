@@ -240,8 +240,8 @@ function createStore() {
       if (meta.undoable) pushSnapshot()
       const message = {
         id:        uid(),
-        fromId:    payload.fromId,
-        toId:      payload.toId,
+        fromId:    payload.fromId ?? null,
+        toId:      payload.toId   ?? null,
         label:     payload.label     || 'message',
         kind:      payload.kind      || 'sync',
         direction: payload.direction || 'right',

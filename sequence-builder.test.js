@@ -1459,6 +1459,44 @@ test('Suite 9: note click after deselect — setSelected receives correct note',
   assertEqual(found._type, undefined, 'note from state has no _type yet (added by _wrapSelected)')
 })
 
+// ── Suite 10 — ADD_MESSAGE null contract ─────────────────────────────────────────
+{
+  const s = createStore()
+
+  test('ADD_MESSAGE with no actors stores fromId as null not undefined', () => {
+    s.dispatch({ type: 'ADD_MESSAGE', payload: { label: 'orphan', kind: 'sync', direction: 'right' } })
+    const m = s.state.messages[0]
+    assert(m.fromId === null, 'fromId should be null, got: ' + m.fromId)
+    assert(m.toId   === null, 'toId should be null, got: '   + m.toId)
+  })
+
+  test('ADD_MESSAGE with explicit null fromId/toId stores null', () => {
+    s.dispatch({ type: 'ADD_MESSAGE', payload: { label: 'explicit-null', fromId: null, toId: null } })
+    const m = s.state.messages[1]
+    assert(m.fromId === null, 'fromId should be null')
+    assert(m.toId   === null, 'toId should be null')
+  })
+
+  test('ADD_MESSAGE with actor ids wires correctly', () => {
+    s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+    s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B' } })
+    const [aA, aB] = s.state.actors
+    s.dispatch({ type: 'ADD_MESSAGE', payload: { label: 'wired', fromId: aA.id, toId: aB.id } })
+    const m = s.state.messages[2]
+    assert(m.fromId === aA.id, 'fromId should be aA.id')
+    assert(m.toId   === aB.id, 'toId should be aB.id')
+  })
+
+  test('UPDATE_MESSAGE can wire a previously null message', () => {
+    const orphan = s.state.messages[0]
+    const [aA, aB] = s.state.actors
+    s.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: orphan.id, fromId: aA.id, toId: aB.id } })
+    const m = s.state.messages.find(msg => msg.id === orphan.id)
+    assert(m.fromId === aA.id, 'fromId wired after UPDATE_MESSAGE')
+    assert(m.toId   === aB.id, 'toId wired after UPDATE_MESSAGE')
+  })
+}
+
 // ═══════════════════════════════════════════════════════
 //  RESULTS
 // ═══════════════════════════════════════════════════════
