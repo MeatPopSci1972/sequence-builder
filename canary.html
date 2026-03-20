@@ -124,8 +124,10 @@
   // External driver polls for _frameReady, takes screenshot, then clears it to resume
   function pauseForFrame(label) {
     return new Promise(resolve => {
-      window._frameReady = label || true;
+      window._frameReady  = label || true;
       window._frameResume = resolve;
+      // Signal via title so external driver detects without polling
+      document.title = 'FRAME:' + (label || 'ready');
     });
   }
 
