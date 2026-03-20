@@ -210,6 +210,23 @@ uiState -- never persisted
 
 ---
 
+## GIF capture drive loop (next session)
+
+Navigate to http://localhost:3799/sequence-builder.html?canary=1
+Inject overlay + canary runner via JS (see handoff pattern below)
+Per-frame protocol (exponential backoff):
+  1. Poll document.title for 'FRAME:Sx complete' (poll every 80ms, 10s timeout)
+  2. Attempt computer screenshot
+     - On timeout: wait delay ms, double delay (cap 3000ms), retry screenshot
+     - On success: release frame, reset delay to 200ms, advance to next frame
+  3. Release: window._frameReady=false; window._frameResume(); document.title='SF';
+  4. Repeat for all 9 frames (S1-S8 + complete)
+
+Backoff sequence per retry: 200 -> 400 -> 800 -> 1600 -> 3000 -> 3000... (max 8000ms total)
+This avoids fixed 1s waits -- fast frames pay ~0ms overhead, slow frames pay 200ms minimum.
+
+---
+
 ## renderMessage function map (as of v0.9.32 -- unchanged in v0.9.33)
 
 | Function               | Lines (approx) | Role                                      |
@@ -232,6 +249,7 @@ All four live contiguously in sequence-builder.html just above renderNote.
 | Low      | Touch/mobile drag -- mouse events only                      |
 | Low      | Mobile/iPhone layout -- explore feasibility (backlog only)  |
 | Done     | Canary test suite -- shipped in v0.9.33 (sequence-builder.canary.js)            |
+| Next     | GIF capture -- exponential backoff on screenshot retry (200->400->800->3000ms cap) |
 
 ---
 
