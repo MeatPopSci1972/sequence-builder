@@ -9,7 +9,7 @@ Draw actors, connect them with typed messages, export to PlantUML or Mermaid syn
 **[▶ Launch SequenceForge - latest](https://meatpopsci1972.github.io/sequence-builder/sequence-builder.html)**
 Always tracks `main` — may include work in progress.
 
-**[▶ Launch SequenceForge v0.9.28 - stable snapshot](https://meatpopsci1972.github.io/sequence-builder/releases/v0.9.28/sequence-builder.html)**
+**[▶ Launch SequenceForge v0.9.33 - stable snapshot](https://meatpopsci1972.github.io/sequence-builder/releases/v0.9.33/sequence-builder.html)**
 Known-good release. Archived, never changes.
 
 Hosted via GitHub Pages. No install, no build step.
@@ -38,10 +38,12 @@ Hosted via GitHub Pages. No install, no build step.
 ```
 sequence-builder/
 ├── README.md                        ← this file
-├── sequence-builder.html            ← deployable single-file application (~4130 lines)
+├── sequence-builder.html            ← deployable single-file application (~4650 lines)
 ├── sequence-builder.store.js        ← canonical store source (~525 lines) — edit here
-├── sequence-builder.test.js         ← node-runnable contract tests (81 tests, 9 suites)
+├── sequence-builder.test.js         ← node-runnable contract tests (85 tests, 10 suites)
 ├── build.js                         ← syncs store.js into HTML (~174 lines)
+├── canary.html                  ← browser canary test runner (8 scenarios, 18 assertions)
+├── sequence-builder.canary.js  ← canary test suite logic
 ├── sequenceforge-session-handoff.md ← session handoff for human + AI continuation
 └── sequenceforge-handoff.md         ← full design decisions log and architecture reference
 ```
@@ -70,8 +72,15 @@ sequence-builder/
 | v0.9.22 | Zero-render dragging — direct SVG transform during drag, single undoable commit + render on mouseup |
 | v0.9.23 | Suite 8: 17 E2E lifecycle tests — `LOAD_DEMO` → modify → JSON round-trip → `CLEAR` → `LOAD`. 60 tests total |
 | v0.9.24 | Two-state panels (icons 60px / full 200px+340px), floating Edit button, `[`/`]` keyboard toggles, pin, drag-resize |
-| v0.9.25 | No-guard policy (messages add with `fromId: null, toId: null`), Edit button fixes for annotations, zero-movement dispatch guard. 81 tests total |
+| v0.9.25 | No-guard policy (messages add with `fromId: null, toId: null`), Edit button fixes for annotations, zero-movement dispatch guard. 85 tests total |
 | v0.9.26 | Message wiring via Properties (null-safe From/To dropdowns), unconnected message placeholder on canvas, version string fix |
+| v0.9.27 | Snapshot infrastructure -- POST /snapshot route, releases/ folder, version strings locked to header + debug console |
+| v0.9.28 | ADD_MESSAGE null contract -- fromId/toId always null not undefined, never undefined. Suite 10 added. 85 tests, 10 suites |
+| v0.9.29 | Version strings fixed, snapshot infrastructure wired to release checklist |
+| v0.9.30 | First-run tour -- 8-step guided overlay with spotlight, dots, skip. sf-tour-css/html/script blocks. localStorage key: sf-tour-done |
+| v0.9.31 | Palette icons in collapsed (icons) sidebar mode now add to canvas instead of opening Properties panel |
+| v0.9.32 | renderMessage refactored -- 137 lines split into _renderMsgUnconnected, _buildSelfPath, _appendNetBadges + 55-line coordinator |
+| v0.9.33 | Canary browser smoke test suite -- canary.html + sequence-builder.canary.js, 8 scenarios 18 assertions, GET /canary route |
 
 ---
 
@@ -96,8 +105,8 @@ To develop:
 ```powershell
 # After editing sequence-builder.store.js:
 node build.js                      # sync store into HTML
-node sequence-builder.test.js      # run 81 tests
-# Expected: 81 passed | 0 failed | 81 total
+node sequence-builder.test.js      # run 85 tests
+# Expected: 85 passed | 0 failed | 85 total
 ```
 
 Full gate (build + syntax check + tests):
@@ -108,7 +117,7 @@ sed -n '/<script>/,/<\/script>/p' sequence-builder.html `
   | sed '1s/<script>//' | sed '$s/<\/script>//' > sf-script.js && `
 node --check sf-script.js && `
 node sequence-builder.test.js
-# Expected: 81 passed | 0 failed | 81 total
+# Expected: 85 passed | 0 failed | 85 total
 ```
 
 ---
