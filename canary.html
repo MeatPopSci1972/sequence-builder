@@ -120,6 +120,15 @@
 
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+  // pauseForFrame: canary pauses here, sets window._frameReady = true
+  // External driver polls for _frameReady, takes screenshot, then clears it to resume
+  function pauseForFrame(label) {
+    return new Promise(resolve => {
+      window._frameReady = label || true;
+      window._frameResume = resolve;
+    });
+  }
+
   // ── iframe setup ─────────────────────────────────────────────────────────
   const frame = document.getElementById('canary-frame');
 
@@ -156,7 +165,7 @@
       assert('S1: sidebar present',        !!doc.querySelector('#sidebar'));
       assert('S1: actors-layer present',   !!actorsLayer());
       assert('S1: messages-layer present', !!messagesLayer());
-      await checkpoint('S1');
+      await pauseForFrame('S1 complete');
     },
 
     async function S2_load_demo() {
@@ -169,7 +178,7 @@
       assert('S2: demo loads messages into SVG', mEls.length >= 3, 'found ' + mEls.length);
       assert('S2: statusbar reflects actors',    parseInt(statusActors().textContent) >= 3);
       assert('S2: statusbar reflects messages',  parseInt(statusMsgs().textContent)   >= 3);
-      await checkpoint('S2');
+      await pauseForFrame('S2 complete');
     },
 
     async function S3_click_actor_opens_properties() {
@@ -182,7 +191,7 @@
       assert('S3: props-content populated after actor click', content.length > 0, '"' + content.slice(0,40) + '"');
       doc.querySelector('#canvas').dispatchEvent(new MouseEvent('click', { bubbles:true, cancelable:true }));
       await sleep(100);
-      await checkpoint('S3');
+      await pauseForFrame('S3 complete');
     },
 
     async function S4_add_actor_via_toolbar() {
@@ -198,7 +207,7 @@
       const after = actorsLayer().querySelectorAll('g[data-type="actor"]').length;
       assert('S4: toolbar add-actor increases SVG actor count', after > before, before + ' -> ' + after);
       assert('S4: statusbar updated', parseInt(statusActors().textContent) === after);
-      await checkpoint('S4');
+      await pauseForFrame('S4 complete');
     },
 
     async function S5_undo_removes_actor() {
@@ -208,7 +217,7 @@
       await sleep(200);
       const after = actorsLayer().querySelectorAll('g[data-type="actor"]').length;
       assert('S5: undo removes the added actor', after < before, before + ' -> ' + after);
-      await checkpoint('S5');
+      await pauseForFrame('S5 complete');
     },
 
     async function S6_sidebar_collapse_toggle() {
@@ -219,7 +228,7 @@
       assert('S6: sidebar toggles out of state-full', !sb.classList.contains('state-full'), sb.className);
       clickEl('#sidebar-toggle-btn');
       await sleep(150);
-      await checkpoint('S6');
+      await pauseForFrame('S6 complete');
     },
 
     async function S7_plantuml_output_populated() {
@@ -230,7 +239,7 @@
       assert('S7: output-code element present', !!code);
       assert('S7: PlantUML output non-empty',   code.textContent.trim().length > 0, 'len=' + code.textContent.trim().length);
       assert('S7: output contains @startuml',   code.textContent.includes('@startuml') || code.textContent.includes('sequenceDiagram'));
-      await checkpoint('S7');
+      await pauseForFrame('S7 complete');
     },
 
     async function S8_tour_launches() {
@@ -243,7 +252,7 @@
       assert('S8: tour overlay or card appears', !!(overlay || card), 'overlay=' + !!overlay + ' card=' + !!card);
       doc.dispatchEvent(new KeyboardEvent('keydown', { key:'Escape', bubbles:true }));
       await sleep(150);
-      await checkpoint('S8');
+      await pauseForFrame('S8 complete');
     },
   ];
 
@@ -257,6 +266,9 @@
   }
 
   if (activeRow) { activeRow.remove(); activeRow = null; }
+
+  // Final pause so GIF recorder captures all-pass/fail summary
+  await pauseForFrame('complete');
 
   summaryEl.className = failed === 0 ? 'all-pass' : 'has-fail';
   summaryEl.textContent = failed === 0
