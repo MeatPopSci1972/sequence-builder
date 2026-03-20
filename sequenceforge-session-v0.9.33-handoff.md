@@ -1,6 +1,6 @@
 # SequenceForge -- Session Handoff
 Version: v0.9.33
-Date: 2026-03-19
+Date: 2026-03-20
 Repo: https://github.com/MeatPopSci1972/sequence-builder
 Local: E:\uml2prompt\sequence-builder-prototype
 
@@ -116,26 +116,39 @@ Temp inspection files: _*.txt prefix, gitignored, cleaned by Claude after each s
 
 ### What shipped this session
 
-**v0.9.33 -- canary test suite**
+**v0.9.33 -- canary test suite + GIF capture infrastructure**
 
-New file: sequence-builder.canary.js
-New route: GET /canary -- serves browser smoke test runner
-New file: _canary.html -- runner UI (split-pane: results left, live iframe right)
-
-8 scenarios, 18 assertions. All green on first clean run.
-
-  S1: Page loads -- title, canvas, sidebar, actors-layer, messages-layer (5 checks)
-  S2: Demo loads -- actors + messages in SVG, statusbar reflects both (4 checks)
-  S3: Click actor -- props-content populated, canvas deselect resets mode (2 checks)
-  S4: Add actor via toolbar -- SVG count increases, statusbar updated (2 checks)
+Canary suite: 8 scenarios, 18 assertions. Confirmed 18/18 on every run.
+  S1: Page loads (4 checks) -- canvas, sidebar, layers
+  S2: Demo loads -- actors + messages in SVG, statusbar (4 checks)
+  S3: Click actor -- props populated via clickSVG (dispatches on inner rect) (2 checks)
+  S4: Add actor via toolbar -- count increases, statusbar updated (2 checks)
   S5: Undo -- removes the added actor (1 check)
   S6: Sidebar collapse toggle -- exits state-full (1 check)
-  S7: PlantUML output -- element present, non-empty, contains @startuml (3 checks)
+  S7: PlantUML output -- present, non-empty, contains @startuml (3 checks)
   S8: Tour launches -- overlay appears after ? click (1 check)
 
-Tour suppression: app checks location.search for ?canary=1 before auto-launching tour.
-  Both try and catch branches respect the param.
-  Canary iframe uses ?canary=1&t=<timestamp> (cache-bust included).
+Key technical decisions this session:
+  - Tour suppression: ?canary=1 param suppresses auto-launch (both try + catch branches)
+  - clickSVG helper: dispatches mousedown+mouseup+click on inner rect not the g element
+  - pauseForFrame(label): sets window._frameReady, window._frameResume, document.title='FRAME:'+label
+  - Overlay injection: canary runs injected on sequence-builder.html?canary=1, no iframe
+    (iframe kills computer screenshot tool -- direct app page works reliably)
+  - GIF capture: title-based frame signal, release/poll/screenshot per scenario
+  - Exponential backoff on screenshot retry: 200->400->800->1600->3000ms cap, 8s total max
+
+Files:
+  canary.html      -- GitHub Pages remote canary (iframe-based, same-origin)
+  _canary.html     -- local canary runner (served at /canary)
+  README.md        -- version drift fixed: snapshot link, test count, file size, history
+
+README fixes this session:
+  - Stable snapshot link updated to v0.9.33
+  - HTML file size: ~4130 -> ~4650 lines
+  - Test count: 81 tests 9 suites -> 85 tests 10 suites
+  - Version history: added v0.9.27 through v0.9.33
+  - canary.html added to repo structure
+  - Dev instructions: 81 passed -> 85 passed
 
 This suite is NOT a release gate. Run it manually when:
   - Testing against Chrome Canary / Beta / new stable release
