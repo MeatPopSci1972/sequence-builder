@@ -9,8 +9,8 @@
   body { background:var(--bg); color:var(--text); font:14px/1.5 'Segoe UI',system-ui,sans-serif; display:flex; flex-direction:column; height:100vh; }
   header { background:var(--surface); padding:10px 20px; border-bottom:1px solid #333; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
   header h1 { font-size:15px; font-weight:600; color:var(--accent); }
-  #target-label { font-size:11px; color:#aaa; word-break:break-all; }
-  button#rerun { margin-left:auto; background:var(--accent); color:#fff; border:none; border-radius:6px; padding:5px 12px; cursor:pointer; font-size:12px; }
+  #target-label { font-size:11px; color:#aaa; word-break:break-all; flex:1; }
+  button#rerun { background:var(--accent); color:#fff; border:none; border-radius:6px; padding:5px 12px; cursor:pointer; font-size:12px; }
   #layout { display:flex; flex:1; overflow:hidden; }
   #results-pane { width:340px; min-width:240px; background:var(--surface); border-right:1px solid #333; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:5px; }
   #canary-summary { padding:8px 12px; border-radius:8px; font-weight:700; font-size:13px; text-align:center; }
@@ -21,16 +21,17 @@
   .row { padding:5px 8px; border-radius:5px; font-size:11px; font-family:'Cascadia Code','Fira Mono',monospace; white-space:pre-wrap; word-break:break-all; }
   .row.pass { background:#1a2e22; color:var(--pass); }
   .row.fail { background:#2e1a1a; color:var(--fail); }
+  .row.active { background:#1a1a3a; color:var(--accent); animation: pulse 0.8s infinite alternate; }
+  @keyframes pulse { from { opacity:0.6; } to { opacity:1; } }
   #frame-pane { flex:1; display:flex; flex-direction:column; }
-  #frame-label { background:#111; color:#555; font-size:10px; padding:3px 10px; border-bottom:1px solid #222; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #frame-label { background:#111; color:#555; font-size:10px; padding:3px 10px; border-bottom:1px solid #222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #canary-frame { flex:1; border:none; background:#fff; }
   #running-indicator { padding:8px 12px; border-radius:8px; background:#1a1a3a; color:var(--accent); font-weight:600; font-size:12px; text-align:center; }
-  #error-msg { padding:10px; color:var(--fail); font-size:12px; display:none; }
 </style>
 </head>
 <body>
 <header>
-  <h1>SequenceForge &mdash; Remote Canary</h1>
+  <h1>SequenceForge &mdash; Canary</h1>
   <span id="target-label">loading...</span>
   <button id="rerun" onclick="location.reload()">&#8635; Re-run</button>
 </header>
@@ -39,30 +40,63 @@
     <div id="running-indicator">Running&hellip;</div>
     <div id="canary-summary"></div>
     <div id="canary-log"></div>
-    <div id="error-msg"></div>
   </div>
   <div id="frame-pane">
-    <div id="frame-label">Loading target...</div>
+    <div id="frame-label">Loading...</div>
     <iframe id="canary-frame" title="SequenceForge under test"></iframe>
   </div>
 </div>
 <script>
 (async function runCanary() {
-  const params = new URLSearchParams(location.search);
-  const TARGET = params.get('target') || (location.origin + '/sequence-builder/sequence-builder.html');
+  const params  = new URLSearchParams(location.search);
+  const TARGET  = params.get('target') || (location.origin + '/sequence-builder/sequence-builder.html');
+  const logEl   = document.getElementById('canary-log');
+  const summaryEl = document.getElementById('canary-summary');
+  const runningEl = document.getElementById('running-indicator');
 
   document.getElementById('target-label').textContent = TARGET;
-  document.getElementById('frame-label').textContent = TARGET;
+  document.getElementById('frame-label').textContent  = TARGET;
 
+  // ── Storage helpers ──────────────────────────────────────────────────────
+  // Use window.storage (Artifact persistent storage) if available,
+  // otherwise fall back to a plain in-memory object for same-session use.
+  const store = {
+    _mem: {},
+    async set(k, v) {
+      try { if (window.storage) { await window.storage.set(k, JSON.stringify(v)); return; } } catch(e){}
+      this._mem[k] = v;
+    },
+    async get(k) {
+      try { if (window.storage) { const r = await window.storage.get(k); return r ? JSON.parse(r.value) : null; } } catch(e){}
+      return this._mem[k] ?? null;
+    }
+  };
+
+  // Write initial run metadata
+  await store.set('canary:run', { target: TARGET, started: Date.now(), status: 'running', results: [] });
+
+  // ── UI helpers ───────────────────────────────────────────────────────────
   const results = [];
+  let activeRow = null;
+
+  function setActive(name) {
+    if (activeRow) activeRow.className = 'row';
+    activeRow = document.createElement('div');
+    activeRow.className = 'row active';
+    activeRow.textContent = '\u25b6 ' + name;
+    logEl.appendChild(activeRow);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
 
   function log(name, pass, detail) {
-    results.push({ name, pass, detail: detail || '' });
-    const el = document.getElementById('canary-log');
+    const entry = { name, pass, detail: detail || '' };
+    results.push(entry);
+    if (activeRow) { activeRow.remove(); activeRow = null; }
     const row = document.createElement('div');
     row.className = 'row ' + (pass ? 'pass' : 'fail');
     row.textContent = (pass ? '\u2713 ' : '\u2717 ') + name + (detail ? '  --  ' + detail : '');
-    el.appendChild(row);
+    logEl.appendChild(row);
+    logEl.scrollTop = logEl.scrollHeight;
   }
 
   function assert(name, condition, detail) {
@@ -70,18 +104,32 @@
     if (!condition) throw new Error('FAIL: ' + name);
   }
 
+  // Checkpoint: persist results to storage so GIF recorder can poll for changes
+  async function checkpoint(scenarioName) {
+    const passed = results.filter(r=>r.pass).length;
+    const failed = results.filter(r=>!r.pass).length;
+    await store.set('canary:run', {
+      target: TARGET,
+      started: Date.now(),
+      status: 'running',
+      currentScenario: scenarioName,
+      passed, failed,
+      results: [...results]
+    });
+  }
+
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+  // ── iframe setup ─────────────────────────────────────────────────────────
   const frame = document.getElementById('canary-frame');
 
-  // Setup
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('iframe load timeout')), 15000);
     frame.onload = () => { clearTimeout(timer); resolve(); };
     frame.onerror = () => { clearTimeout(timer); reject(new Error('iframe load error')); };
     frame.src = TARGET + (TARGET.includes('?') ? '&' : '?') + 'canary=1&t=' + Date.now();
   });
-  await sleep(500);
+  await sleep(400);
 
   const doc = frame.contentDocument;
   const win = frame.contentWindow;
@@ -91,108 +139,140 @@
   function propsContent() { return doc.querySelector('#props-content'); }
   function statusActors() { return doc.querySelector('#stat-actors'); }
   function statusMsgs()   { return doc.querySelector('#stat-msgs'); }
-  function clickEl(sel)   { const el = doc.querySelector(sel); if(!el) throw new Error('Not found: '+sel); el.click(); return el; }
+  function clickEl(sel)   {
+    const el = doc.querySelector(sel);
+    if (!el) throw new Error('Not found: ' + sel);
+    el.click();
+    return el;
+  }
 
+  // ── Scenarios ─────────────────────────────────────────────────────────────
   const scenarios = [
 
     async function S1_page_loads() {
-      assert('S1: page title present', doc.title && doc.title.length > 0, doc.title);
-      assert('S1: canvas present',     !!doc.querySelector('#canvas'));
-      assert('S1: sidebar present',    !!doc.querySelector('#sidebar'));
+      setActive('S1: Page loads');
+      assert('S1: page title present',     doc.title && doc.title.length > 0, doc.title);
+      assert('S1: canvas present',         !!doc.querySelector('#canvas'));
+      assert('S1: sidebar present',        !!doc.querySelector('#sidebar'));
       assert('S1: actors-layer present',   !!actorsLayer());
       assert('S1: messages-layer present', !!messagesLayer());
+      await checkpoint('S1');
     },
 
     async function S2_load_demo() {
+      setActive('S2: Load demo diagram');
       clickEl('#btn-load-demo');
-      await sleep(300);
+      await sleep(250);
       const aEls = actorsLayer().querySelectorAll('g[data-type="actor"]');
       const mEls = messagesLayer().querySelectorAll('g[data-type="message"]');
-      assert('S2: demo loads actors into SVG',   aEls.length >= 3, 'found '+aEls.length);
-      assert('S2: demo loads messages into SVG', mEls.length >= 3, 'found '+mEls.length);
+      assert('S2: demo loads actors into SVG',   aEls.length >= 3, 'found ' + aEls.length);
+      assert('S2: demo loads messages into SVG', mEls.length >= 3, 'found ' + mEls.length);
       assert('S2: statusbar reflects actors',    parseInt(statusActors().textContent) >= 3);
       assert('S2: statusbar reflects messages',  parseInt(statusMsgs().textContent)   >= 3);
+      await checkpoint('S2');
     },
 
     async function S3_click_actor_opens_properties() {
+      setActive('S3: Click actor -> Properties');
       const firstActor = actorsLayer().querySelector('g[data-type="actor"]');
       assert('S3: at least one actor in SVG', !!firstActor);
       firstActor.click();
       await sleep(200);
       const content = propsContent().textContent.trim();
-      assert('S3: props-content populated after actor click', content.length > 0, '"'+content.slice(0,40)+'"');
-      const canvas = doc.querySelector('#canvas');
-      if (canvas) canvas.dispatchEvent(new MouseEvent('click', { bubbles:true, cancelable:true }));
-      await sleep(150);
+      assert('S3: props-content populated after actor click', content.length > 0, '"' + content.slice(0,40) + '"');
+      doc.querySelector('#canvas').dispatchEvent(new MouseEvent('click', { bubbles:true, cancelable:true }));
+      await sleep(100);
+      await checkpoint('S3');
     },
 
     async function S4_add_actor_via_toolbar() {
+      setActive('S4: Add actor via toolbar');
       const before = actorsLayer().querySelectorAll('g[data-type="actor"]').length;
       clickEl('#btn-add-actor');
-      await sleep(300);
+      await sleep(250);
       const mid = actorsLayer().querySelectorAll('g[data-type="actor"]').length;
       if (mid <= before) {
-        const canvas = doc.querySelector('#canvas');
-        if (canvas) canvas.dispatchEvent(new MouseEvent('click', { bubbles:true, cancelable:true, clientX:400, clientY:300 }));
-        await sleep(300);
+        doc.querySelector('#canvas').dispatchEvent(new MouseEvent('click', { bubbles:true, cancelable:true, clientX:400, clientY:300 }));
+        await sleep(250);
       }
       const after = actorsLayer().querySelectorAll('g[data-type="actor"]').length;
-      assert('S4: toolbar add-actor increases SVG actor count', after > before, before+' -> '+after);
+      assert('S4: toolbar add-actor increases SVG actor count', after > before, before + ' -> ' + after);
       assert('S4: statusbar updated', parseInt(statusActors().textContent) === after);
+      await checkpoint('S4');
     },
 
     async function S5_undo_removes_actor() {
+      setActive('S5: Undo removes actor');
       const before = actorsLayer().querySelectorAll('g[data-type="actor"]').length;
       clickEl('#btn-undo');
       await sleep(200);
       const after = actorsLayer().querySelectorAll('g[data-type="actor"]').length;
-      assert('S5: undo removes the added actor', after < before, before+' -> '+after);
+      assert('S5: undo removes the added actor', after < before, before + ' -> ' + after);
+      await checkpoint('S5');
     },
 
     async function S6_sidebar_collapse_toggle() {
+      setActive('S6: Sidebar collapse toggle');
       const sb = doc.querySelector('#sidebar');
       clickEl('#sidebar-toggle-btn');
       await sleep(200);
-      const toggled = !sb.classList.contains('state-full');
-      assert('S6: sidebar toggles out of state-full', toggled, sb.className);
+      assert('S6: sidebar toggles out of state-full', !sb.classList.contains('state-full'), sb.className);
       clickEl('#sidebar-toggle-btn');
       await sleep(150);
+      await checkpoint('S6');
     },
 
     async function S7_plantuml_output_populated() {
+      setActive('S7: PlantUML output');
       clickEl('#tab-output');
-      await sleep(200);
+      await sleep(150);
       const code = doc.querySelector('#output-code');
       assert('S7: output-code element present', !!code);
-      assert('S7: PlantUML output non-empty',   code.textContent.trim().length > 0, 'len='+code.textContent.trim().length);
+      assert('S7: PlantUML output non-empty',   code.textContent.trim().length > 0, 'len=' + code.textContent.trim().length);
       assert('S7: output contains @startuml',   code.textContent.includes('@startuml') || code.textContent.includes('sequenceDiagram'));
+      await checkpoint('S7');
     },
 
     async function S8_tour_launches() {
+      setActive('S8: Tour launches');
       win.localStorage.removeItem('sf-tour-done');
       clickEl('#sf-tour-help-btn');
       await sleep(400);
       const overlay = doc.querySelector('.sf-tour-overlay,.tour-overlay,[class*="tour"]');
       const card    = doc.querySelector('.sf-tour-card,[class*="tour-card"]');
-      assert('S8: tour overlay or card appears', !!(overlay || card), 'overlay='+!!overlay+' card='+!!card);
+      assert('S8: tour overlay or card appears', !!(overlay || card), 'overlay=' + !!overlay + ' card=' + !!card);
       doc.dispatchEvent(new KeyboardEvent('keydown', { key:'Escape', bubbles:true }));
       await sleep(150);
+      await checkpoint('S8');
     },
   ];
 
+  // ── Runner ────────────────────────────────────────────────────────────────
   let passed = 0, failed = 0;
   for (const s of scenarios) {
     try { await s(); passed++; }
     catch(e) { failed++; }
+    // Small pause between scenarios -- gives GIF recorder a moment to capture
+    await sleep(150);
   }
 
-  const summary = document.getElementById('canary-summary');
-  summary.className = failed === 0 ? 'all-pass' : 'has-fail';
-  summary.textContent = failed === 0
+  if (activeRow) { activeRow.remove(); activeRow = null; }
+
+  summaryEl.className = failed === 0 ? 'all-pass' : 'has-fail';
+  summaryEl.textContent = failed === 0
     ? '\u2713 ALL PASS  ' + passed + ' passed | 0 failed | ' + (passed+failed) + ' total'
     : passed + ' passed | ' + failed + ' failed | ' + (passed+failed) + ' total';
 
-  document.getElementById('running-indicator').style.display = 'none';
+  runningEl.style.display = 'none';
+
+  // Final storage write
+  await store.set('canary:run', {
+    target: TARGET, completed: Date.now(),
+    status: failed === 0 ? 'pass' : 'fail',
+    passed, failed, total: passed + failed,
+    results
+  });
+
   window.canaryResults = results;
 }());
 </script>
