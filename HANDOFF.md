@@ -77,26 +77,25 @@ Browser security filter strips = and flags query-string content in javascript_to
 If a replace() fails silently, split the string differently or use index-based slicing.
 
 ## VERSION
-- Current: 0.9.35
+- Current: 0.9.36
 - Version strings in sequence-builder.html (replaceAll to bump)
-- Bump pattern: html.replaceAll('0.9.35', '0.9.36')
+- Bump pattern: html.replaceAll('0.9.36', '0.9.37')
 
 ## DEMOS (registered in store)
-- auth-flow          — Auth Flow (original)
-- scada-control      — SCADA: Control Flow
-- cybersec-zones     — CyberSecurity: Zone Analysis
+- auth-flow — Auth Flow (original)
+- scada-control — SCADA: Control Flow
+- cybersec-zones — CyberSecurity: Zone Analysis
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 ### Ready
-1. Fit-to-viewport zoom button — dedicated toolbar button (distinct from auto-zoom preference) that fits the current diagram to the visible canvas on demand. Simpler entry point before the full preference system.
-2. Auto fit-to-diagram on load — user preference toggle: when enabled, viewport auto-scales after any LOAD_DEMO or LOAD_DIAGRAM dispatch so the diagram fills the canvas.
-3. Canary S1 frame fix — S1 gets dropped when recording starts mid-session. Fix: navigate fresh to canary URL, inject, start recording, THEN drive loop so all 8 frames land.
+1. Auto fit-to-diagram on load — user preference toggle: when enabled, viewport auto-scales after any LOAD_DEMO or LOAD_DIAGRAM dispatch so the diagram fills the canvas.
+2. Canary S1 frame fix — S1 gets dropped when recording starts mid-session. Fix: navigate fresh to canary URL, inject, start recording, THEN drive loop so all 8 frames land.
 
 ### Icebox (good ideas, not yet scoped)
-4. Message label editing — double-click a message arrow to edit its label inline on the canvas
-5. Actor reorder — drag actors left/right to reorder their columns
-6. Export to PNG — render the SVG canvas to a PNG download
-7. Mermaid output format — add Mermaid sequenceDiagram as a second output format option alongside PlantUML
+3. Message label editing — double-click a message arrow to edit its label inline on the canvas
+4. Actor reorder — drag actors left/right to reorder their columns
+5. Export to PNG — render the SVG canvas to a PNG download
+6. Mermaid output format — add Mermaid sequenceDiagram as a second output format option alongside PlantUML
 
 ## REPO
 - GitHub: https://github.com/MeatPopSci1972/sequence-builder
