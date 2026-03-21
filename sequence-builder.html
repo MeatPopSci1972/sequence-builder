@@ -909,13 +909,22 @@
         Zoom+
       </button>
 
-      <button class"tbtn" id"btn-zoom-fit"
-        title"Fit diagram to canvas"
-        aria-label"Fit diagram to canvas" aria-pressed"false">
-        <svg width"14" height"14" viewBox"0 0 16 16" fill"none" aria-hidden"true">
-          <path d"M1 5V2h3M13 2h3v3M1 11v3h3M13 14h3v-3"
-            stroke"currentColor" stroke-width"1.5" stroke-linecap"round" stroke-linejoin"round"/>
-          <rect x"4" y"4" width"8" height"8" rx"1" stroke"currentColor" stroke-width"1.2"/>
+
+      <button class="tbtn"
+        id="btn-zoom-fit"
+        title="Fit diagram to canvas (Ctrl+Shift+0)"
+        aria-label="Fit diagram to canvas"
+        aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M1 5V2h3M13 2h3v3M1 11v3h3M13 14h3v-3"
+            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="4" y="4" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
+        Fit
+      </button>dth="1.2"/>
+        </svg>
+        Fit
+      </button>dth="1.2"/>
         </svg>
         Fit
       </button>
@@ -3705,11 +3714,6 @@ function _applyFitPref() {
   else applyZoom(1.0);
 }
 
-document.getElementById('btn-zoom-fit')?.addEventListener('click', function() {
-  state_settings.fitZoom = !state_settings.fitZoom;
-  _saveSettings();
-  _applyFitPref();
-});
 
 // Ctrl+Shift+0 — toggle fit-to-diagram
 window.addEventListener('keydown', function(e) {
@@ -3721,8 +3725,6 @@ window.addEventListener('keydown', function(e) {
   _applyFitPref();
 });
 
-// Apply saved fit preference on boot
-_applyFitPref();
 
 // ═══════════════════════════════════════════════════════
 //  CUSTOM ACTOR MODAL
@@ -3887,6 +3889,14 @@ const state_settings = {
 function _saveSettings() {
   localStorage.setItem(_SETTINGS_KEY, JSON.stringify(state_settings));
 }
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#btn-zoom-fit')) return;
+  state_settings.fitZoom = !state_settings.fitZoom;
+  _saveSettings();
+  _applyFitPref();
+});
+// Apply saved fit preference on boot
+_applyFitPref();
 
 // ═══════════════════════════════════════════════════════
 //  DIAGRAM PERSISTENCE  (localStorage + JSON import/export)
