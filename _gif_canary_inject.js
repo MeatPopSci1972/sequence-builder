@@ -117,8 +117,11 @@
       await pauseForFrame('S1 complete');
     },
     async function S2() {
-      setActive('S2: Load demo');
-      clickEl('#btn-load-demo'); await sleep(300);
+      var _demos = window.SF_DEMOS || [{id:'auth-flow',label:'Auth Flow'}];
+      var _pick  = _demos[Math.floor(Math.random() * _demos.length)];
+      setActive('S2: Load demo — ' + _pick.label);
+      store.dispatch({ type: 'LOAD_DEMO', payload: { id: _pick.id }, meta: { undoable: false } });
+      await sleep(300);
       var a=actorsLayer().querySelectorAll('g[data-type="actor"]');
       var m=messagesLayer().querySelectorAll('g[data-type="message"]');
       assert('S2: demo actors in SVG',   a.length>=3, 'found '+a.length);

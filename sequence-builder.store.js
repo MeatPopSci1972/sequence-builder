@@ -421,40 +421,109 @@ function createStore() {
       emit('diagram:loaded', { ...snapshot(), source: payload._source || 'import' })
     },
 
-    LOAD_DEMO() {
-      // Hardcoded demo — delegates to LOAD_DIAGRAM logic directly
-      // so both stacks are also cleared
+    // ── DEMOS ── <<STORE_DEMOS_START>>
+    // Named demo diagrams — add entries here to populate the Demo dropdown.
+    // loadDemo(id?) dispatches LOAD_DEMO with the matching entry.
+    // No id = first entry (index 0). Exposed as window.SF_DEMOS for canary.
+    LOAD_DEMO({ payload: { id } = {} } = {}) {
+      const DEMOS = [
+        // ── Demo 0: Auth Flow ─────────────────────────────────────────────
+        {
+          id: 'auth-flow',
+          label: 'Auth Flow',
+          build(tid) {
+            const user  = { id: tid(), x: 40,  label: 'User',         type: 'actor-person' }
+            const api   = { id: tid(), x: 210, label: 'API Gateway',   type: 'actor-system' }
+            const auth  = { id: tid(), x: 380, label: 'Auth Service',  type: 'actor-system' }
+            const db    = { id: tid(), x: 550, label: 'Database',      type: 'actor-db'     }
+            return {
+              actors: [user, api, auth, db],
+              messages: [
+                { id: tid(), fromId: user.id, toId: api.id,  label: 'POST /login',        kind: 'sync',   direction: 'right', y: 0 },
+                { id: tid(), fromId: api.id,  toId: auth.id, label: 'validateCredentials', kind: 'sync',   direction: 'right', y: 0 },
+                { id: tid(), fromId: auth.id, toId: db.id,   label: 'SELECT user WHERE…',  kind: 'sync',   direction: 'right', y: 0 },
+                { id: tid(), fromId: db.id,   toId: auth.id, label: 'user record',          kind: 'return', direction: 'right', y: 0 },
+                { id: tid(), fromId: auth.id, toId: api.id,  label: 'JWT token',            kind: 'return', direction: 'right', y: 0 },
+                { id: tid(), fromId: api.id,  toId: user.id, label: '200 OK + token',       kind: 'return', direction: 'right', y: 0 },
+              ],
+              fragments: [{ id: tid(), x: 160, y: 170, w: 340, h: 175, kind: 'frag-alt', cond: 'valid credentials' }],
+              notes:     [{ id: tid(), x: 20,  y: 0,   text: 'Auth flow' }],
+            }
+          },
+        },
+        // ── Demo 1: SCADA Control Flow ────────────────────────────────────
+        {
+          id: 'scada-control',
+          label: 'SCADA: Control Flow',
+          build(tid) {
+            const hmi  = { id: tid(), x: 40,  label: 'HMI',          type: 'actor-person' }
+            const plc  = { id: tid(), x: 210, label: 'PLC',           type: 'actor-system' }
+            const rtu  = { id: tid(), x: 380, label: 'RTU',           type: 'actor-system' }
+            const hist = { id: tid(), x: 550, label: 'Historian',     type: 'actor-db'     }
+            return {
+              actors: [hmi, plc, rtu, hist],
+              messages: [
+                { id: tid(), fromId: hmi.id,  toId: plc.id,  label: 'Poll cycle (1 s)',      kind: 'sync',   direction: 'right', y: 0 },
+                { id: tid(), fromId: plc.id,  toId: rtu.id,  label: 'Read registers',        kind: 'sync',   direction: 'right', y: 0 },
+                { id: tid(), fromId: rtu.id,  toId: plc.id,  label: 'Field telemetry',       kind: 'return', direction: 'right', y: 0 },
+                { id: tid(), fromId: plc.id,  toId: rtu.id,  label: 'Setpoint command',      kind: 'sync',   direction: 'right', y: 0 },
+                { id: tid(), fromId: rtu.id,  toId: plc.id,  label: 'Acknowledge',           kind: 'return', direction: 'right', y: 0 },
+                { id: tid(), fromId: plc.id,  toId: hist.id, label: 'Log values',            kind: 'async',  direction: 'right', y: 0 },
+                { id: tid(), fromId: plc.id,  toId: hmi.id,  label: 'Status update',         kind: 'return', direction: 'right', y: 0 },
+              ],
+              fragments: [{ id: tid(), x: 160, y: 185, w: 340, h: 140, kind: 'frag-loop', cond: 'scan active' }],
+              notes:     [{ id: tid(), x: 20,  y: 0,   text: 'SCADA control loop' }],
+            }
+          },
+        },
+        // ── Demo 2: CyberSecurity Zone Analysis ───────────────────────────
+        {
+          id: 'cybersec-zones',
+          label: 'CyberSecurity: Zone Analysis',
+          build(tid) {
+            const corp  = { id: tid(), x: 40,  label: 'Corporate LAN', type: 'actor-system' }
+            const fw    = { id: tid(), x: 200, label: 'Firewall',      type: 'actor-system' }
+            const jump  = { id: tid(), x: 360, label: 'Jump Server',   type: 'actor-system' }
+            const ot    = { id: tid(), x: 520, label: 'OT Network',    type: 'actor-system' }
+            const hist  = { id: tid(), x: 680, label: 'Historian',     type: 'actor-db'     }
+            return {
+              actors: [corp, fw, jump, ot, hist],
+              messages: [
+                { id: tid(), fromId: corp.id, toId: fw.id,   label: 'Remote access request', kind: 'sync',   direction: 'right', y: 0 },
+                { id: tid(), fromId: fw.id,   toId: jump.id, label: 'Allow (port 3389)',      kind: 'sync',   direction: 'right', y: 0 },
+                { id: tid(), fromId: jump.id, toId: ot.id,   label: 'Authenticated session',  kind: 'sync',   direction: 'right', y: 0 },
+                { id: tid(), fromId: ot.id,   toId: hist.id, label: 'Process data write',     kind: 'async',  direction: 'right', y: 0 },
+                { id: tid(), fromId: hist.id, toId: corp.id, label: 'Replication (no DPI)',   kind: 'async',  direction: 'right', y: 0 },
+                { id: tid(), fromId: ot.id,   toId: fw.id,   label: 'Audit log egress',       kind: 'async',  direction: 'right', y: 0 },
+              ],
+              fragments: [{ id: tid(), x: 330, y: 80, w: 390, h: 230, kind: 'frag-alt', cond: 'Purdue L3 / L2 boundary' }],
+              notes:     [{ id: tid(), x: 20, y: 0, text: 'Unmonitored replication path — no DPI at historian egress' }],
+            }
+          },
+        },
+      ]
+      // <<STORE_DEMOS_END>>
+
       _snapshots.length = 0
       _redoStack.length = 0
 
-      // Temporary nextId counter for demo construction — start from current nextId
-      // so demo ids never collide with ids already assigned in this session.
+      const demo = DEMOS.find(d => d.id === id) || DEMOS[0]
       let tempId = state.nextId
       const tid = () => 'e' + (tempId++)
 
-      const user  = { id: tid(), x: 40,  label: 'User',         type: 'actor-person' }
-      const api   = { id: tid(), x: 210, label: 'API Gateway',   type: 'actor-system' }
-      const auth  = { id: tid(), x: 380, label: 'Auth Service',  type: 'actor-system' }
-      const db    = { id: tid(), x: 550, label: 'Database',      type: 'actor-db'     }
+      const built = demo.build(tid)
+      state.actors    = built.actors
+      state.messages  = built.messages
+      state.fragments = built.fragments || []
+      state.notes     = built.notes     || []
+      state.nextId    = tempId
 
-      state.actors = [user, api, auth, db]
-      state.messages = [
-        { id: tid(), fromId: user.id, toId: api.id,  label: 'POST /login',         kind: 'sync',   direction: 'right', y: 0 },
-        { id: tid(), fromId: api.id,  toId: auth.id, label: 'validateCredentials',  kind: 'sync',   direction: 'right', y: 0 },
-        { id: tid(), fromId: auth.id, toId: db.id,   label: 'SELECT user WHERE…',   kind: 'sync',   direction: 'right', y: 0 },
-        { id: tid(), fromId: db.id,   toId: auth.id, label: 'user record',           kind: 'return', direction: 'right', y: 0 },
-        { id: tid(), fromId: auth.id, toId: api.id,  label: 'JWT token',             kind: 'return', direction: 'right', y: 0 },
-        { id: tid(), fromId: api.id,  toId: user.id, label: '200 OK + token',        kind: 'return', direction: 'right', y: 0 },
-      ]
-      state.fragments = [
-        { id: tid(), x: 160, y: 170, w: 340, h: 175, kind: 'frag-alt', cond: 'valid credentials' }
-      ]
-      state.notes = [
-        { id: tid(), x: 20, y: 0, text: 'Auth flow' }
-      ]
-      state.nextId = tempId
+      // Expose demo list for canary + dropdown rendering
+      if (typeof window !== 'undefined') {
+        window.SF_DEMOS = DEMOS.map(d => ({ id: d.id, label: d.label }))
+      }
 
-      emit('diagram:loaded', { ...snapshot(), source: 'demo' })
+      emit('diagram:loaded', { ...snapshot(), source: 'demo', demoId: demo.id, demoLabel: demo.label })
     },
   }
 
@@ -503,6 +572,14 @@ function createStore() {
   }
 
   // ── Public interface ─────────────────────────────────────
+  // Expose demo list at startup — dropdown populates before first LOAD_DEMO
+  if (typeof window !== 'undefined') {
+    window.SF_DEMOS = [
+      { id: 'auth-flow',    label: 'Auth Flow' },
+      { id: 'scada-control', label: 'SCADA: Control Flow' },
+      { id: 'cybersec-zones', label: 'CyberSecurity: Zone Analysis' },
+    ]
+  }
   return {
     state,   // live reference — mutations are visible immediately
     log,     // full action log — live reference
@@ -511,7 +588,7 @@ function createStore() {
     off,
     get canUndo() { return _snapshots.length > 0 },  // true when undo stack is non-empty
     get canRedo()  { return _redoStack.length  > 0 },  // true when redo stack is non-empty
-  }
+}
 }
 
 // ── CommonJS export ──────────────────────────────────────
