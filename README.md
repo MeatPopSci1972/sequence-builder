@@ -84,6 +84,44 @@ sequence-builder/
 
 ---
 
+## Useful things that happened
+
+Things discovered or solved during development that are worth knowing.
+
+**clickSVG pattern -- dispatch on inner element not the g**
+Programmatic clicks on SVG `<g>` elements do not reliably trigger event listeners.
+Dispatching mousedown+mouseup+click on the inner `<rect>` or `<text>` child works correctly.
+Relevant any time you drive the app via JS (canary tests, automation, bookmarklets).
+
+**pauseForFrame / title-based frame signaling**
+When driving the app from an external loop (e.g. GIF recording), use `document.title` as a synchronization signal.
+The canary runner sets `document.title = 'FRAME:Sx complete'` at each checkpoint and pauses via a Promise.
+The external driver polls the title, screenshots, then calls `window._frameResume()` to advance.
+This is reliable across same-origin contexts and survives DOM mutations.
+
+**iframe kills the screenshot tool**
+The Claude in Chrome `computer screenshot` tool consistently times out when SequenceForge is loaded inside an iframe (even same-origin, even on localhost).
+Fix: inject the canary as a floating overlay directly on `sequence-builder.html?canary=1` -- no iframe needed.
+The `?canary=1` param suppresses the tour auto-launch (both try and catch branches check it).
+
+**Exponential backoff on screenshot retry**
+When the screenshot tool times out intermittently, fixed waits are wasteful.
+Pattern: start at 200ms, double each retry, cap at 3000ms, total budget 8000ms.
+Fast frames pay ~0ms overhead; slow frames pay 200ms minimum.
+Sequence: 200 -> 400 -> 800 -> 1600 -> 3000 -> 3000...
+
+**PowerShell quote escaping kills node -e**
+Passing regex or string replacements via `node -e` in PowerShell breaks on quote characters.
+Fix: write the file via the local dev server PUT route instead of shell one-liners.
+
+**GitHub Pages same-origin requirement**
+The canary iframe approach (localhost serving a page that iframes GitHub Pages) is cross-origin.
+JS cannot access `contentDocument` across origins.
+Fix: host `canary.html` on GitHub Pages itself so iframe and parent are same-origin.
+The file accepts a `?target=URL` param to test any same-origin release snapshot.
+
+---
+
 ## Prototype-to-production teaching notes
 
 This project deliberately preserves the full iterative history — bugs found mid-session, decisions made and reversed, architectural patterns chosen for a zero-dependency constraint. The intent is to show:
