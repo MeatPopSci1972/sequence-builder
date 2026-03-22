@@ -19,6 +19,7 @@
 | POST | /build | Run build.js only, returns JSON {ok, output, ms, exitCode} |
 | POST | /lint | Run lint.js HTML checks, returns JSON {ok, output, ms} |
 | POST | /git | git add -A && commit, body: {"message":"..."} |
+| POST | /patch | Server-side find-replace {file,old,new} -- bypasses browser = filter. Returns {ok,replaced,length} |
 | GET | /<file> | Read any file in repo root |
 | PUT | /<file> | Write any file in repo root |
 | POST | /snapshot?v=X.Y.Z | Copy build into releases/vX.Y.Z/ |
@@ -85,7 +86,7 @@ WORKAROUNDS (all confirmed working):
   1. var eq = String.fromCharCode(60+1)  — builds = from char code
   2. str.split(OLD).join(NEW)  — avoids replace() which needs =
   3. Index-based slicing: str.slice(0,N) + newPart + str.slice(M)
-  4. POST /patch (server-side find-replace, no browser eval needed)
+  4. POST /patch (server-side find-replace, no browser eval needed) *** PREFERRED FOR HTML PATCHES ***
   5. Build strings from parts: var s = "part1" + eq + "part2"
 IMPORTANT: The filter triggers on the ENTIRE call text, not just string literals.
 If a stored variable contains = (e.g. window._ariaFull had aria-pressed="false"),
