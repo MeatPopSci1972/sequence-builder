@@ -169,15 +169,15 @@ If a call is blocked, check ALL variable references — not just string literals
 9. Version release links — each release gets a matching HANDOFF-vX.Y.Z.md snapshot
 10. Server log UI enhancements — already shipped; see log.html
 11. GET /git-log — expose "git log --oneline -N" via server endpoint for AI instances
-12. sf-server.js in git — it is currently gitignored; should be committed so git reset works
+12. sf-server.js in git — ✅ DONE: now tracked in git as of v0.9.43
 
 ## REPO
 - GitHub: https://github.com/MeatPopSci1972/sequence-builder
 - Local: E:\uml2prompt\sequence-builder-prototype
 - Branch: main
 
-## CRITICAL: sf-server.js IS NOT IN GIT
-sf-server.js is gitignored. If it is lost or corrupted:
+## NOTE: sf-server.js IS NOW IN GIT (as of v0.9.43)
+sf-server.js is now tracked in git. The bootstrap recovery below is kept for reference only. If it is lost or corrupted:
 1. Use the bootstrap recovery: node -e "require('http').createServer(function(req,res){if(req.method==='PUT'){var b='';req.on('data',function(d){b+=d});req.on('end',function(){require('fs').writeFileSync('sf-server.js',b);res.end('OK');process.exit()})}else{res.end('ready')}}).listen(9999,function(){console.log('BOOTSTRAP:ready')})"
 2. Navigate browser to http://localhost:9999
 3. PUT the server content via javascript_tool fetch
