@@ -16,15 +16,16 @@
 //    OR shorter:
 //    fetch('http://localhost:3799/_gif_canary_inject.js').then(r=>r.text()).then(eval)
 //
-// 4. Wait for title 'FRAME:S1 complete'
+// 4. Wait for title 'FRAME:ready'  <-- pre-signal: page is live, no scenario has run yet
 // 5. gif_creator start_recording
-// 6. For each frame label [S1..S8, complete]:
+// 6. Release the ready frame: window._frameReady=false; window._frameResume(); document.title='SF';
+// 7. For each frame label [S1..S8, complete]:
 //      a. computer screenshot  (save_to_disk:false)
 //      b. javascript_tool release:
 //         window._frameReady=false; window._frameResume(); document.title='SF';
 //      c. computer wait 1s (next scenario runs automatically)
-// 7. gif_creator stop_recording
-// 8. gif_creator export download:true filename:sequenceforge-canary-vX.Y.Z.gif
+// 8. gif_creator stop_recording
+// 9. gif_creator export download:true filename:sequenceforge-canary-vX.Y.Z.gif
 //
 // EXPONENTIAL BACKOFF (if screenshot times out)
 // Wait delay ms, double (cap 3000ms), retry. Sequence: 200->400->800->1600->3000.
@@ -193,6 +194,7 @@
 
   // ── Runner ────────────────────────────────────────────────────────────────
   var passed=0, failed=0;
+  await pauseForFrame('ready'); // operator starts recording here -- before any scenario runs
   for (var s of scenarios) {
     try { await s(); passed++; } catch(e) { failed++; }
     await sleep(200);
