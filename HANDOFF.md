@@ -20,7 +20,6 @@
 | POST | /build | Run build.js only, returns JSON {ok, output, ms, exitCode} |
 | POST | /lint | Run lint.js HTML checks, returns JSON {ok, output, ms} |
 | POST | /git | git add -A && commit, body: {"message":"..."} |
-| POST | /patch | Server-side find-replace {file,old,new} -- bypasses browser = filter. Returns {ok,replaced,length} |
 | GET | /<file> | Read any file in repo root |
 | PUT | /<file> | Write any file in repo root |
 | POST | /snapshot?v=X.Y.Z | Copy build into releases/vX.Y.Z/ |
@@ -29,7 +28,7 @@
 ## KEY FILES
 - sequence-builder.html — single-file app (toolbar, CSS, JS, store injected at build)
 - sequence-builder.store.js — store source (build.js syncs into HTML between sentinels)
-- sequence-builder.test.js — 85 contract tests
+- sequence-builder.test.js — 92 contract tests (Suites 1–11)
 - build.js — syncs store.js → HTML between @@STORE-START / @@STORE-END
 - lint.js — HTML integrity checker: buttons, SVG balance, sentinels, version
 - sf-server.js — dev server v5 (GET/PUT files, POST /build /lint /git /snapshot, GET /log /api /usage)
@@ -149,7 +148,7 @@ If a call is blocked, check ALL variable references — not just string literals
 - Current: 0.9.44
 - Version strings in sequence-builder.html (split/join to bump)
 - Bump pattern: html.split('0.9.43').join('0.9.44')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.44/sequence-builder.html
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.45/sequence-builder.html
 
 ## DEMOS (registered in store)
 - auth-flow — Auth Flow (original)
@@ -160,6 +159,8 @@ If a call is blocked, check ALL variable references — not just string literals
 ### Ready
 1. Canary S1 frame fix — S1 gets dropped when recording starts mid-session.
 2. Tour step for autoFitOnLoad toggle — settings modal must open and spotlight #settings-autofit-checkbox during tour navigation.
+
+3. Log UI endpoint filter — log.html gets a clickable endpoint-filter bar (Select All paradigm). Each unique action label (GET /test, POST /build, etc.) is a toggle chip; Select All / None; filtered view updates instantly without a page reload.
 
 ### Icebox (good ideas, not yet scoped)
 3. Message label editing — double-click a message arrow to edit label inline
