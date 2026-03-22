@@ -326,20 +326,34 @@ const server = http.createServer(function(req, res) {
     return;
   }
   // PUT /<file>
-  if (req.method === 'PUT') {
+  // ?verify=1 returns {ok,wrote,status} so caller can confirm version without a second round-trip
+  if (req.method == 'PUT') {
     const fp = path.join(ROOT, urlPath);
-    let body = ''; req.on('data',d=>body+=d); req.on('end',()=>{
+    const verify = urlObj.searchParams.get('verify') == '1';
+    let body = '';
+    req.on('data', d => body += d);
+    req.on('end', () => {
       const dir = path.dirname(fp);
-      fs.mkdirSync(dir,{recursive:true});
-      fs.writeFile(fp,body,'utf8',err=>{
-        if(err){res.writeHead(500);res.end(err.message);return;}
-        res.writeHead(200); res.end('OK');
-        if(fp.endsWith('log.html')) logHtmlMtime = Date.now();
-        console.log('wrote',fp);
+      fs.mkdirSync(dir, {recursive: true});
+      fs.writeFile(fp, body, 'utf8', err => {
+        if (err) { res.writeHead(500); res.end(err.message); return; }
+        if (fp.endsWith('log.html')) logHtmlMtime = Date.now();
+        console.log('wrote', fp);
+        if (!verify) { res.writeHead(200); res.end('OK'); return; }
+        // verify=1: read version from html and return status inline
+        const {execSync} = require('child_process');
+        let version = '0.0.0';
+        try { const h = fs.readFileSync(path.join(ROOT,'sequence-builder.html'),'utf8'); const vm = h.match(/SequenceForge v(\d+\.\d+\.\d+)/); if (vm) version = vm[1]; } catch(ex){}
+        let git = {};
+        try { git = {branch: execSync('git rev-parse --abbrev-ref HEAD',{cwd:ROOT}).toString().trim(), clean: execSync('git status --porcelain',{cwd:ROOT}).toString().trim().length == 0}; } catch(ex){}
+        res.writeHead(200, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify({ok: true, wrote: path.basename(fp), status: {version, git}}));
       });
-    }); return;
+    });
+    return;
   }
-    // POST /patch -- server-side find-replace in a file, no browser eval needed
+
+  // POST /patch -- server-side find-replace in a file, no browser eval needed
   // Body: { file, old, new }  Returns: { ok, replaced, length }
   // Use this to bypass the browser security filter for patches containing = signs
   if (req.method === 'POST' && urlPath === '/patch') {

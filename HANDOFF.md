@@ -21,7 +21,7 @@
 | POST | /lint | Run lint.js HTML checks, returns JSON {ok, output, ms} |
 | POST | /git | git add -A && commit, body: {"message":"..."} |
 | GET | /<file> | Read any file in repo root |
-| PUT | /<file> | Write any file in repo root |
+| PUT | /<file> | Write any file in repo root. Add ?verify=1 to get {ok,wrote,status} back inline |
 | POST | /snapshot?v=X.Y.Z | Copy build into releases/vX.Y.Z/ |
 | GET | / | List all files in repo root |
 
@@ -89,7 +89,9 @@ WORKAROUNDS (all confirmed working):
 3. Index-based slicing: str.slice(0,N) + newPart + str.slice(M)
 4. POST /patch (server-side find-replace, no browser eval needed) *** PREFERRED FOR ALL PATCHES ***
 5. Build strings from parts: var s = "part1" + eq + "part2"
+6. PUT ?verify=1 returns {ok,wrote,status:{version,git}} -- confirms write+version in one shot, response survives proxy
 IMPORTANT: The filter triggers on the ENTIRE call text, not just string literals.
+NOTE: test-*.txt is gitignored -- safe to use for smoke tests
 NOTE: sequence-builder.html uses CRLF (\r\n); sequence-builder.test.js uses LF (\n);
       HANDOFF.md uses LF (\n). Always match the target file's line endings in /patch calls.
 
