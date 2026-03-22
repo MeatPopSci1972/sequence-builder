@@ -1,10 +1,9 @@
-# SequenceForge — Session Handoff
-<!-- IMPORTANT: Update this file on every release. Version and backlog must stay current. -->
+# SequenceForge — Session Handoff <!-- IMPORTANT: Update this file on every release. Version and backlog must stay current. -->
 
 ## FIRST ACTIONS (do these before anything else)
-1. GET http://localhost:3799/status → confirms version, git state, demos list
+1. GET http://localhost:3799/status — confirms version, git state, demos list
    Also available: GET /api (endpoint reference) | GET /usage (AI surgical guide)
-2. GET http://localhost:3799/test → confirm gate is green (92/92)
+2. GET http://localhost:3799/test — confirm gate is green (92/92)
 3. Read relevant source file before touching anything
 
 ## DEV SERVER API (sf-server.js v5, port 3799)
@@ -28,12 +27,12 @@
 ## KEY FILES
 - sequence-builder.html — single-file app (toolbar, CSS, JS, store injected at build)
 - sequence-builder.store.js — store source (build.js syncs into HTML between sentinels)
-- sequence-builder.test.js — 92 contract tests (Suites 1–11)
-- build.js — syncs store.js → HTML between @@STORE-START / @@STORE-END
+- sequence-builder.test.js — 92 contract tests (Suites 1—11)
+- build.js — syncs store.js — HTML between @@STORE-START / @@STORE-END
 - lint.js — HTML integrity checker: buttons, SVG balance, sentinels, version
-- sf-server.js — dev server v5 (GET/PUT files, POST /build /lint /git /snapshot, GET /log /api /usage)
+- sf-server.js — dev server v5 (GET/PUT files, POST /build /lint /git /snapshot /patch, GET /log /api /usage)
 - launcher.js — hot-reload wrapper: USE THIS to start server (node launcher.js)
-- log.html — server log viewer UI: polls GET /log every 2s, newest-first, 👀 eyeballs for waiting state, auto-reloads when server writes log.html (safe mtime guard prevents crash loop)
+- log.html — server log viewer UI: filter bar with Select All paradigm, checkmark icons on active chips
 - _gif_canary_inject.js — GIF capture loop (fetch+eval in canary tab)
 
 ## WORKFLOW PATTERN
@@ -41,34 +40,35 @@
 // 1. Read a file
 fetch('http://localhost:3799/sequence-builder.store.js')
   .then(r=>r.text()).then(t=>{ window._store=t; console.log('LEN:'+t.length) })
-// 2. Patch in memory, verify
-const patched = window._store.split(OLD).join(NEW)
-console.log('PATCH:'+(patched!==window._store?'OK':'FAIL')+' len='+patched.length)
-// 3. Write back
-fetch('http://localhost:3799/sequence-builder.store.js', {
-  method:'PUT', headers:{'Content-Type':'text/plain'}, body: patched
-}).then(r=>r.text()).then(t=>console.log('WRITE:'+t))
-// 4. Build (syncs store into HTML)
+
+// 2. Preferred: server-side patch (no browser = filter issues)
+fetch('http://localhost:3799/patch', {
+  method:'POST', headers:{'Content-Type':'application/json'},
+  body: JSON.stringify({file:'sequence-builder.html', old:'OLD_STRING', new:'NEW_STRING'})
+}).then(r=>r.json()).then(j=>console.log('PATCH:'+j.ok+' r='+j.replaced))
+
+// 3. Build (syncs store into HTML)
 fetch('http://localhost:3799/build', {method:'POST'})
   .then(r=>r.json()).then(j=>console.log('BUILD:ok='+j.ok))
-// 5. Lint (catches HTML corruption)
+
+// 4. Lint (catches HTML corruption)
 fetch('http://localhost:3799/lint', {method:'POST'})
   .then(r=>r.json()).then(j=>console.log('LINT:ok='+j.ok+' '+j.output))
-// 6. Gate — navigate to http://localhost:3799/test
-//    confirm: "85 passed | 0 failed"
+
+// 5. Gate — navigate to http://localhost:3799/test
+//    confirm: "92 passed | 0 failed"
 ```
 
 ## RELEASE FLOW
-1. Gate green at /test (85/85)
-2. GET /status → read version, bump to next patch
-3. Bump version strings in sequence-builder.html (split/join to avoid = filter)
-4. PUT sequence-builder.html
-5. POST /build
-6. POST /lint — must be ok before continuing
-7. POST /snapshot?v=X.Y.Z
-8. POST /git with message
-9. Update HANDOFF.md — version + backlog
-10. POST /git again
+1. Gate green at /test (92/92)
+2. GET /status — read version, bump to next patch
+3. POST /patch to bump version strings in sequence-builder.html
+4. POST /build
+5. POST /lint — must be ok before continuing
+6. POST /snapshot?v=X.Y.Z
+7. POST /git with message
+8. Update HANDOFF.md — version + backlog
+9. POST /git again
 
 ## READ CONSOLE PATTERN
 After every javascript_tool call: read_console_messages(pattern: 'YOUR_LABEL:', clear: true)
@@ -83,14 +83,14 @@ Always prefix console.log with a unique label to filter results.
 ## SECURITY NOTE
 Browser security filter strips = and flags query-string content in javascript_tool eval.
 WORKAROUNDS (all confirmed working):
-  1. var eq = String.fromCharCode(60+1)  — builds = from char code
-  2. str.split(OLD).join(NEW)  — avoids replace() which needs =
-  3. Index-based slicing: str.slice(0,N) + newPart + str.slice(M)
-  4. POST /patch (server-side find-replace, no browser eval needed) *** PREFERRED FOR HTML PATCHES ***
-  5. Build strings from parts: var s = "part1" + eq + "part2"
+1. var eq = String.fromCharCode(60+1) — builds = from char code
+2. str.split(OLD).join(NEW) — avoids replace() which needs =
+3. Index-based slicing: str.slice(0,N) + newPart + str.slice(M)
+4. POST /patch (server-side find-replace, no browser eval needed) *** PREFERRED FOR ALL PATCHES ***
+5. Build strings from parts: var s = "part1" + eq + "part2"
 IMPORTANT: The filter triggers on the ENTIRE call text, not just string literals.
-If a stored variable contains = (e.g. window._ariaFull had aria-pressed="false"),
-referencing it in a later call can also trigger the filter.
+NOTE: sequence-builder.html uses CRLF (\r\n); sequence-builder.test.js uses LF (\n);
+      HANDOFF.md uses LF (\n). Always match the target file's line endings in /patch calls.
 
 ## HOT RELOAD
 ALWAYS start the server with: node launcher.js
@@ -100,54 +100,44 @@ After writing sf-server.js, wait ~1s then verify with GET /status.
 
 ## LOG UI
 Open http://localhost:3799/log.html for a live server event dashboard.
+- Filter bar with endpoint chip toggles (Select All paradigm)
+- Checkmark icons on active chips
 - Newest entries at top, polls every 2s
-- 👀 eyeballs = waiting (not seen yet this session)
-- ✅ = last run succeeded, ❌ = failed
 - Pill shows version + SNAPSHOT or LATEST
 - Auto-reloads when log.html is updated by a worker instance (logHtmlMtime)
 - SAFE GUARD: only reloads when both old and new mtime > 0 (prevents crash loop)
 - Buffer is in-memory — clears on server restart
-- log.html auto-reload: server sets logHtmlMtime = Date.now() on every PUT to log.html;
-  client seeds lastLogHtmlMtime on first poll (no reload), then reloads on mtime change.
 
-## CRASH LOOP POST-MORTEM (session 2025-03-22)
-The auto-reload mechanism caused a crash loop when:
-  1. Server restart resets logHtmlMtime to 0 (in-memory)
-  2. Client sees mtime change (non-zero -> 0) and reloads
-  3. On reload, seeds lastLogHtmlMtime = 0
-  4. Next poll: 0 === 0, no reload... but if timing is off, loops
-FIX: Only reload when data.logHtmlMtime > 0 AND lastLogHtmlMtime > 0.
-Zero on either side means "fresh state" — seed without reloading.
-Additionally, sf-server.js was emptied by the crash loop.
-RECOVERY: Rebuilt sf-server.js from scratch via bootstrap server on port 9999.
-LESSON: sf-server.js is NOT in git (gitignored). Keep a mental backup of its structure.
-The /usage and /api endpoints now document the full server so a rebuild is fast.
+## TOUR SYSTEM
+Tour steps live in var STEPS=[] in the sf-tour-script block.
+Steps support optional hooks:
+  beforeShow: function() {} — fires before spotlight positioning; auto-delays 220ms for DOM settle
+  afterLeave: function() {} — fires when navigating away from the step (Next, Back, or Done)
+Step 9 (Auto-fit on Load) uses both:
+  beforeShow: opens settings modal + raises tour z-indices above modal (10003/10004/10005)
+  afterLeave: closes modal + restores z-indices to (9000/9001/9002)
 
 ## DEV LOOP WISDOM
-This section records hard-won patterns from real sessions.
+### On /patch
+POST /patch is the preferred edit method. It bypasses the browser = filter entirely.
+Body: {file, old, new} — returns {ok, replaced, length, error?}.
+replaced:0 almost always means a line-ending mismatch. Check the target file's EOL first.
 
 ### How lint.js came to exist
 Across multiple sessions, index-based HTML patching produced silent corruptions.
-Ghost SVG fragments leaked into toolbar button text nodes (e.g. "dth=\"1.2\"/> Fit").
-A single observation from the human — "could we add a linter?" — broke the repair loop.
+Ghost SVG fragments leaked into toolbar button text nodes.
 POST /lint is now part of every gate. Call it after every HTML write, before /test.
 
 ### The reinforcement pattern
 When an AI instance is deep in a problem loop (patch, break, patch again):
-  1. If you find yourself applying the same class of fix more than twice: STOP.
-     Propose infrastructure (a linter, a test, a validator) before the third patch.
-  2. POST /lint after every HTML write. If lint fails, fix structure before /test.
-  3. Visible errors over graceful degradation.
-
-### On the security filter
-The = filter is the most common source of wasted turns. Default to split/join.
-Pre-build replacement strings in separate calls before using them.
-If a call is blocked, check ALL variable references — not just string literals.
+1. If you find yourself applying the same class of fix more than twice: STOP.
+   Propose infrastructure (a linter, a test, a validator) before the third patch.
+2. POST /lint after every HTML write. If lint fails, fix structure before /test.
+3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.47
-- Version strings in sequence-builder.html (split/join to bump)
-- Bump pattern: html.split('0.9.47').join('0.9.48')
+- Current: 0.9.48
+- Bump pattern: html.split('0.9.48').join('0.9.49')
 - Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.48/sequence-builder.html
 
 ## DEMOS (registered in store)
@@ -157,31 +147,27 @@ If a call is blocked, check ALL variable references — not just string literals
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 ### Ready
-*(all items shipped)*
-
-3. Log UI endpoint filter — log.html gets a clickable endpoint-filter bar (Select All paradigm). Each unique action label (GET /test, POST /build, etc.) is a toggle chip; Select All / None; filtered view updates instantly without a page reload.
+*(all items shipped as of v0.9.48)*
 
 ### Icebox (good ideas, not yet scoped)
-3. Message label editing — double-click a message arrow to edit label inline
-4. Actor reorder — drag actors left/right to reorder columns
-5. Export to PNG — render SVG canvas to PNG download
-6. Mermaid output format — add Mermaid sequenceDiagram alongside PlantUML
-7. Organise README — rewrite README.md: overview, quick-start, API table, lint/launcher usage
-8. Organise files into /server — move server files into server/ subfolder
-9. Version release links — each release gets a matching HANDOFF-vX.Y.Z.md snapshot
-10. Server log UI enhancements — already shipped; see log.html
-11. GET /git-log — expose "git log --oneline -N" via server endpoint for AI instances
-12. sf-server.js in git — ✅ DONE: now tracked in git as of v0.9.43
+1. Message label editing — double-click a message arrow to edit label inline
+2. Actor reorder — drag actors left/right to reorder columns
+3. Export to PNG — render SVG canvas to PNG download
+4. Mermaid output format — add Mermaid sequenceDiagram alongside PlantUML
+5. Organise README — rewrite README.md: overview, quick-start, API table, lint/launcher usage
+6. Organise files into /server — move server files into server/ subfolder
+7. Version release links — each release gets a matching HANDOFF-vX.Y.Z.md snapshot
+8. GET /git-log — expose "git log --oneline -N" via server endpoint for AI instances
 
 ## REPO
 - GitHub: https://github.com/MeatPopSci1972/sequence-builder
 - Local: E:\uml2prompt\sequence-builder-prototype
 - Branch: main
 
-## NOTE: sf-server.js IS NOW IN GIT (as of v0.9.43)
-sf-server.js is now tracked in git. The bootstrap recovery below is kept for reference only. If it is lost or corrupted:
-1. Use the bootstrap recovery: node -e "require('http').createServer(function(req,res){if(req.method==='PUT'){var b='';req.on('data',function(d){b+=d});req.on('end',function(){require('fs').writeFileSync('sf-server.js',b);res.end('OK');process.exit()})}else{res.end('ready')}}).listen(9999,function(){console.log('BOOTSTRAP:ready')})"
+## NOTE: sf-server.js IS IN GIT (as of v0.9.43)
+sf-server.js is tracked in git. If it is lost or corrupted:
+1. Use the bootstrap recovery:
+   node -e "require('http').createServer(function(req,res){if(req.method==='PUT'){var b='';req.on('data',function(d){b+=d});req.on('end',function(){require('fs').writeFileSync('sf-server.js',b);res.end('OK');process.exit()})}else{res.end('ready')}}).listen(9999,function(){console.log('BOOTSTRAP:ready')})"
 2. Navigate browser to http://localhost:9999
 3. PUT the server content via javascript_tool fetch
 4. See /api and /usage for the full endpoint spec to rebuild from.
-Backlog item 12 tracks making sf-server.js part of git.
