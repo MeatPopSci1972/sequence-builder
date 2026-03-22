@@ -78,6 +78,32 @@ Always prefix console.log with a unique label to filter results.
 Browser security filter strips = and flags query-string content in javascript_tool eval.
 If a replace() fails silently, split the string differently or use index-based slicing.
 
+## DEV LOOP WISDOM
+This section records hard-won patterns from real sessions. New instances should read this.
+
+### How lint.js came to exist
+Across multiple sessions, index-based HTML patching through the javascript_tool eval channel
+produced silent corruptions -- ghost SVG fragments leaked into toolbar button text nodes,
+rendering as visible garbage in the UI (e.g. "dth=\"1.2\"/> Fit" in the toolbar).
+The corruptions were not caught by the 85 store/logic tests because those tests have no
+visibility into HTML structure.
+
+The fix came not from another patching session but from stepping back: the human observed
+that a linter would address the root cause more efficiently than continued surgical repair.
+That single external observation -- treat the symptom with tooling, not with more patches --
+prompted the creation of lint.js and POST /lint in one focused session.
+
+### The reinforcement pattern
+When an AI instance is deep in a problem loop (patch, break, patch again), it may not
+self-interrupt to propose tooling. The human asking "could we add a linter?" is doing
+the systems-thinking that breaks the loop. To reinforce this behavior:
+  1. When you find yourself applying the same class of fix more than twice, STOP.
+     Propose infrastructure (a linter, a test, a validator) before the third patch.
+  2. POST /lint is now part of the gate. Call it after every HTML write, before /test.
+     If lint fails, do not proceed to /test -- fix the structural issue first.
+  3. Visible errors over graceful degradation. Lint failing loudly is the goal.
+     A silent pass that hides corruption is worse than a noisy fail that surfaces it.
+
 ## VERSION
 - Current: 0.9.38
 - Version strings in sequence-builder.html (replaceAll to bump)
