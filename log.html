@@ -7,83 +7,73 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg:       #0d1117;
-    --surface:  #161b22;
-    --surface2: #1c2330;
-    --border:   #30363d;
-    --text:     #e6edf3;
-    --text2:    #8b949e;
-    --accent:   #00ff9d;
-    --ok:       #3fb950;
-    --fail:     #f85149;
-    --warn:     #d29922;
-    --r:        4px;
-    --mono:     'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
+    --border:#30363d; --text:#e6edf3; --text2:#8b949e;
+    --accent:#00ff9d; --ok:#3fb950; --fail:#f85149; --warn:#d29922;
+    --r:4px; --mono:'JetBrains Mono','Fira Code',monospace;
   }
-  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; }
-
+  html,body { height:100%; background:var(--bg); color:var(--text); font-family:var(--mono); font-size:13px; }
   header {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 16px; border-bottom: 1px solid var(--border);
-    background: var(--surface); position: sticky; top: 0; z-index: 10;
+    display:flex; align-items:center; gap:12px;
+    padding:10px 16px; border-bottom:1px solid var(--border);
+    background:var(--surface); position:sticky; top:0; z-index:10;
   }
-  header .logo { color: var(--accent); font-weight: 700; font-size: 15px; letter-spacing: .03em; }
-  header .logo span { color: var(--text2); font-weight: 400; }
-  .pill {
-    font-size: 11px; padding: 2px 8px; border-radius: 99px;
-    border: 1px solid var(--border); color: var(--text2);
-  }
-  .pill.live { border-color: var(--ok); color: var(--ok); }
-  .pill.paused { border-color: var(--warn); color: var(--warn); }
-
-  .controls {
-    margin-left: auto; display: flex; align-items: center; gap: 10px;
-  }
-  .controls label { color: var(--text2); font-size: 11px; }
+  .logo { color:var(--accent); font-weight:700; font-size:15px; }
+  .logo span { color:var(--text2); font-weight:400; }
+  .pill { font-size:11px; padding:2px 8px; border-radius:99px; border:1px solid var(--border); color:var(--text2); }
+  .pill.live   { border-color:var(--ok);   color:var(--ok); }
+  .pill.paused { border-color:var(--warn); color:var(--warn); }
+  .pill.reload { border-color:var(--fail); color:var(--fail); animation:blink .6s step-end infinite; }
+  @keyframes blink { 50% { opacity:.3; } }
+  .controls { margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .controls label { color:var(--text2); font-size:11px; }
   .controls input[type="number"] {
-    width: 56px; padding: 3px 6px; border-radius: var(--r);
-    border: 1px solid var(--border); background: var(--surface2);
-    color: var(--text); font-family: var(--mono); font-size: 11px;
-    text-align: center;
+    width:56px; padding:3px 6px; border-radius:var(--r);
+    border:1px solid var(--border); background:var(--surface2);
+    color:var(--text); font-family:var(--mono); font-size:11px; text-align:center;
   }
   .controls button {
-    padding: 3px 10px; border-radius: var(--r);
-    border: 1px solid var(--border); background: transparent;
-    color: var(--text2); font-family: var(--mono); font-size: 11px;
-    cursor: pointer;
+    padding:3px 10px; border-radius:var(--r);
+    border:1px solid var(--border); background:transparent;
+    color:var(--text2); font-family:var(--mono); font-size:11px; cursor:pointer;
   }
-  .controls button:hover { background: var(--surface2); color: var(--text); }
-
-  #log-list {
-    padding: 10px 16px; display: flex; flex-direction: column; gap: 6px;
+  .controls button:hover { background:var(--surface2); color:var(--text); }
+  /* status bar */
+  #status-bar {
+    display:flex; align-items:center; gap:6px;
+    padding:6px 16px; border-bottom:1px solid var(--border);
+    background:var(--surface2); font-size:11px; flex-wrap:wrap;
   }
-
-  .entry {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--r); overflow: hidden;
-    animation: slideIn .18s ease;
+  .sitem {
+    display:flex; align-items:center; gap:5px;
+    padding:2px 8px; border-radius:99px;
+    border:1px solid var(--border); background:var(--surface);
+    font-family:var(--mono); font-size:11px; white-space:nowrap;
   }
-  @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-
-  .entry-head {
-    display: flex; align-items: baseline; gap: 10px;
-    padding: 6px 10px; border-bottom: 1px solid var(--border);
-    background: var(--surface2);
+  .sitem.ok   { border-color:var(--ok);   color:var(--ok); }
+  .sitem.fail { border-color:var(--fail);  color:var(--fail); }
+  .sitem.wait { border-color:var(--border); color:var(--text2); }
+  .sitem.wait .eye { display:inline-block; animation:eyeballs 2s ease-in-out infinite; }
+  @keyframes eyeballs {
+    0%,100% { transform:translateX(0) scaleY(1); }
+    20%     { transform:translateX(-2px) scaleY(1); }
+    40%     { transform:translateX(2px) scaleY(1); }
+    60%     { transform:translateX(0) scaleY(0.15); }
+    70%     { transform:translateX(0) scaleY(1); }
+    85%     { transform:translateX(2px) scaleY(1); }
   }
-  .entry-ts { color: var(--text2); font-size: 10px; white-space: nowrap; }
-  .entry-action { color: var(--accent); font-weight: 600; font-size: 12px; }
-  .entry-body {
-    padding: 6px 10px; color: var(--text2); font-size: 12px;
-    white-space: pre-wrap; word-break: break-all; line-height: 1.5;
-  }
-  .entry-body.ok  { color: var(--ok); }
-  .entry-body.fail { color: var(--fail); }
-
-  .empty {
-    text-align: center; padding: 60px 20px;
-    color: var(--text2); font-size: 12px; line-height: 2;
-  }
-  .empty .dot { color: var(--accent); }
+  .sbar-label { color:var(--text2); font-size:10px; margin-right:4px; }
+  #log-list { padding:10px 16px; display:flex; flex-direction:column; gap:6px; }
+  .entry { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; animation:slideIn .18s ease; }
+  @keyframes slideIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
+  .entry-head { display:flex; align-items:baseline; gap:10px; padding:6px 10px; border-bottom:1px solid var(--border); background:var(--surface2); }
+  .entry-ts { color:var(--text2); font-size:10px; white-space:nowrap; }
+  .entry-action { color:var(--accent); font-weight:600; font-size:12px; }
+  .entry-body { padding:6px 10px; color:var(--text2); font-size:12px; white-space:pre-wrap; word-break:break-all; line-height:1.5; }
+  .entry-body.ok   { color:var(--ok); }
+  .entry-body.fail { color:var(--fail); }
+  .empty { text-align:center; padding:60px 20px; color:var(--text2); font-size:12px; line-height:2; }
+  .empty .dot { color:var(--accent); }
 </style>
 </head>
 <body>
@@ -95,56 +85,108 @@
     <input type="number" id="buf-size" min="10" max="500" value="100">
     <button id="btn-clear">clear</button>
     <button id="btn-pause">pause</button>
+    <button id="btn-reload" title="Reload page">↺</button>
   </div>
 </header>
+<div id="status-bar">
+  <span class="sbar-label">last cycle:</span>
+  <span class="sitem wait" id="si-build"><span class="eye">👀</span> build</span>
+  <span class="sitem wait" id="si-lint"><span class="eye">👀</span> lint</span>
+  <span class="sitem wait" id="si-snap"><span class="eye">👀</span> snapshot</span>
+  <span class="sitem wait" id="si-git"><span class="eye">👀</span> git</span>
+</div>
 <div id="log-list"></div>
 
 <script>
-  const list     = document.getElementById('log-list');
-  const pill     = document.getElementById('status-pill');
-  const bufInput = document.getElementById('buf-size');
-  const btnClear = document.getElementById('btn-clear');
-  const btnPause = document.getElementById('btn-pause');
+  var list     = document.getElementById('log-list');
+  var pill     = document.getElementById('status-pill');
+  var bufInput = document.getElementById('buf-size');
+  var btnClear = document.getElementById('btn-clear');
+  var btnPause = document.getElementById('btn-pause');
+  var btnReload= document.getElementById('btn-reload');
 
-  let paused    = false;
-  let localLog  = [];   // client-side copy for clear/buffer trim
-  let lastTs    = 0;    // track newest entry to detect changes
+  var paused          = false;
+  var localLog        = [];
+  var lastTs          = 0;
+  var pillTimer       = 0;
+  var wasOffline      = false;
+  var lastLogHtmlMtime = 0;  // 0 until seeded; only reload when BOTH sides > 0
 
   function fmt(ts) {
-    const d = new Date(ts);
+    var d = new Date(ts);
     return d.toTimeString().slice(0,8) + '.' + String(d.getMilliseconds()).padStart(3,'0');
   }
 
   function isOk(result) {
     if (!result) return null;
-    const r = result.toLowerCase();
-    if (r.includes('fail') || r.includes('error') || r.includes('err')) return false;
+    var r = result.toLowerCase();
+    if (r.includes('fail') || r.includes('error')) return false;
     if (r.includes('ok') || r.includes('pass') || r.startsWith('v0.')) return true;
     return null;
   }
 
   function render() {
-    const max = parseInt(bufInput.value) || 100;
-    const shown = localLog.slice(0, max);
+    var max = parseInt(bufInput.value) || 100;
+    var shown = localLog.slice(0, max);
     if (shown.length === 0) {
-      list.innerHTML = '<div class="empty"><div class="dot">◆</div>No events yet.<br>Perform an action (build, lint, test, git) to see entries here.</div>';
+      list.innerHTML = '<div class="empty"><div class="dot">◆</div>No events yet.<br>Perform an action to see entries.</div>';
       return;
     }
     list.innerHTML = '';
     shown.forEach(function(e) {
-      const ok = isOk(e.result);
-      const div = document.createElement('div');
+      var ok = isOk(e.result);
+      var div = document.createElement('div');
       div.className = 'entry';
       div.innerHTML =
         '<div class="entry-head">'
         + '<span class="entry-ts">' + fmt(e.ts) + '</span>'
         + '<span class="entry-action">' + e.action + '</span>'
         + '</div>'
-        + '<div class="entry-body' + (ok === true ? ' ok' : ok === false ? ' fail' : '') + '">'
+        + '<div class="entry-body' + (ok===true?' ok':ok===false?' fail':'') + '">'
         + (e.result || '—')
         + '</div>';
       list.appendChild(div);
     });
+  }
+
+  function updateStatusBar(entries) {
+    var actions = {
+      'si-build': { key:'POST /build',    label:'build' },
+      'si-lint':  { key:'POST /lint',     label:'lint' },
+      'si-snap':  { key:'POST /snapshot', label:'snapshot' },
+      'si-git':   { key:'POST /git',      label:'git' }
+    };
+    Object.keys(actions).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var def = actions[id];
+      var hit = null;
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i].action === def.key || entries[i].action.indexOf(def.key) === 0) {
+          hit = entries[i]; break;
+        }
+      }
+      if (!hit) {
+        el.innerHTML = '<span class="eye">👀</span> ' + def.label;
+        el.className = 'sitem wait';
+      } else {
+        var r = (hit.result || '').toLowerCase();
+        var failed = r.indexOf('fail') >= 0 || r.indexOf('error') >= 0;
+        el.textContent = (failed ? '❌' : '✅') + ' ' + def.label;
+        el.className = 'sitem ' + (failed ? 'fail' : 'ok');
+      }
+    });
+  }
+
+  function updatePill() {
+    fetch('/status').then(function(r){return r.json();}).then(function(s){
+      var v = s.version || '';
+      var clean = s.git && s.git.clean;
+      var lastMsg = s.git && s.git.lastCommit ? s.git.lastCommit : '';
+      var tag = (clean && lastMsg.indexOf(v) >= 0) ? 'SNAPSHOT' : 'LATEST';
+      pill.textContent = '● ' + v + ' ' + tag;
+      pill.className = 'pill live';
+    }).catch(function(){});
   }
 
   function poll() {
@@ -157,31 +199,53 @@
           localLog = data.entries;
           render();
         }
-        pill.textContent = '● live';
-        pill.className = 'pill live';
+        updateStatusBar(data.entries || []);
+
+        // Auto-reload when log.html changes on server
+        // SAFE GUARD: only reload when BOTH sides have real timestamps (> 0)
+        // This prevents the crash loop where server restart sets mtime to 0
+        if (data.logHtmlMtime > 0 && lastLogHtmlMtime === 0) {
+          lastLogHtmlMtime = data.logHtmlMtime;  // seed — no reload
+        } else if (data.logHtmlMtime > 0 && lastLogHtmlMtime > 0 && data.logHtmlMtime !== lastLogHtmlMtime) {
+          lastLogHtmlMtime = data.logHtmlMtime;
+          pill.textContent = '↺ updating...';
+          pill.className = 'pill reload';
+          setTimeout(function(){ location.reload(); }, 600);
+          return;
+        }
+
+        // Handle reconnect after offline
+        if (wasOffline) {
+          wasOffline = false;
+          // Don't auto-reload on reconnect — just update pill
+        }
+
+        // Update version pill every 10s
+        if (Date.now() - pillTimer > 10000) { pillTimer = Date.now(); updatePill(); }
+
+        pill.textContent = pill.textContent.includes('●') ? pill.textContent : '● live';
+        if (!pill.textContent.includes('updating')) pill.className = 'pill live';
       })
       .catch(function() {
-        pill.textContent = '○ offline';
-        pill.className = 'pill paused';
+        if (!wasOffline) {
+          wasOffline = true;
+          pill.textContent = '○ offline';
+          pill.className = 'pill paused';
+        }
       });
   }
 
-  btnClear.addEventListener('click', function() {
-    localLog = [];
-    lastTs = 0;
-    render();
-  });
-
+  btnClear.addEventListener('click', function() { localLog = []; lastTs = 0; render(); });
   btnPause.addEventListener('click', function() {
     paused = !paused;
     btnPause.textContent = paused ? 'resume' : 'pause';
     pill.textContent = paused ? '◌ paused' : '● live';
     pill.className = paused ? 'pill paused' : 'pill live';
   });
-
+  btnReload.addEventListener('click', function() { location.reload(); });
   bufInput.addEventListener('change', render);
 
-  // Poll every 2s
+  updatePill();
   poll();
   setInterval(poll, 2000);
 </script>
