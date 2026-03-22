@@ -145,10 +145,10 @@ Pre-build replacement strings in separate calls before using them.
 If a call is blocked, check ALL variable references — not just string literals.
 
 ## VERSION
-- Current: 0.9.44
+- Current: 0.9.47
 - Version strings in sequence-builder.html (split/join to bump)
-- Bump pattern: html.split('0.9.43').join('0.9.44')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.46/sequence-builder.html
+- Bump pattern: html.split('0.9.47').join('0.9.48')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.47/sequence-builder.html
 
 ## DEMOS (registered in store)
 - auth-flow — Auth Flow (original)
@@ -157,8 +157,7 @@ If a call is blocked, check ALL variable references — not just string literals
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 ### Ready
-1. Canary S1 frame fix — S1 gets dropped when recording starts mid-session.
-2. Tour step for autoFitOnLoad toggle — settings modal must open and spotlight #settings-autofit-checkbox during tour navigation.
+1. Tour step for autoFitOnLoad toggle — settings modal must open and spotlight #settings-autofit-checkbox during tour navigation.
 
 3. Log UI endpoint filter — log.html gets a clickable endpoint-filter bar (Select All paradigm). Each unique action label (GET /test, POST /build, etc.) is a toggle chip; Select All / None; filtered view updates instantly without a page reload.
 
