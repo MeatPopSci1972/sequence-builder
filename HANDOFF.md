@@ -14,6 +14,7 @@
 | GET | /api | Full endpoint reference JSON |
 | GET | /usage | Surgical AI usage guide, plain text |
 | GET | /log | Server event log JSON {entries, bufferSize, logHtmlMtime} |
+| GET | /git-log | git log --oneline JSON {n, lines} — default n\=20 |
 | GET | /test | Run build + tests, returns HTML report |
 | POST | /patch | Server-side find-replace {file,old,new} -- bypasses browser = filter |
 | POST | /build | Run build.js only, returns JSON {ok, output, ms, exitCode} |
@@ -136,9 +137,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.48
-- Bump pattern: html.split('0.9.48').join('0.9.49')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.48/sequence-builder.html
+- Current: 0.9.49
+- Bump pattern: html.split('0.9.49').join('0.9.50')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.49/sequence-builder.html
 
 ## DEMOS (registered in store)
 - auth-flow — Auth Flow (original)
@@ -157,7 +158,6 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 5. Organise README — rewrite README.md: overview, quick-start, API table, lint/launcher usage
 6. Organise files into /server — move server files into server/ subfolder
 7. Version release links — each release gets a matching HANDOFF-vX.Y.Z.md snapshot
-8. GET /git-log — expose "git log --oneline -N" via server endpoint for AI instances
 
 ## REPO
 - GitHub: https://github.com/MeatPopSci1972/sequence-builder

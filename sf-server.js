@@ -123,6 +123,171 @@ const server = http.createServer(function(req, res) {
     res.end(JSON.stringify({entries:logBuffer,bufferSize:LOG_BUFFER_DEFAULT,logHtmlMtime:logHtmlMtime}));
     return;
   }
+  // GET /git-log
+  if (req.method === 'GET' && urlPath === '/git-log') {
+    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
+    const {execSync} = require('child_process');
+    let lines = [];
+    try {
+      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
+      lines = out ? out.split('\n') : [];
+    } catch(e) { lines = ['error: ' + e.message]; }
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({n, lines}));
+    addLog('GET /git-log', lines.length + ' commits');
+    return;
+  }
+
+  // GET /git-log
+  if (req.method === 'GET' && urlPath === '/git-log') {
+    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
+    const {execSync} = require('child_process');
+    let lines = [];
+    try {
+      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
+      lines = out ? out.split('\n') : [];
+    } catch(e) { lines = ['error: ' + e.message]; }
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({n, lines}));
+    addLog('GET /git-log', lines.length + ' commits');
+    return;
+  }
+
+  // GET /git-log
+  if (req.method === 'GET' && urlPath === '/git-log') {
+    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
+    const {execSync} = require('child_process');
+    let lines = [];
+    try {
+      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
+      lines = out ? out.split('\n') : [];
+    } catch(e) { lines = ['error: ' + e.message]; }
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({n, lines}));
+    addLog('GET /git-log', lines.length + ' commits');
+    return;
+  }
+
+  // GET /git-log
+  if (req.method === 'GET' && urlPath === '/git-log') {
+    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
+    const {execSync} = require('child_process');
+    let lines = [];
+    try {
+      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
+      lines = out ? out.split('\n') : [];
+    } catch(e) { lines = ['error: ' + e.message]; }
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({n, lines}));
+    addLog('GET /git-log', lines.length + ' commits');
+    return;
+  }
+
+  // GET /git-log
+  if (req.method == 'GET' && urlPath == '/git-log') {
+    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
+    const {execSync} = require('child_process');
+    let lines = [];
+    try {
+      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
+      lines = out ? out.split('\n') : [];
+    } catch(e) { lines = ['error: ' + e.message]; }
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({n, lines}));
+    addLog('GET /git-log', lines.length + ' commits');
+    return;
+  }
+
+  // GET /git-log
+  if (req.method == 'GET' && urlPath == '/git-log') {
+    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
+    const {execSync} = require('child_process');
+    let lines = [];
+    try {
+      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
+      lines = out ? out.split('\n') : [];
+    } catch(e) { lines = ['error: ' + e.message]; }
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({n, lines}));
+    addLog('GET /git-log', lines.length + ' commits');
+    return;
+  }
+
+  // GET /git-log
+  if (req.method == 'GET' && urlPath == '/git-log') {
+    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
+    const {execSync} = require('child_process');
+    let lines = [];
+    try {
+      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
+      lines = out ? out.split('\n') : [];
+    } catch(e) { lines = ['error: ' + e.message]; }
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({n, lines}));
+    addLog('GET /git-log', lines.length + ' commits');
+    return;
+  }
+
+  // GET /git-log
+  if (req.method == 'GET' && urlPath == '/git-log') {
+    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
+    const {execSync} = require('child_process');
+    let lines = [];
+    try {
+      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
+      lines = out ? out.split('\n') : [];
+    } catch(e) { lines = ['error: ' + e.message]; }
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({n, lines}));
+    addLog('GET /git-log', lines.length + ' commits');
+    return;
+  }
+
+  // GET /git-log
+  if (req.method == 'GET' && urlPath == '/git-log') {
+    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
+    const {execSync} = require('child_process');
+    let lines = [];
+    try {
+      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
+      lines = out ? out.split('\n') : [];
+    } catch(ex) { lines = ['error: ' + ex.message]; }
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({n, lines}));
+    addLog('GET /git-log', lines.length + ' commits');
+    return;
+  }
+
+  // GET /git-log
+  if (req.method == 'GET' && urlPath == '/git-log') {
+    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
+    const {execSync} = require('child_process');
+    let lines = [];
+    try {
+      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
+      lines = out ? out.split('\n') : [];
+    } catch(ex) { lines = ['error: ' + ex.message]; }
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({n, lines}));
+    addLog('GET /git-log', lines.length + ' commits');
+    return;
+  }
+
+  // GET /git-log
+  if (req.method == 'GET' && urlPath == '/git-log') {
+    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
+    const {execSync} = require('child_process');
+    let lines = [];
+    try {
+      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
+      lines = out ? out.split('\n') : [];
+    } catch(ex) { lines = ['error: ' + ex.message]; }
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({n, lines}));
+    addLog('GET /git-log', lines.length + ' commits');
+    return;
+  }
+
   // GET /api
   if (req.method === 'GET' && urlPath === '/api') {
     res.writeHead(200,{'Content-Type':'application/json'});
@@ -131,7 +296,7 @@ const server = http.createServer(function(req, res) {
       {method:'GET',path:'/HANDOFF.md',desc:'Session handoff doc'},
       {method:'GET',path:'/api',desc:'Endpoint reference JSON'},
       {method:'GET',path:'/usage',desc:'AI usage guide plain text'},
-      {method:'GET',path:'/log',desc:'Server event log JSON'},
+      {method:'GET',path:'/log',desc:'Server event log JSON'},{method:'GET',path:'/git-log',desc:'git log --oneline JSON {n,lines, default 20}'},
       {method:'GET',path:'/test',desc:'Run build+tests HTML report'},
       {method:'POST',path:'/build',desc:'Run build.js JSON result'},
       {method:'POST',path:'/lint',desc:'Run lint.js JSON result'},
