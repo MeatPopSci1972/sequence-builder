@@ -51,6 +51,22 @@
     font-family:var(--mono); font-size:11px; white-space:nowrap;
   }
   .sitem.ok   { border-color:var(--ok);   color:var(--ok); }
+  #filter-bar {
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+    padding:6px 16px 8px; border-bottom:1px solid var(--border);
+    background:var(--surface2); font-size:11px;
+  }
+  #filter-bar .fb-label { color:var(--dim); font-size:10px; letter-spacing:.06em; text-transform:uppercase; margin-right:2px; }
+  .fchip {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:2px 9px; border-radius:99px; cursor:pointer;
+    border:1px solid var(--border); background:var(--surface);
+    font-family:var(--mono); font-size:11px; white-space:nowrap;
+    color:var(--dim); transition:border-color .12s, color .12s, background .12s;
+    user-select:none;
+  }
+  .fchip.active { border-color:var(--accent); color:var(--accent); background:rgba(0,255,157,.07); }
+  .fchip.select-all { border-style:dashed; }
   .sitem.fail { border-color:var(--fail);  color:var(--fail); }
   .sitem.wait { border-color:var(--border); color:var(--text2); }
   .sitem.wait .eye { display:inline-block; animation:eyeballs 2s ease-in-out infinite; }
@@ -95,6 +111,7 @@
   <span class="sitem wait" id="si-snap"><span class="eye">👀</span> snapshot</span>
   <span class="sitem wait" id="si-git"><span class="eye">👀</span> git</span>
 </div>
+<div id="filter-bar"></div>
 <div id="log-list"></div>
 
 <script>
@@ -108,6 +125,9 @@
   var paused          = false;
   var localLog        = [];
   var lastTs          = 0;
+  var activeFilters   = new Set(); // empty = show all
+  var knownActions    = new Set(); // tracks unique action labels seen
+  var filterBar       = document.getElementById('filter-bar');
   var pillTimer       = 0;
   var wasOffline      = false;
   var lastLogHtmlMtime = 0;  // 0 until seeded; only reload when BOTH sides > 0
@@ -125,9 +145,63 @@
     return null;
   }
 
+  function buildFilterBar() {
+    // Collect all unique action labels from the full log
+    var changed = false;
+    localLog.forEach(function(e) { if (!knownActions.has(e.action)) { knownActions.add(e.action); changed = true; } });
+    if (!changed && filterBar.children.length > 0) return; // nothing new
+    filterBar.innerHTML = '';
+    if (knownActions.size === 0) return;
+
+    var label = document.createElement('span');
+    label.className = 'fb-label';
+    label.textContent = 'filter:';
+    filterBar.appendChild(label);
+
+    // Select All chip
+    var allChip = document.createElement('span');
+    allChip.className = 'fchip select-all' + (activeFilters.size === 0 ? ' active' : '');
+    allChip.textContent = 'Select All';
+    allChip.addEventListener('click', function() {
+      activeFilters.clear();
+      buildFilterBar();
+      render();
+    });
+    filterBar.appendChild(allChip);
+
+    // One chip per unique action, sorted
+    var sorted = Array.from(knownActions).sort();
+    sorted.forEach(function(action) {
+      var chip = document.createElement('span');
+      var isActive = activeFilters.size === 0 || activeFilters.has(action);
+      chip.className = 'fchip' + (isActive ? ' active' : '');
+      chip.textContent = action;
+      chip.addEventListener('click', function() {
+        if (activeFilters.size === 0) {
+          // All were shown — switch to single-select: show only this one
+          sorted.forEach(function(a) { if (a !== action) activeFilters.add(a); });
+          // activeFilters now contains everything EXCEPT action — invert:
+          // simpler: rebuild as "all except toggled off"
+          // Actually store which are ON: start fresh with only clicked
+          activeFilters.clear();
+          activeFilters.add(action);
+        } else if (activeFilters.has(action)) {
+          activeFilters.delete(action);
+          if (activeFilters.size === 0) activeFilters.clear(); // back to show-all
+        } else {
+          activeFilters.add(action);
+        }
+        buildFilterBar();
+        render();
+      });
+      filterBar.appendChild(chip);
+    });
+  }
+
   function render() {
     var max = parseInt(bufInput.value) || 100;
-    var shown = localLog.slice(0, max);
+    var filtered = activeFilters.size === 0 ? localLog : localLog.filter(function(e) { return activeFilters.has(e.action); });
+    var shown = filtered.slice(0, max);
     if (shown.length === 0) {
       list.innerHTML = '<div class="empty"><div class="dot">◆</div>No events yet.<br>Perform an action to see entries.</div>';
       return;
@@ -197,6 +271,7 @@
         if (data.entries.length > 0 && data.entries[0].ts !== lastTs) {
           lastTs = data.entries[0].ts;
           localLog = data.entries;
+          buildFilterBar();
           render();
         }
         updateStatusBar(data.entries || []);
