@@ -4,7 +4,7 @@
 ## FIRST ACTIONS (do these before anything else)
 1. GET http://localhost:3799/status → confirms version, git state, demos list
    Also available: GET /api (endpoint reference) | GET /usage (AI surgical guide)
-2. GET http://localhost:3799/test → confirm gate is green (85/85)
+2. GET http://localhost:3799/test → confirm gate is green (92/92)
 3. Read relevant source file before touching anything
 
 ## DEV SERVER API (sf-server.js v5, port 3799)
@@ -16,6 +16,7 @@
 | GET | /usage | Surgical AI usage guide, plain text |
 | GET | /log | Server event log JSON {entries, bufferSize, logHtmlMtime} |
 | GET | /test | Run build + tests, returns HTML report |
+| POST | /patch | Server-side find-replace {file,old,new} -- bypasses browser = filter |
 | POST | /build | Run build.js only, returns JSON {ok, output, ms, exitCode} |
 | POST | /lint | Run lint.js HTML checks, returns JSON {ok, output, ms} |
 | POST | /git | git add -A && commit, body: {"message":"..."} |
@@ -145,10 +146,10 @@ Pre-build replacement strings in separate calls before using them.
 If a call is blocked, check ALL variable references — not just string literals.
 
 ## VERSION
-- Current: 0.9.43
+- Current: 0.9.44
 - Version strings in sequence-builder.html (split/join to bump)
 - Bump pattern: html.split('0.9.43').join('0.9.44')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.43/sequence-builder.html
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.44/sequence-builder.html
 
 ## DEMOS (registered in store)
 - auth-flow — Auth Flow (original)
@@ -157,8 +158,8 @@ If a call is blocked, check ALL variable references — not just string literals
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 ### Ready
-1. Auto fit-to-diagram on load — user preference toggle: when enabled, viewport auto-scales after any LOAD_DEMO or LOAD_DIAGRAM dispatch so the diagram fills the canvas.
-2. Canary S1 frame fix — S1 gets dropped when recording starts mid-session.
+1. Canary S1 frame fix — S1 gets dropped when recording starts mid-session.
+2. Tour step for autoFitOnLoad toggle — settings modal must open and spotlight #settings-autofit-checkbox during tour navigation.
 
 ### Icebox (good ideas, not yet scoped)
 3. Message label editing — double-click a message arrow to edit label inline
