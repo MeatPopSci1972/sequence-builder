@@ -148,7 +148,7 @@ If a call is blocked, check ALL variable references — not just string literals
 - Current: 0.9.44
 - Version strings in sequence-builder.html (split/join to bump)
 - Bump pattern: html.split('0.9.43').join('0.9.44')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.45/sequence-builder.html
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.46/sequence-builder.html
 
 ## DEMOS (registered in store)
 - auth-flow — Auth Flow (original)

@@ -39,18 +39,7 @@
   }
   .controls button:hover { background:var(--surface2); color:var(--text); }
   /* status bar */
-  #status-bar {
-    display:flex; align-items:center; gap:6px;
-    padding:6px 16px; border-bottom:1px solid var(--border);
-    background:var(--surface2); font-size:11px; flex-wrap:wrap;
-  }
-  .sitem {
-    display:flex; align-items:center; gap:5px;
-    padding:2px 8px; border-radius:99px;
-    border:1px solid var(--border); background:var(--surface);
-    font-family:var(--mono); font-size:11px; white-space:nowrap;
-  }
-  .sitem.ok   { border-color:var(--ok);   color:var(--ok); }
+  
   #filter-bar {
     display:flex; align-items:center; gap:6px; flex-wrap:wrap;
     padding:6px 16px 8px; border-bottom:1px solid var(--border);
@@ -104,13 +93,6 @@
     <button id="btn-reload" title="Reload page">↺</button>
   </div>
 </header>
-<div id="status-bar">
-  <span class="sbar-label">last cycle:</span>
-  <span class="sitem wait" id="si-build"><span class="eye">👀</span> build</span>
-  <span class="sitem wait" id="si-lint"><span class="eye">👀</span> lint</span>
-  <span class="sitem wait" id="si-snap"><span class="eye">👀</span> snapshot</span>
-  <span class="sitem wait" id="si-git"><span class="eye">👀</span> git</span>
-</div>
 <div id="filter-bar"></div>
 <div id="log-list"></div>
 
@@ -161,7 +143,7 @@
     // Select All chip
     var allChip = document.createElement('span');
     allChip.className = 'fchip select-all' + (activeFilters.size === 0 ? ' active' : '');
-    allChip.textContent = 'Select All';
+    allChip.textContent = (activeFilters.size === 0 ? '✓ ' : '') + 'Select All';
     allChip.addEventListener('click', function() {
       activeFilters.clear();
       buildFilterBar();
@@ -175,7 +157,7 @@
       var chip = document.createElement('span');
       var isActive = activeFilters.size === 0 || activeFilters.has(action);
       chip.className = 'fchip' + (isActive ? ' active' : '');
-      chip.textContent = action;
+      chip.textContent = (isActive ? '✓ ' : '') + action;
       chip.addEventListener('click', function() {
         if (activeFilters.size === 0) {
           // All were shown — switch to single-select: show only this one
@@ -274,8 +256,6 @@
           buildFilterBar();
           render();
         }
-        updateStatusBar(data.entries || []);
-
         // Auto-reload when log.html changes on server
         // SAFE GUARD: only reload when BOTH sides have real timestamps (> 0)
         // This prevents the crash loop where server restart sets mtime to 0
