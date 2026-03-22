@@ -77,9 +77,9 @@ Browser security filter strips = and flags query-string content in javascript_to
 If a replace() fails silently, split the string differently or use index-based slicing.
 
 ## VERSION
-- Current: 0.9.36
+- Current: 0.9.37
 - Version strings in sequence-builder.html (replaceAll to bump)
-- Bump pattern: html.replaceAll('0.9.36', '0.9.37')
+- Bump pattern: html.replaceAll('0.9.37', '0.9.37')
 
 ## DEMOS (registered in store)
 - auth-flow — Auth Flow (original)
