@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SequenceForge — Server Log</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #0d1117;
+    --surface:  #161b22;
+    --surface2: #1c2330;
+    --border:   #30363d;
+    --text:     #e6edf3;
+    --text2:    #8b949e;
+    --accent:   #00ff9d;
+    --ok:       #3fb950;
+    --fail:     #f85149;
+    --warn:     #d29922;
+    --r:        4px;
+    --mono:     'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; }
+
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+    background: var(--surface); position: sticky; top: 0; z-index: 10;
+  }
+  header .logo { color: var(--accent); font-weight: 700; font-size: 15px; letter-spacing: .03em; }
+  header .logo span { color: var(--text2); font-weight: 400; }
+  .pill {
+    font-size: 11px; padding: 2px 8px; border-radius: 99px;
+    border: 1px solid var(--border); color: var(--text2);
+  }
+  .pill.live { border-color: var(--ok); color: var(--ok); }
+  .pill.paused { border-color: var(--warn); color: var(--warn); }
+
+  .controls {
+    margin-left: auto; display: flex; align-items: center; gap: 10px;
+  }
+  .controls label { color: var(--text2); font-size: 11px; }
+  .controls input[type="number"] {
+    width: 56px; padding: 3px 6px; border-radius: var(--r);
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text); font-family: var(--mono); font-size: 11px;
+    text-align: center;
+  }
+  .controls button {
+    padding: 3px 10px; border-radius: var(--r);
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text2); font-family: var(--mono); font-size: 11px;
+    cursor: pointer;
+  }
+  .controls button:hover { background: var(--surface2); color: var(--text); }
+
+  #log-list {
+    padding: 10px 16px; display: flex; flex-direction: column; gap: 6px;
+  }
+
+  .entry {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); overflow: hidden;
+    animation: slideIn .18s ease;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+  .entry-head {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 6px 10px; border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .entry-ts { color: var(--text2); font-size: 10px; white-space: nowrap; }
+  .entry-action { color: var(--accent); font-weight: 600; font-size: 12px; }
+  .entry-body {
+    padding: 6px 10px; color: var(--text2); font-size: 12px;
+    white-space: pre-wrap; word-break: break-all; line-height: 1.5;
+  }
+  .entry-body.ok  { color: var(--ok); }
+  .entry-body.fail { color: var(--fail); }
+
+  .empty {
+    text-align: center; padding: 60px 20px;
+    color: var(--text2); font-size: 12px; line-height: 2;
+  }
+  .empty .dot { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">SequenceForge<span> / server log</span></div>
+  <div id="status-pill" class="pill live">● live</div>
+  <div class="controls">
+    <label for="buf-size">buffer</label>
+    <input type="number" id="buf-size" min="10" max="500" value="100">
+    <button id="btn-clear">clear</button>
+    <button id="btn-pause">pause</button>
+  </div>
+</header>
+<div id="log-list"></div>
+
+<script>
+  const list     = document.getElementById('log-list');
+  const pill     = document.getElementById('status-pill');
+  const bufInput = document.getElementById('buf-size');
+  const btnClear = document.getElementById('btn-clear');
+  const btnPause = document.getElementById('btn-pause');
+
+  let paused    = false;
+  let localLog  = [];   // client-side copy for clear/buffer trim
+  let lastTs    = 0;    // track newest entry to detect changes
+
+  function fmt(ts) {
+    const d = new Date(ts);
+    return d.toTimeString().slice(0,8) + '.' + String(d.getMilliseconds()).padStart(3,'0');
+  }
+
+  function isOk(result) {
+    if (!result) return null;
+    const r = result.toLowerCase();
+    if (r.includes('fail') || r.includes('error') || r.includes('err')) return false;
+    if (r.includes('ok') || r.includes('pass') || r.startsWith('v0.')) return true;
+    return null;
+  }
+
+  function render() {
+    const max = parseInt(bufInput.value) || 100;
+    const shown = localLog.slice(0, max);
+    if (shown.length === 0) {
+      list.innerHTML = '<div class="empty"><div class="dot">◆</div>No events yet.<br>Perform an action (build, lint, test, git) to see entries here.</div>';
+      return;
+    }
+    list.innerHTML = '';
+    shown.forEach(function(e) {
+      const ok = isOk(e.result);
+      const div = document.createElement('div');
+      div.className = 'entry';
+      div.innerHTML =
+        '<div class="entry-head">'
+        + '<span class="entry-ts">' + fmt(e.ts) + '</span>'
+        + '<span class="entry-action">' + e.action + '</span>'
+        + '</div>'
+        + '<div class="entry-body' + (ok === true ? ' ok' : ok === false ? ' fail' : '') + '">'
+        + (e.result || '—')
+        + '</div>';
+      list.appendChild(div);
+    });
+  }
+
+  function poll() {
+    if (paused) return;
+    fetch('/log')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.entries.length > 0 && data.entries[0].ts !== lastTs) {
+          lastTs = data.entries[0].ts;
+          localLog = data.entries;
+          render();
+        }
+        pill.textContent = '● live';
+        pill.className = 'pill live';
+      })
+      .catch(function() {
+        pill.textContent = '○ offline';
+        pill.className = 'pill paused';
+      });
+  }
+
+  btnClear.addEventListener('click', function() {
+    localLog = [];
+    lastTs = 0;
+    render();
+  });
+
+  btnPause.addEventListener('click', function() {
+    paused = !paused;
+    btnPause.textContent = paused ? 'resume' : 'pause';
+    pill.textContent = paused ? '◌ paused' : '● live';
+    pill.className = paused ? 'pill paused' : 'pill live';
+  });
+
+  bufInput.addEventListener('change', render);
+
+  // Poll every 2s
+  poll();
+  setInterval(poll, 2000);
+</script>
+</body>
+</html>

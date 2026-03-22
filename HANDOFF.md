@@ -2,7 +2,8 @@
 <!-- IMPORTANT: Update this file on every release. Version and backlog must stay current. -->
 
 ## FIRST ACTIONS (do these before anything else)
-1. GET http://localhost:3799/status → confirms version, git state, demos list
+1. GET http://localhost:3799/status
+   Also available: GET /api (endpoint reference) | GET /usage (AI surgical guide) → confirms version, git state, demos list
 2. GET http://localhost:3799/test → confirm gate is green (85/85)
 3. Read relevant source file before touching anything
 
@@ -14,6 +15,9 @@
 | GET | /test | Run build + tests, returns HTML report |
 | POST | /build | Run build.js only, returns JSON {ok, output, ms, exitCode} |
 | POST | /lint | Run lint.js HTML checks, returns JSON {ok, output, ms} |
+| GET  | /log   | Recent server events JSON {entries,bufferSize}. View at /log.html |
+| GET  | /api   | Full endpoint reference JSON. Read when unsure what tools exist |
+| GET  | /usage | Surgical AI usage guide, plain text. Read before patching files |
 | POST | /git | git add -A && commit, body: {"message":"..."}, returns {ok,branch,hash} |
 | GET | /<file> | Read any file in repo root |
 | PUT | /<file> | Write any file in repo root |
@@ -27,7 +31,7 @@
 - build.js -- syncs store.js -> HTML between @@STORE-START / @@STORE-END
 - lint.js -- HTML integrity checker: buttons, SVG balance, sentinels, version
 - sf-server.js -- dev server v5 (GET/PUT files, POST /build /lint /git /snapshot)
-- launcher.js -- hot-reload wrapper: node launcher.js auto-restarts server on sf-server.js change
+- launcher.js -- hot-reload wrapper: USE THIS to start server: node launcher.js -- auto-restarts on sf-server.js change. Never run node sf-server.js directly
 - _gif_canary_inject.js -- GIF capture loop (fetch+eval in canary tab)
 
 ## WORKFLOW PATTERN
@@ -105,10 +109,10 @@ the systems-thinking that breaks the loop. To reinforce this behavior:
      A silent pass that hides corruption is worse than a noisy fail that surfaces it.
 
 ## VERSION
-- Current: 0.9.38
+- Current: 0.9.40
 - Version strings in sequence-builder.html (replaceAll to bump)
-- Bump pattern: html.replaceAll('0.9.38', '0.9.39')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.38/sequence-builder.html
+- Bump pattern: html.replaceAll('0.9.40', '0.9.41')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.40/sequence-builder.html
 
 ## DEMOS (registered in store)
 - auth-flow — Auth Flow (original)
@@ -128,6 +132,7 @@ the systems-thinking that breaks the loop. To reinforce this behavior:
 7. Organise README -- rewrite README.md: overview, quick-start, dev-server API table, lint/launcher usage, backlog link
 8. Organise files into /server -- move sf-server.js, launcher.js, lint.js, build.js into a server/ subfolder; update all require paths and dev server ROOT references
 9. Version release links -- each release entry in releases/ gets a matching HANDOFF-vX.Y.Z.md snapshot so changelogs are browsable by version
+10. Server log UI -- GET /log endpoint streams recent server events (action + result pairs); a standalone /log.html page displays them newest-first in a simple list; buffer size (default 100) settable in user preferences panel; auto-refreshes every 2s
 
 ## REPO
 - GitHub: https://github.com/MeatPopSci1972/sequence-builder
