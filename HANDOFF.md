@@ -82,6 +82,7 @@ If a replace() fails silently, split the string differently or use index-based s
 - Current: 0.9.38
 - Version strings in sequence-builder.html (replaceAll to bump)
 - Bump pattern: html.replaceAll('0.9.38', '0.9.39')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.38/sequence-builder.html
 
 ## DEMOS (registered in store)
 - auth-flow — Auth Flow (original)
@@ -98,6 +99,9 @@ If a replace() fails silently, split the string differently or use index-based s
 4. Actor reorder -- drag actors left/right to reorder their columns
 5. Export to PNG -- render the SVG canvas to a PNG download
 6. Mermaid output format -- add Mermaid sequenceDiagram as a second output format option alongside PlantUML
+7. Organise README -- rewrite README.md: overview, quick-start, dev-server API table, lint/launcher usage, backlog link
+8. Organise files into /server -- move sf-server.js, launcher.js, lint.js, build.js into a server/ subfolder; update all require paths and dev server ROOT references
+9. Version release links -- each release entry in releases/ gets a matching HANDOFF-vX.Y.Z.md snapshot so changelogs are browsable by version
 
 ## REPO
 - GitHub: https://github.com/MeatPopSci1972/sequence-builder
