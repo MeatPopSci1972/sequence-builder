@@ -1498,6 +1498,68 @@ test('Suite 9: note click after deselect — setSelected receives correct note',
 }
 
 // ═══════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════
+//  Suite 11 — autoFitOnLoad preference
+// ═══════════════════════════════════════════════════════
+{
+  // Pins the store-level contract that autoFitOnLoad depends on.
+  // fitToZoom() is DOM-bound; those checks live in manual QA.
+
+  test('Suite 11: LOAD_DEMO fires diagram:loaded', () => {
+    const s = createStore()
+    let fired = false
+    s.on('diagram:loaded', () => { fired = true })
+    s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
+    assert(fired, 'LOAD_DEMO must emit diagram:loaded')
+  })
+
+  test('Suite 11: LOAD_DEMO event carries source demo', () => {
+    const s = createStore()
+    let src = 'none'
+    s.on('diagram:loaded', p => { src = p.source })
+    s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
+    assert(src === 'demo', 'expected demo, got: ' + src)
+  })
+
+  test('Suite 11: LOAD_DIAGRAM fires diagram:loaded', () => {
+    const s = createStore()
+    let fired = false
+    s.on('diagram:loaded', () => { fired = true })
+    s.dispatch({ type: 'LOAD_DIAGRAM', payload: { actors: [], messages: [], notes: [], fragments: [], nextId: 1 } })
+    assert(fired, 'LOAD_DIAGRAM must emit diagram:loaded')
+  })
+
+  test('Suite 11: LOAD_DIAGRAM event source is import', () => {
+    const s = createStore()
+    let src = 'none'
+    s.on('diagram:loaded', p => { src = p.source })
+    s.dispatch({ type: 'LOAD_DIAGRAM', payload: { actors: [], messages: [], notes: [], fragments: [], nextId: 1 } })
+    assert(src === 'import', 'expected import, got: ' + src)
+  })
+
+  test('Suite 11: LOAD_DEMO clears undo stack', () => {
+    const s = createStore()
+    s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'X' } })
+    s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
+    assert(!s.canUndo, 'LOAD_DEMO must clear undo stack')
+  })
+
+  test('Suite 11: LOAD_DEMO populates actors', () => {
+    const s = createStore()
+    s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
+    assert(s.state.actors.length > 0, 'LOAD_DEMO must populate actors')
+  })
+
+  test('Suite 11: LOAD_DIAGRAM restores actor count from snapshot', () => {
+    const s = createStore()
+    s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
+    const snap = JSON.parse(JSON.stringify(s.state))
+    s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Extra' } })
+    s.dispatch({ type: 'LOAD_DIAGRAM', payload: Object.assign({}, snap) })
+    assert(s.state.actors.length === snap.actors.length, 'LOAD_DIAGRAM restores actor count')
+  })
+}
 //  RESULTS
 // ═══════════════════════════════════════════════════════
 console.log(`\n${'─'.repeat(50)}`)
