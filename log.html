@@ -79,6 +79,19 @@
   .entry-body.fail { color:var(--fail); }
   .empty { text-align:center; padding:60px 20px; color:var(--text2); font-size:12px; line-height:2; }
   .empty .dot { color:var(--accent); }
+  /* cost-bar */
+  #cost-bar { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--border); border-bottom:1px solid var(--border); font-size:11px; }
+  .cpanel { background:var(--surface); padding:8px 12px; display:flex; flex-direction:column; gap:3px; }
+  .cpanel-title { font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--text2); margin-bottom:2px; }
+  .crow { display:flex; justify-content:space-between; align-items:center; }
+  .cval { font-family:monospace; color:var(--text); font-size:11px; }
+  .cval.warn { color:var(--warn); }
+  .cval.fail { color:var(--fail); }
+  .cval.ok   { color:var(--ok); }
+  .cval.dim  { color:var(--text2); }
+  .clabel { color:var(--text2); font-size:10px; }
+  .sparkline { width:100%; height:24px; display:block; margin-top:3px; }
+  .sitem { font-size:11px; padding:1px 0; color:var(--text2); }
 </style>
 </head>
 <body>
@@ -94,6 +107,7 @@
   </div>
 </header>
 <div id="filter-bar"></div>
+<div id="cost-bar"></div>
 <div id="log-list"></div>
 
 <script>
@@ -303,6 +317,112 @@
   updatePill();
   poll();
   setInterval(poll, 2000);
+
+  // ── Session Cost abstraction ──────────────────────────────────────────
+  var costBar = document.getElementById("cost-bar");
+
+  function computeCost(entries) {
+    var patchHit = 0, patchMiss = 0, putCount = 0;
+    var builds = 0, lints = 0, tests = 0, commits = 0, snaps = 0;
+    entries.forEach(function(e) {
+      var a = e.action || "", r = (e.result || "").toLowerCase();
+      if (a.indexOf("POST /patch") !== -1) {
+        if (r.indexOf("miss:") !== -1) patchMiss++;
+        else if (r.indexOf("ok:") !== -1) patchHit++;
+      }
+      if (a.indexOf("PUT /") !== -1) putCount++;
+      if (a.indexOf("POST /build") !== -1) builds++;
+      if (a.indexOf("POST /lint") !== -1) lints++;
+      if (a.indexOf("GET /test") !== -1) tests++;
+      if (a.indexOf("POST /git") !== -1 && a.indexOf("git-log") == -1) commits++;
+      if (a.indexOf("POST /snapshot") !== -1) snaps++;
+    });
+    var totalPatches = patchHit + patchMiss;
+    var missRate = totalPatches > 0 ? Math.round(patchMiss / totalPatches * 100) : 0;
+    return { patchHit:patchHit, patchMiss:patchMiss, putCount:putCount,
+             totalPatches:totalPatches, missRate:missRate,
+             builds:builds, lints:lints, tests:tests, commits:commits, snaps:snaps };
+  }
+
+  function sparklineSVG(entries, buckets) {
+    if (entries.length < 2) return "";
+    var n = buckets || 16;
+    var tMin = entries[entries.length-1].ts, tMax = entries[0].ts;
+    var span = Math.max(tMax - tMin, 1);
+    var slots = [];
+    for (var i = 0; i < n; i++) slots.push({ hit:0, miss:0 });
+    entries.forEach(function(e) {
+      var a = e.action || "", r = (e.result || "").toLowerCase();
+      if (a.indexOf("POST /patch") == -1) return;
+      var bi = Math.min(n-1, Math.floor((e.ts - tMin) / span * n));
+      if (r.indexOf("miss:") !== -1) slots[bi].miss++;
+      else if (r.indexOf("ok:") !== -1) slots[bi].hit++;
+    });
+    var W = 200, H = 24, bw = W/n;
+    var bars = "";
+    slots.forEach(function(s, i) {
+      var total = s.hit + s.miss;
+      if (total == 0) return;
+      var rate = s.miss / total;
+      var bh = Math.max(2, Math.round(rate * H));
+      var col = rate > 0.5 ? "var(--fail)" : rate > 0.2 ? "var(--warn)" : "var(--ok)";
+      var x = Math.round(i * bw);
+      bars += "<rect x=\"" + x + "\" y=\"" + (H-bh) + "\" width=\"" + Math.max(1,Math.round(bw)-1) + "\" height=\"" + bh + "\" fill=\"" + col + "\"/>";
+    });
+    return "<svg class=\"sparkline\" viewBox=\"0 0 " + W + " " + H + "\" preserveAspectRatio=\"none\">" + bars + "</svg>";
+  }
+
+  function missClass(rate) {
+    if (rate > 50) return "fail";
+    if (rate > 20) return "warn";
+    if (rate > 0)  return "dim";
+    return "ok";
+  }
+
+  function renderCostBar(entries) {
+    if (!costBar) return;
+    var c = computeCost(entries);
+    var spark = sparklineSVG(entries, 16);
+    // Last build/lint/test/git status from entries
+    function lastOf(action) {
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i].action && entries[i].action.indexOf(action) !== -1) return entries[i];
+      }
+      return null;
+    }
+    function si(action, label) {
+      var e = lastOf(action);
+      if (!e) return "<div class=\"crow\"><span class=\"clabel\">" + label + "</span><span class=\"cval dim\">—</span></div>";
+      var ok = isOk(e.result);
+      var cls = ok == true ? "ok" : ok == false ? "fail" : "dim";
+      var icon = ok == true ? "✅" : ok == false ? "❌" : "👀";
+      return "<div class=\"crow\"><span class=\"clabel\">" + label + "</span><span class=\"cval " + cls + "\">" + icon + "</span></div>";
+    }
+    var statusHtml =
+      "<div class=\"cpanel\">" +
+      "<div class=\"cpanel-title\">Status</div>" +
+      si("POST /build", "build") +
+      si("POST /lint", "lint") +
+      si("GET /test", "test") +
+      si("POST /git", "commit") +
+      si("POST /snapshot", "snapshot") +
+      "</div>";
+    var missRateClass = missClass(c.missRate);
+    var costHtml =
+      "<div class=\"cpanel\">" +
+      "<div class=\"cpanel-title\">Session Cost</div>" +
+      "<div class=\"crow\"><span class=\"clabel\">patches</span><span class=\"cval\">" + c.totalPatches + "</span></div>" +
+      "<div class=\"crow\"><span class=\"clabel\">misses</span><span class=\"cval " + missRateClass + "\">" + c.patchMiss + " (" + c.missRate + "%)</span></div>" +
+      "<div class=\"crow\"><span class=\"clabel\">puts</span><span class=\"cval\">" + c.putCount + "</span></div>" +
+      spark +
+      "</div>";
+    costBar.innerHTML = statusHtml + costHtml;
+  }
+
+  // Wire into existing render() — call renderCostBar after render
+  var _origRender = render;
+  render = function() { _origRender(); renderCostBar(localLog); };
+
 </script>
 </body>
 </html>

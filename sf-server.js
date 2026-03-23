@@ -138,52 +138,6 @@ const server = http.createServer(function(req, res) {
     } catch(e) { lines = ['error: ' + e.message]; }
     res.writeHead(200, {'Content-Type': 'application/json'});
     res.end(JSON.stringify({n, lines}));
-    addLog('GET /git-log', lines.length + ' commits');
-    return;
-  }
-
-  // GET /git-log
-  if (req.method === 'GET' && urlPath === '/git-log') {
-    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
-    const {execSync} = require('child_process');
-    let lines = [];
-    try {
-      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
-      lines = out ? out.split('\n') : [];
-    } catch(e) { lines = ['error: ' + e.message]; }
-    res.writeHead(200, {'Content-Type': 'application/json'});
-    res.end(JSON.stringify({n, lines}));
-    addLog('GET /git-log', lines.length + ' commits');
-    return;
-  }
-
-  // GET /git-log
-  if (req.method === 'GET' && urlPath === '/git-log') {
-    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
-    const {execSync} = require('child_process');
-    let lines = [];
-    try {
-      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
-      lines = out ? out.split('\n') : [];
-    } catch(e) { lines = ['error: ' + e.message]; }
-    res.writeHead(200, {'Content-Type': 'application/json'});
-    res.end(JSON.stringify({n, lines}));
-    addLog('GET /git-log', lines.length + ' commits');
-    return;
-  }
-
-  // GET /git-log
-  if (req.method === 'GET' && urlPath === '/git-log') {
-    const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
-    const {execSync} = require('child_process');
-    let lines = [];
-    try {
-      const out = execSync('git log --oneline -' + n, {cwd: ROOT}).toString().trim();
-      lines = out ? out.split('\n') : [];
-    } catch(e) { lines = ['error: ' + e.message]; }
-    res.writeHead(200, {'Content-Type': 'application/json'});
-    res.end(JSON.stringify({n, lines}));
-    addLog('GET /git-log', lines.length + ' commits');
     return;
   }
 
@@ -198,7 +152,6 @@ const server = http.createServer(function(req, res) {
     } catch(e) { lines = ['error: ' + e.message]; }
     res.writeHead(200, {'Content-Type': 'application/json'});
     res.end(JSON.stringify({n, lines}));
-    addLog('GET /git-log', lines.length + ' commits');
     return;
   }
 
@@ -213,7 +166,6 @@ const server = http.createServer(function(req, res) {
     } catch(e) { lines = ['error: ' + e.message]; }
     res.writeHead(200, {'Content-Type': 'application/json'});
     res.end(JSON.stringify({n, lines}));
-    addLog('GET /git-log', lines.length + ' commits');
     return;
   }
 
@@ -228,7 +180,6 @@ const server = http.createServer(function(req, res) {
     } catch(e) { lines = ['error: ' + e.message]; }
     res.writeHead(200, {'Content-Type': 'application/json'});
     res.end(JSON.stringify({n, lines}));
-    addLog('GET /git-log', lines.length + ' commits');
     return;
   }
 
@@ -243,7 +194,6 @@ const server = http.createServer(function(req, res) {
     } catch(e) { lines = ['error: ' + e.message]; }
     res.writeHead(200, {'Content-Type': 'application/json'});
     res.end(JSON.stringify({n, lines}));
-    addLog('GET /git-log', lines.length + ' commits');
     return;
   }
 
@@ -258,7 +208,6 @@ const server = http.createServer(function(req, res) {
     } catch(ex) { lines = ['error: ' + ex.message]; }
     res.writeHead(200, {'Content-Type': 'application/json'});
     res.end(JSON.stringify({n, lines}));
-    addLog('GET /git-log', lines.length + ' commits');
     return;
   }
 
@@ -273,7 +222,6 @@ const server = http.createServer(function(req, res) {
     } catch(ex) { lines = ['error: ' + ex.message]; }
     res.writeHead(200, {'Content-Type': 'application/json'});
     res.end(JSON.stringify({n, lines}));
-    addLog('GET /git-log', lines.length + ' commits');
     return;
   }
 
@@ -288,7 +236,6 @@ const server = http.createServer(function(req, res) {
     } catch(ex) { lines = ['error: ' + ex.message]; }
     res.writeHead(200, {'Content-Type': 'application/json'});
     res.end(JSON.stringify({n, lines}));
-    addLog('GET /git-log', lines.length + ' commits');
     return;
   }
 
