@@ -39,6 +39,7 @@
 //  Load Demo                         Suite 8 e2e, Suite 11
 //  Export / Import diagram JSON      Suite 8 e2e
 //  PlantUML output                   Suite 8 e2e
+//  Mermaid sequenceDiagram output    Suite 7 (_parseUML Mermaid tests)
 //  Clear diagram                     Suite 8 e2e
 //  Element bounding boxes            Suite 9
 //  No actor guard on element add     Suite 9

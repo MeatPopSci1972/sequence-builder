@@ -153,10 +153,8 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 *(all items shipped as of v0.9.54)*
 
 ### Icebox (good ideas, not yet scoped)
-1. Mermaid output format — add Mermaid sequenceDiagram alongside PlantUML
-2. Organise README — rewrite README.md: overview, quick-start, API table, lint/launcher usage
-3. Organise files into /server — move server files into server/ subfolder
-4. Version release links — each release gets a matching HANDOFF-vX.Y.Z.md snapshot
+1. Organise files into /server — move server files into server/ subfolder
+2. Version release links — each release gets a matching HANDOFF-vX.Y.Z.md snapshot
 
 ## REPO
 - GitHub: https://github.com/MeatPopSci1972/sequence-builder
