@@ -103,6 +103,26 @@ const server = http.createServer(function(req, res) {
       });
     }); return;
   }
+  // POST /tag -- create annotated git tag
+  // Body: {tag, message} e.g. {tag:'v0.9.61', message:'Release v0.9.61'}
+  // Returns: {ok, tag, hash, output, ms}
+  if (req.method === 'POST' && urlPath === '/tag') {
+    let body = ''; req.on('data',d=>body+=d); req.on('end',()=>{
+      let tag = '', msg = '';
+      try { const p = JSON.parse(body); tag = p.tag||''; msg = p.message||('Release '+tag); } catch(e){}
+      if (!tag) { res.writeHead(400); res.end(JSON.stringify({ok:false,error:'missing tag'})); return; }
+      const t0 = Date.now(); const {exec} = require('child_process');
+      const cmd = 'git tag -a ' + JSON.stringify(tag) + ' -m ' + JSON.stringify(msg);
+      exec(cmd, {cwd:ROOT}, (err,stdout,stderr)=>{
+        const out = (stdout+stderr).trim();
+        const ok = !err;
+        res.writeHead(ok?200:500,{'Content-Type':'application/json'});
+        res.end(JSON.stringify({ok,tag,output:out,ms:Date.now()-t0}));
+        addLog('POST /tag', ok ? tag : 'FAIL: '+out.split('\n')[0]);
+        console.log('git tag: '+(ok?tag:'FAIL'));
+      });
+    }); return;
+  }
   // POST /snapshot
   if (req.method === 'POST' && urlPath.startsWith('/snapshot')) {
     const version = urlObj.searchParams.get('v')||'0.0.0';
@@ -282,7 +302,9 @@ const server = http.createServer(function(req, res) {
       '  A missed anchor (replaced:0) almost always means LF was used instead of CRLF. Never splice server files by character position.',
       '  FACTORY PATTERN (planned): use patchBody(file,old,new) helper that auto-normalises line endings so call sites cannot get this wrong.',
     '  Use this when the browser = filter blocks your javascript_tool patch call.',
-    'RELEASE: gate->bump->PUT html->POST /build->POST /lint->POST /snapshot->POST /git->HANDOFF->POST /git',
+    'RELEASE: gate->bump->build->lint->snapshot->validate-readme->HANDOFF->git->tag->push->GitHub Release',
+      'POST /tag: create annotated tag. Body: {tag,message}. Returns {ok,tag,output,ms}. addLog fires.',
+      'GITHUB RELEASE: New release->select tag->title+notes->attach releases/vX.Y.Z/sequence-builder.html->Publish',
       'HOT RELOAD: node launcher.js (not sf-server.js directly)',
       'LOG UI: http://localhost:3799/log.html',
     ].join('\n'));

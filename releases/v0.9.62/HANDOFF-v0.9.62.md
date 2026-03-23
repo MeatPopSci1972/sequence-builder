@@ -162,7 +162,7 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 ### Ready
-*(all items shipped as of v0.9.62 — icebox cleared)*
+*(all items shipped as of v0.9.61 — icebox cleared)*
 
 ### Icebox
 *(empty — all items shipped)*
