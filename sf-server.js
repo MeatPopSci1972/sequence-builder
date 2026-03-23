@@ -317,11 +317,14 @@ const server = http.createServer(function(req, res) {
     res.writeHead(200,{'Content-Type':'text/plain'});
     res.end([
       'SequenceForge Dev Server -- AI Usage Guide',
-      'FIRST ACTIONS: 1.GET /status  2.GET /HANDOFF.md  3.GET /test (85 passed)',
+      'FIRST ACTIONS: 1.GET /status  2.GET /HANDOFF.md  3.GET /test (99 passed)',
       'SECURITY FILTER: use String.fromCharCode(60+1) for = signs in js_tool',
-      'GATE: 85 passed before AND after your work',
+      'GATE: 99 passed before AND after your work',
       'LINT: POST /lint after every HTML write',
       'POST /patch: server-side find-replace. Body: {file,old,new}. Returns {ok,replaced,length}.',
+      'POST /patch CRITICAL: old/new strings MUST use \\r\\n (CRLF) line endings -- sf-server.js and sequence-builder.html are CRLF files.',
+      '  A missed anchor (replaced:0) almost always means LF was used instead of CRLF. Never splice server files by character position.',
+      '  FACTORY PATTERN (planned): use patchBody(file,old,new) helper that auto-normalises line endings so call sites cannot get this wrong.',
     '  Use this when the browser = filter blocks your javascript_tool patch call.',
     'RELEASE: gate->bump->PUT html->POST /build->POST /lint->POST /snapshot->POST /git->HANDOFF->POST /git',
       'HOT RELOAD: node launcher.js (not sf-server.js directly)',
@@ -343,6 +346,7 @@ const server = http.createServer(function(req, res) {
         if (err) { res.writeHead(500); res.end(err.message); return; }
         if (fp.endsWith('log.html')) logHtmlMtime = Date.now();
         console.log('wrote', fp);
+        addLog('PUT /' + path.relative(ROOT,fp).replace(/\\/g,'/'), 'wrote ' + body.length + ' bytes');
         if (!verify) { res.writeHead(200); res.end('OK'); return; }
         // verify=1: read version from html and return status inline
         const {execSync} = require('child_process');
@@ -376,6 +380,7 @@ const server = http.createServer(function(req, res) {
         if (count === 0) {
           res.writeHead(200, {'Content-Type':'application/json'});
           res.end(JSON.stringify({ ok: false, replaced: 0, length: content.length, error: 'old string not found' }));
+          addLog('POST /patch', 'MISS: ' + parsed.file);
           return;
         }
         fs.writeFile(fp, patched, 'utf8', err2 => {
@@ -384,6 +389,7 @@ const server = http.createServer(function(req, res) {
           res.end(JSON.stringify({ ok: true, replaced: count, length: patched.length }));
           if (fp.endsWith('log.html')) logHtmlMtime = Date.now();
           console.log('patch: ' + parsed.file + ' replaced=' + count);
+          addLog('POST /patch', 'ok: ' + parsed.file + ' r=' + count);
         });
       });
     }); return;
