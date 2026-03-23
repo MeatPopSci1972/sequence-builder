@@ -139,9 +139,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.55
-- Bump pattern: html.split('0.9.55').join('0.9.56')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.55/sequence-builder.html
+- Current: 0.9.54
+- Bump pattern: html.split('0.9.54').join('0.9.55')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.54/sequence-builder.html
 
 ## DEMOS (registered in store)
 - auth-flow — Auth Flow (original)
@@ -150,10 +150,16 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 ### Ready
-*(all items shipped as of v0.9.55 — icebox cleared)*
+*(all items shipped as of v0.9.54 — icebox cleared)*
 
 ### Icebox
 *(empty — all items shipped)*
+
+### Icebox
+1. Left nav collapsed — actor-type buttons clipped on right edge; collapsed palette strip needs right-border visible and overflow:visible or min-width so buttons are not cut off by panel shrink
+2. Note elements — text should word-wrap naturally and note height should grow with content (no fixed height / no overflow clip)
+3. Actor click parity — bottom element (lifeline/body) should have the same click-to-select behavior as the top header box
+4. Right panel — clicking anywhere on the collapsed strip should expand it (collapsed state has no useful content; full-strip click target replaces chevron-only hit area)
 
 ### Former icebox (good ideas, not yet scoped)
 1. Organise files into /server — move server files into server/ subfolder
