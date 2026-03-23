@@ -139,9 +139,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.49
-- Bump pattern: html.split('0.9.49').join('0.9.50')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.49/sequence-builder.html
+- Current: 0.9.50
+- Bump pattern: html.split('0.9.50').join('0.9.51')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.50/sequence-builder.html
 
 ## DEMOS (registered in store)
 - auth-flow — Auth Flow (original)
@@ -150,16 +150,15 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 ### Ready
-*(all items shipped as of v0.9.48)*
+*(all items shipped as of v0.9.50)*
 
 ### Icebox (good ideas, not yet scoped)
-1. Message label editing — double-click a message arrow to edit label inline
-2. Actor reorder — drag actors left/right to reorder columns
-3. Export to PNG — render SVG canvas to PNG download
-4. Mermaid output format — add Mermaid sequenceDiagram alongside PlantUML
-5. Organise README — rewrite README.md: overview, quick-start, API table, lint/launcher usage
-6. Organise files into /server — move server files into server/ subfolder
-7. Version release links — each release gets a matching HANDOFF-vX.Y.Z.md snapshot
+1. Actor reorder — drag actors left/right to reorder columns
+2. Export to PNG — render SVG canvas to PNG download
+3. Mermaid output format — add Mermaid sequenceDiagram alongside PlantUML
+4. Organise README — rewrite README.md: overview, quick-start, API table, lint/launcher usage
+5. Organise files into /server — move server files into server/ subfolder
+6. Version release links — each release gets a matching HANDOFF-vX.Y.Z.md snapshot
 
 ## REPO
 - GitHub: https://github.com/MeatPopSci1972/sequence-builder
