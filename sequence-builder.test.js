@@ -23,6 +23,7 @@
 //  ─────────────────────────────────────────────────────
 //  Add Actor                         Suite 1
 //  Actor x-position & spacing        Suite 1
+//  Unique actor label (auto-suffix)   Suite 1
 //  Actor reorder (drag left/right)   Suite 1 — REFLOW_ACTORS tests
 //  Delete Actor (cascade to msgs)    Suite 2
 //  Add Message                       Suite 9, Suite 12
@@ -225,6 +226,24 @@ test('REFLOW_ACTORS is undone in a single UNDO step', () => {
   assertEqual(store.state.actors.find(ac => ac.id === a.id).x, origA, 'A restored by single UNDO')
   assertEqual(store.state.actors.find(ac => ac.id === b.id).x, origB, 'B restored by single UNDO')
 })
+test('ADD_ACTOR duplicate label gets auto-suffixed with _2', () => {
+  const s = freshStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'User' } })
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'User' } })
+  const labels = s.state.actors.map(a => a.label)
+  assert(labels[0] === 'User', 'first label should be User')
+  assert(labels[1] === 'User_2', 'duplicate should become User_2, got: ' + labels[1])
+})
+
+test('ADD_ACTOR third duplicate gets _3 suffix', () => {
+  const s = freshStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Svc' } })
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Svc' } })
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Svc' } })
+  const labels = s.state.actors.map(a => a.label)
+  assert(labels[2] === 'Svc_3', 'third duplicate should be Svc_3, got: ' + labels[2])
+})
+
 
 // ═══════════════════════════════════════════════════════
 //  SUITE 2 — DELETE_ACTOR cascade

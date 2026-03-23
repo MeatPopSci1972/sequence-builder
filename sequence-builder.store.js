@@ -182,7 +182,14 @@ function createStore() {
       const actor = {
         id:    uid(),
         x:     payload.x ?? getNextActorX(),
-        label: payload.label || 'Actor',
+        label: (() => {
+        const base = payload.label || 'Actor';
+        const taken = new Set(state.actors.map(a => a.label));
+        if (!taken.has(base)) return base;
+        let n = 2;
+        while (taken.has(base + '_' + n)) n++;
+        return base + '_' + n;
+      })(),
         type:  payload.type  || 'actor-system',
         ...(payload.emoji !== undefined ? { emoji: payload.emoji } : {}),
       }
