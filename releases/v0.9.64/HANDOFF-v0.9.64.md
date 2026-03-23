@@ -150,9 +150,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.64
-- Bump pattern: html.split('0.9.64').join('0.9.65')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.64/sequence-builder.html
+- Current: 0.9.63
+- Bump pattern: html.split('0.9.63').join('0.9.64')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.63/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -162,7 +162,7 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 ### Ready
-*(all items shipped as of v0.9.64 — icebox cleared)*
+*(all items shipped as of v0.9.63 — icebox cleared)*
 
 ### Icebox
 *(empty — all items shipped)*
