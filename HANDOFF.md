@@ -139,9 +139,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.51
-- Bump pattern: html.split('0.9.51').join('0.9.52')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.51/sequence-builder.html
+- Current: 0.9.52
+- Bump pattern: html.split('0.9.52').join('0.9.53')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.52/sequence-builder.html
 
 ## DEMOS (registered in store)
 - auth-flow — Auth Flow (original)
@@ -150,7 +150,7 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 ### Ready
-*(all items shipped as of v0.9.51)*
+*(all items shipped as of v0.9.52)*
 
 ### Icebox (good ideas, not yet scoped)
 1. Export to PNG — render SVG canvas to PNG download
