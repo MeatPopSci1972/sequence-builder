@@ -155,6 +155,12 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 ### Icebox
 *(empty — all items shipped)*
 
+### Icebox
+1. Left nav collapsed — actor-type buttons clipped on right edge; collapsed palette strip needs right-border visible and overflow:visible or min-width so buttons are not cut off by panel shrink
+2. Note elements — text should word-wrap naturally and note height should grow with content (no fixed height / no overflow clip)
+3. Actor click parity — bottom element (lifeline/body) should have the same click-to-select behavior as the top header box
+4. Right panel — clicking anywhere on the collapsed strip should expand it (collapsed state has no useful content; full-strip click target replaces chevron-only hit area)
+
 ### Former icebox (good ideas, not yet scoped)
 1. Organise files into /server — move server files into server/ subfolder
 
