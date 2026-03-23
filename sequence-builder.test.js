@@ -12,6 +12,44 @@
 //  piece of the store to exist before the next test needs it.
 // ═══════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════
+//  FEATURE COVERAGE MAP
+//
+//  Read this to know what user-facing features are tested.
+//  Each entry links a visible capability to the suite(s) that
+//  back it. A feature with no suite entry has no contract test.
+//
+//  FEATURE                          SUITE(S)
+//  ─────────────────────────────────────────────────────
+//  Add Actor                         Suite 1
+//  Actor x-position & spacing        Suite 1
+//  Actor reorder (drag left/right)   Suite 1 — REFLOW_ACTORS tests
+//  Delete Actor (cascade to msgs)    Suite 2
+//  Add Message                       Suite 9, Suite 12
+//  Message label (default & edit)    Suite 12
+//  Inline label editing (dblclick)   Suite 12
+//  Update Message (partial patch)    Suite 3, Suite 12
+//  Message wiring (fromId/toId)      Suite 9, Suite 10
+//  Self-message (1 actor)            Suite 9
+//  Move Message (Y axis drag)        Suite 8 e2e
+//  Undo / Redo                       Suite 5, Suite 6
+//  Undo is undoable (REDO after)     Suite 6
+//  UML import (PlantUML + Mermaid)   Suite 7
+//  Load Demo                         Suite 8 e2e, Suite 11
+//  Export / Import diagram JSON      Suite 8 e2e
+//  PlantUML output                   Suite 8 e2e
+//  Clear diagram                     Suite 8 e2e
+//  Element bounding boxes            Suite 9
+//  No actor guard on element add     Suite 9
+//  autoFitOnLoad preference          Suite 11
+//  Action log & undoable flag        Suite 4
+//
+//  NOT YET TESTED (UI-only, no store contract):
+//  • grab cursor affordance on actor headers
+//  • dblclick trigger mechanics (DOM event wiring)
+//  • inline editor positioning & keyboard UX
+// ═══════════════════════════════════════════════════════
+
 // ── Minimal test harness (no deps) ──────────────────────
 let _passed = 0
 let _failed = 0
@@ -1500,6 +1538,74 @@ test('Suite 9: note click after deselect — setSelected receives correct note',
 // ═══════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════
+// ══════�������════════════════════════════════════════════════
+//  Suite 12 — Message label contract & inline edit
+//
+//  Pins down the label field that inline editing reads/writes.
+//  These tests would catch regressions in the dblclick-to-edit
+//  feature even though the DOM wiring itself is not tested here.
+// ═══════════════════════════════════════════════════════
+//  Suite 12 — Message label contract & inline edit
+//
+//  Pins down the label field that inline editing reads/writes.
+//  These tests catch regressions in the dblclick-to-edit feature
+//  even though the DOM event wiring is not tested here.
+// ═══════════════════════════════════════════════════════
+console.log('\nSuite 12 — Message label contract & inline edit')
+
+test('ADD_MESSAGE stores the provided label', () => {
+  const s = freshStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B' } })
+  const [a1, a2] = s.state.actors
+  s.dispatch({ type: 'ADD_MESSAGE', payload: { fromId: a1.id, toId: a2.id, label: 'hello' } })
+  assert(s.state.messages[0].label === 'hello', 'label should be hello')
+})
+
+test('ADD_MESSAGE default label is "message" when omitted', () => {
+  const s = freshStore()
+  s.dispatch({ type: 'ADD_MESSAGE', payload: {} })
+  const lbl = s.state.messages[0].label
+  assert(lbl === 'message', 'default label should be "message", got: ' + JSON.stringify(lbl))
+})
+
+test('UPDATE_MESSAGE label patch updates only the label', () => {
+  const s = freshStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B' } })
+  const [a1, a2] = s.state.actors
+  s.dispatch({ type: 'ADD_MESSAGE', payload: { fromId: a1.id, toId: a2.id, label: 'original' } })
+  const mid = s.state.messages[0].id
+  s.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: mid, label: 'updated' } })
+  assert(s.state.messages[0].label === 'updated', 'label should be updated')
+  assert(s.state.messages[0].fromId === a1.id, 'fromId must be unchanged')
+  assert(s.state.messages[0].toId === a2.id, 'toId must be unchanged')
+})
+
+test('UPDATE_MESSAGE label to empty string is valid', () => {
+  const s = freshStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B' } })
+  const [a1, a2] = s.state.actors
+  s.dispatch({ type: 'ADD_MESSAGE', payload: { fromId: a1.id, toId: a2.id, label: 'was-set' } })
+  const mid = s.state.messages[0].id
+  s.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: mid, label: '' } })
+  assert(s.state.messages[0].label === '', 'label should be empty string')
+})
+
+test('UPDATE_MESSAGE label update is undoable', () => {
+  const s = freshStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'X' } })
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Y' } })
+  const [x, y] = s.state.actors
+  s.dispatch({ type: 'ADD_MESSAGE', payload: { fromId: x.id, toId: y.id, label: 'original' } })
+  const mid = s.state.messages[0].id
+  s.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: mid, label: 'edited' } })
+  assert(s.state.messages[0].label === 'edited', 'label should be edited after UPDATE_MESSAGE')
+  s.dispatch({ type: 'UNDO' })
+  assert(s.state.messages[0].label === 'original', 'UNDO should restore original label')
+})
+
 //  Suite 11 — autoFitOnLoad preference
 // ═══════════════════════════════════════════════════════
 {
