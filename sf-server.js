@@ -119,6 +119,15 @@ const server = http.createServer(function(req, res) {
       fs.copyFile(hfSrc,hfDst,()=>{}); // best-effort, ignore errors
       addLog('POST /snapshot','v'+version);
       console.log('snapshot: releases/v'+version+'/sequence-builder.html');
+      // README validation gate
+      try {
+        var rmTxt = fs.readFileSync(path.join(ROOT,'README.md'),'utf8');
+        var rmTarget = 'releases/v'+version+'/sequence-builder.html';
+        var rmHasLink = rmTxt.indexOf(rmTarget) !== -1;
+        var rmHasLoop = rmTxt.indexOf('github.io/sequence-builder/)') !== -1;
+        if (!rmHasLink) addLog('POST /snapshot','WARN: README missing link to '+version);
+        if (rmHasLoop)  addLog('POST /snapshot','WARN: README contains loop link (root URL)');
+      } catch(rmErr) { addLog('POST /snapshot','WARN: README unreadable'); }
     }); return;
   }
   // GET /log
@@ -341,6 +350,24 @@ const server = http.createServer(function(req, res) {
       });
     }); return;
   }
+// GET /validate-readme
+  if (req.method === 'GET' && urlPath === '/validate-readme') {
+    var qv = urlObj.searchParams.get('v') || '0.0.0';
+    try {
+      var rmTxt2 = fs.readFileSync(path.join(ROOT,'README.md'),'utf8');
+      var rmTarget2 = 'releases/v'+qv+'/sequence-builder.html';
+      var hasLink2 = rmTxt2.indexOf(rmTarget2) !== -1;
+      var hasLoop2 = rmTxt2.indexOf('github.io/sequence-builder/)') !== -1;
+      var rmOk = hasLink2 && !hasLoop2;
+      res.writeHead(200,{'Content-Type':'application/json'});
+      res.end(JSON.stringify({ok:rmOk, hasLink:hasLink2, hasLoop:hasLoop2, target:rmTarget2, version:qv}));
+      addLog('GET /validate-readme', (rmOk?'ok':'WARN')+' v'+qv);
+    } catch(e2) {
+      res.writeHead(500); res.end(JSON.stringify({ok:false,error:e2.message}));
+    }
+    return;
+  }
+
 // GET /<file>
   if (req.method === 'GET') {
     if (urlPath === '/') { res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify(fs.readdirSync(ROOT))); return; }
