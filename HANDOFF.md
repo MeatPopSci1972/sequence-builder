@@ -22,7 +22,7 @@
 | POST | /git | git add -A && commit, body: {"message":"..."} |
 | GET | /<file> | Read any file in repo root |
 | PUT | /<file> | Write any file in repo root. Add ?verify=1 to get {ok,wrote,status} back inline |
-| POST | /snapshot?v=X.Y.Z | Copy build into releases/vX.Y.Z/ |
+| POST | /snapshot?v=X.Y.Z | Copy build + HANDOFF-vX.Y.Z.md into releases/vX.Y.Z/ |
 | GET | / | List all files in repo root |
 
 ## KEY FILES
@@ -150,11 +150,13 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 ### Ready
-*(all items shipped as of v0.9.54)*
+*(all items shipped as of v0.9.54 — icebox cleared)*
 
-### Icebox (good ideas, not yet scoped)
+### Icebox
+*(empty — all items shipped)*
+
+### Former icebox (good ideas, not yet scoped)
 1. Organise files into /server — move server files into server/ subfolder
-2. Version release links — each release gets a matching HANDOFF-vX.Y.Z.md snapshot
 
 ## REPO
 - GitHub: https://github.com/MeatPopSci1972/sequence-builder

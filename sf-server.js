@@ -113,6 +113,10 @@ const server = http.createServer(function(req, res) {
     fs.copyFile(src,dst,err=>{
       if(err){res.writeHead(500);res.end(err.message);return;}
       res.writeHead(200); res.end('OK: releases/v'+version+'/sequence-builder.html');
+      // Also snapshot HANDOFF.md alongside the HTML
+      const hfSrc = path.join(ROOT,'HANDOFF.md');
+      const hfDst = path.join(dir,'HANDOFF-v'+version+'.md');
+      fs.copyFile(hfSrc,hfDst,()=>{}); // best-effort, ignore errors
       addLog('POST /snapshot','v'+version);
       console.log('snapshot: releases/v'+version+'/sequence-builder.html');
     }); return;
@@ -301,7 +305,7 @@ const server = http.createServer(function(req, res) {
       {method:'POST',path:'/build',desc:'Run build.js JSON result'},
       {method:'POST',path:'/lint',desc:'Run lint.js JSON result'},
       {method:'POST',path:'/git',desc:'git add -A && commit'},
-      {method:'POST',path:'/snapshot?v=X.Y.Z',desc:'Copy build to releases/'},
+      {method:'POST',path:'/snapshot?v=X.Y.Z',desc:'Copy build + HANDOFF to releases/vX.Y.Z/'},
       {method:'POST',path:'/patch',desc:'Server-side find-replace {file,old,new} -- bypasses browser = filter'},
       {method:'GET',path:'/<file>',desc:'Read any file in repo root'},
       {method:'PUT',path:'/<file>',desc:'Write any file in repo root'},
