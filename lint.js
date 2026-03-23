@@ -31,7 +31,7 @@ var dblBtn = html.split("</button></button>").length - 1;
 if (dblBtn > 0) fail("found " + dblBtn + " double </button></button> sequence(s)");
 
 // 3. Toolbar button count stable
-const EXPECTED_TBTNS = 17;
+const EXPECTED_TBTNS = 18;
 const tbtns = (html.match(/class="tbtn"/g) || []).length;
 if (tbtns !== EXPECTED_TBTNS) fail("expected " + EXPECTED_TBTNS + " .tbtn buttons, found " + tbtns);
 

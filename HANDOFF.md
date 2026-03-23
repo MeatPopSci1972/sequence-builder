@@ -139,9 +139,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.53
-- Bump pattern: html.split('0.9.53').join('0.9.54')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.53/sequence-builder.html
+- Current: 0.9.54
+- Bump pattern: html.split('0.9.54').join('0.9.55')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.54/sequence-builder.html
 
 ## DEMOS (registered in store)
 - auth-flow — Auth Flow (original)
@@ -150,14 +150,13 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 ### Ready
-*(all items shipped as of v0.9.53)*
+*(all items shipped as of v0.9.54)*
 
 ### Icebox (good ideas, not yet scoped)
-1. Export to PNG — render SVG canvas to PNG download
-2. Mermaid output format — add Mermaid sequenceDiagram alongside PlantUML
-3. Organise README — rewrite README.md: overview, quick-start, API table, lint/launcher usage
-4. Organise files into /server — move server files into server/ subfolder
-5. Version release links — each release gets a matching HANDOFF-vX.Y.Z.md snapshot
+1. Mermaid output format — add Mermaid sequenceDiagram alongside PlantUML
+2. Organise README — rewrite README.md: overview, quick-start, API table, lint/launcher usage
+3. Organise files into /server — move server files into server/ subfolder
+4. Version release links — each release gets a matching HANDOFF-vX.Y.Z.md snapshot
 
 ## REPO
 - GitHub: https://github.com/MeatPopSci1972/sequence-builder
