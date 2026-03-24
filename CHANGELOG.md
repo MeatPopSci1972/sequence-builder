@@ -1,5 +1,13 @@
 # SequenceForge Changelog
 
+## v0.9.67 — Release v0.9.67
+_2026-03-24_
+
+### Fixes
+- CSS — add --violet + --amber to :root, remove 2 !important overrides
+
+---
+
 ## v0.9.66 — render() pure DOM projection — _saveDiagram + updateOutput moved to store listeners
 _2026-03-24_
 
