@@ -176,23 +176,14 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 
-### Context for this session
-The v0.9.64 architectural review icebox is fully shipped across v0.9.65-v0.9.68. The one remaining item is documentation standards. This session has two concrete deliverables:
+### Context for next session
+Documentation standards are shipped (v0.9.69). The codebase is architecturally clean. Two items are on the agenda:
 
-**Deliverable 1 — Fix known stale content in HANDOFF.md:** DONE (fixed during session prep, v0.9.68).
+**Item 1 — HANDOFF template automation (icebox item 2):**
+Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
 
-**Deliverable 2 — Define documentation standards:**
-Produce a written spec covering these four document types and write it into HANDOFF.md as a new ## DOCUMENTATION STANDARDS section. The spec should answer: what sections are required, what is the format, what must be kept current, and what a fresh AI instance needs to verify at session start.
-- HANDOFF.md: required sections, update rules, version currency requirement
-- CHANGELOG.md: entry format (auto-gen + manual design notes pattern established in v0.9.68)
-- README.md: what it must contain, live demo link currency rule
-- GitHub release notes: title format, body structure, asset attachment requirement
-
-**Deliverable 3 — Audit older HANDOFF snapshots:**
-Fetch and review each release HANDOFF at the URL pattern:
-https://raw.githubusercontent.com/MeatPopSci1972/sequence-builder/main/releases/vX.Y.Z/HANDOFF-vX.Y.Z.md
-Releases to audit: v0.9.30, v0.9.61, v0.9.62, v0.9.63, v0.9.64, v0.9.65, v0.9.66, v0.9.67, v0.9.68
-For each: note what sections were missing, what was stale, what was inconsistent. Produce a findings summary. The snapshots are read-only archives — no edits needed, just the audit record.
+**Item 2 — UI element factories (discussion only, no code):**
+After template automation ships, open a design discussion on UI element factories. The trigger condition (a second consumer of element construction logic outside render()) has not fired — this is a scoping conversation, not implementation. Proto2prod discipline applies: validate the need before building. Review render() with fresh eyes, identify any duplication that has emerged since v0.9.68, and decide together whether the trigger has been met.
 
 ### Icebox
 1. ~~**Define documentation standards**~~ — **shipped v0.9.69**. ## DOCUMENTATION STANDARDS and ## HANDOFF SNAPSHOT AUDIT sections written. Standards cover HANDOFF.md, CHANGELOG.md, README.md, and GitHub release notes. Template {{placeholder}} markers added for future automation. Audit covers v0.9.61–v0.9.68 archives with cross-version pattern summary.

@@ -1,5 +1,15 @@
 # SequenceForge Changelog
 
+## v0.9.69 — Release v0.9.69
+_2026-03-24_
+
+### Chores
+- HANDOFF update
+- HANDOFF — prepare documentation standards session, fix known stale content
+- changelog — add UI factories design decision note
+
+---
+
 ## v0.9.68 — selector layer — 8 named selectors on store, 52 call sites replaced
 _2026-03-24_
 
