@@ -1,5 +1,13 @@
 # SequenceForge Changelog
 
+## v0.9.66 — render() pure DOM projection — _saveDiagram + updateOutput moved to store listeners
+_2026-03-24_
+
+### Features
+- render() pure DOM projection — _saveDiagram + updateOutput moved to store listeners
+
+---
+
 ## v0.9.65 — GET /test-render — Playwright render gate, 3 demos × 5 SVG layers, 15 snapshots
 _2026-03-24_
 
