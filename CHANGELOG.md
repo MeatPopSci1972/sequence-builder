@@ -1,5 +1,22 @@
 # SequenceForge Changelog
 
+## v0.9.65 — GET /test-render — Playwright render gate, 3 demos × 5 SVG layers, 15 snapshots
+_2026-03-24_
+
+### Features
+- GET /test-render — Playwright render gate, 3 demos × 5 SVG layers, 15 snapshots
+- extend CRLF_FILES whitelist to include HANDOFF.md; add render test coverage to icebox #1 (inspired by Mermaid.js visual regression suite, v0.9.64 arch review)
+- lint.js structural checks (dropdown DOM containment + .tbtn-io-menu CSS), HANDOFF session wisdom, icebox pruned to 2 items
+- CRLF factory (normalisePatch) in POST /patch, clean rewrite of sf-server.js — zero duplicate handlers, all 18 endpoints, addLog flags
+- POST /git-restore endpoint + HANDOFF API table updated with addLog flags for git-restore, changelog, tag
+- POST /changelog auto-generates CHANGELOG.md from git log since last tag; icebox POST /git-restore + doc standards
+
+### Chores
+- dedup sf-server.js -- remove 7 duplicate GET /git-log handlers and usage duplicates; 1 of each remains
+- prune icebox — remove 3 shipped items (PIN removal, Export/Import dropdowns, addLog audit), 4 active items remain
+- reorder icebox — Export CSV demoted to #8, stale items preserved, POST /git-restore added
+
+---
 
 ## v0.9.64 — Release v0.9.64
 _2026-03-24_
