@@ -172,13 +172,10 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 *(active — items shipped)*
 
 ### Icebox
-1. Remove PIN buttons from left and right panels — update tests accordingly
-2. Organise EXPORT / IMPORT actions into a dropdown group modelled after the DEMO pattern
-3. addLog coverage audit — POST /patch and PUT /<file> are not logged; /api doc reference for each endpoint should declare whether addLog fires
-4. sf-server.js hardening — CRLF factory/builder pattern for patch bodies; update /usage with explicit CRLF requirement
-5. lint.js structural checks — DOM containment assertions for dropdown wraps; verify .tbtn-io-menu has position:absolute
-6. Define documentation standards — CHANGELOG.md format, HANDOFF.md sections, README structure, release notes template
-7. Export cost data as CSV from the Session Cost Panel
+1. sf-server.js CRLF hardening — factory/builder pattern for patch bodies so CRLF is injected automatically; prevents crash loops from malformed patches
+2. lint.js structural checks — DOM containment assertions: verify each dropdown menu ul is a direct child of its wrap div; verify .tbtn-io-menu has position:absolute; catches orphaned fragment bugs and missing CSS that slipped past tests
+3. Define documentation standards — CHANGELOG.md format, HANDOFF.md sections, README structure, release notes template; ensure every AI instance documents consistently
+4. Export cost data as CSV from the Session Cost Panel
 
 ### Former icebox (good ideas, not yet scoped)
 1. Organise files into /server — move server files into server/ subfolder
