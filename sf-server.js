@@ -236,8 +236,8 @@ const server = http.createServer(function(req, res) {
     return;
   }
 
-  // GET /git-log
-  if (req.method == 'GET' && urlPath == '/git-log') {
+  // GET /api
+  if (req.method === 'GET' && urlPath === '/api') {
     const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
     const {execSync} = require('child_process');
     let lines = [];
@@ -250,8 +250,8 @@ const server = http.createServer(function(req, res) {
     return;
   }
 
-  // GET /git-log
-  if (req.method == 'GET' && urlPath == '/git-log') {
+  // GET /api
+  if (req.method === 'GET' && urlPath === '/api') {
     const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
     const {execSync} = require('child_process');
     let lines = [];
@@ -264,8 +264,8 @@ const server = http.createServer(function(req, res) {
     return;
   }
 
-  // GET /git-log
-  if (req.method == 'GET' && urlPath == '/git-log') {
+  // GET /api
+  if (req.method === 'GET' && urlPath === '/api') {
     const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
     const {execSync} = require('child_process');
     let lines = [];
@@ -278,8 +278,8 @@ const server = http.createServer(function(req, res) {
     return;
   }
 
-  // GET /git-log
-  if (req.method == 'GET' && urlPath == '/git-log') {
+  // GET /api
+  if (req.method === 'GET' && urlPath === '/api') {
     const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
     const {execSync} = require('child_process');
     let lines = [];
@@ -292,8 +292,8 @@ const server = http.createServer(function(req, res) {
     return;
   }
 
-  // GET /git-log
-  if (req.method == 'GET' && urlPath == '/git-log') {
+  // GET /api
+  if (req.method === 'GET' && urlPath === '/api') {
     const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
     const {execSync} = require('child_process');
     let lines = [];
@@ -306,8 +306,8 @@ const server = http.createServer(function(req, res) {
     return;
   }
 
-  // GET /git-log
-  if (req.method == 'GET' && urlPath == '/git-log') {
+  // GET /api
+  if (req.method === 'GET' && urlPath === '/api') {
     const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
     const {execSync} = require('child_process');
     let lines = [];
@@ -320,8 +320,8 @@ const server = http.createServer(function(req, res) {
     return;
   }
 
-  // GET /git-log
-  if (req.method == 'GET' && urlPath == '/git-log') {
+  // GET /api
+  if (req.method === 'GET' && urlPath === '/api') {
     const n = parseInt(urlObj.searchParams.get('n') || '20', 10) || 20;
     const {execSync} = require('child_process');
     let lines = [];
@@ -370,12 +370,8 @@ const server = http.createServer(function(req, res) {
     '  Use this when the browser = filter blocks your javascript_tool patch call.',
     'RELEASE: gate->bump->build->lint->snapshot->validate-readme->HANDOFF->git->tag->push->GitHub Release',
       'POST /git-restore: restore tracked file to HEAD. Body: {file}. Returns {ok,file,output,ms}. addLog fires.',
-      'POST /git-restore: restore tracked file to HEAD. Body: {file}. Returns {ok,file,output,ms}. addLog fires.',
       'POST /tag: create annotated tag. Body: {tag,message}. Returns {ok,tag,output,ms}. addLog fires.',
       'GITHUB RELEASE: New release->select tag->title+notes->attach releases/vX.Y.Z/sequence-builder.html->Publish',
-      'POST /changelog: auto-gen CHANGELOG.md entry from git log since last tag. Body:{version}. Returns:{ok,version,entry,length,ms}.',
-      'POST /changelog: auto-gen CHANGELOG.md entry from git log since last tag. Body:{version}. Returns:{ok,version,entry,length,ms}.',
-      'POST /changelog: auto-gen CHANGELOG.md entry from git log since last tag. Body: {version}. Returns {ok,version,entry,length,ms}.',
       'POST /changelog: auto-gen CHANGELOG.md entry from git log since last tag. Body: {version}. Returns {ok,version,entry,length,ms}.',
       'HOT RELOAD: node launcher.js (not sf-server.js directly)',
       'LOG UI: http://localhost:3799/log.html',
