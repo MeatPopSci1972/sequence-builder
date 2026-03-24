@@ -199,7 +199,7 @@ function createStore() {
 
     MOVE_ACTOR({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
-      const actor = state.actors.find(a => a.id === payload.id)
+      const actor = getActorById(payload.id)
       if (!actor) return
       actor.x = payload.x
       emit('actor:moved', actor)
@@ -210,7 +210,7 @@ function createStore() {
       // One snapshot covers the entire reflow — one Ctrl+Z undoes all moves.
       if (meta.undoable) pushSnapshot()
       for (const { id, x } of payload.positions) {
-        const actor = state.actors.find(a => a.id === id)
+        const actor = getActorById(id)
         if (actor) actor.x = x
       }
       emit('actors:reflowed', state.actors)
@@ -218,7 +218,7 @@ function createStore() {
 
     UPDATE_ACTOR({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
-      const actor = state.actors.find(a => a.id === payload.id)
+      const actor = getActorById(payload.id)
       if (!actor) return
       // Partial patch — only provided fields are updated
       if (payload.label !== undefined) actor.label = payload.label
@@ -235,7 +235,7 @@ function createStore() {
         .filter(m => m.fromId === id || m.toId === id)
         .map(m => m.id)
       // Cascade: remove actor and all its messages
-      state.actors   = state.actors.filter(a => a.id !== id)
+      state.actors   = getActorsExcept(id)
       state.messages = state.messages.filter(m => m.fromId !== id && m.toId !== id)
       emit('actor:deleted', id)
       if (orphanedIds.length) emit('messages:orphaned', orphanedIds)
@@ -265,7 +265,7 @@ function createStore() {
 
     MOVE_MESSAGE({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
-      const message = state.messages.find(m => m.id === payload.id)
+      const message = getMessageById(payload.id)
       if (!message) return
       message.y = payload.y
       emit('message:moved', message)
@@ -273,7 +273,7 @@ function createStore() {
 
     UPDATE_MESSAGE({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
-      const message = state.messages.find(m => m.id === payload.id)
+      const message = getMessageById(payload.id)
       if (!message) return
       // Partial patch — only provided fields are updated
       const fields = ['label', 'fromId', 'toId', 'kind', 'direction',
@@ -286,7 +286,7 @@ function createStore() {
 
     DELETE_MESSAGE({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
-      state.messages = state.messages.filter(m => m.id !== payload.id)
+      state.messages = getMessagesExcept(payload.id)
       emit('message:deleted', payload.id)
     },
 
@@ -306,7 +306,7 @@ function createStore() {
 
     MOVE_NOTE({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
-      const note = state.notes.find(n => n.id === payload.id)
+      const note = getNoteById(payload.id)
       if (!note) return
       note.x = payload.x
       note.y = payload.y
@@ -315,7 +315,7 @@ function createStore() {
 
     UPDATE_NOTE({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
-      const note = state.notes.find(n => n.id === payload.id)
+      const note = getNoteById(payload.id)
       if (!note) return
       if (payload.text !== undefined) note.text = payload.text
       emit('note:updated', note)
@@ -323,7 +323,7 @@ function createStore() {
 
     DELETE_NOTE({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
-      state.notes = state.notes.filter(n => n.id !== payload.id)
+      state.notes = getNotesExcept(payload.id)
       emit('note:deleted', payload.id)
     },
 
@@ -346,7 +346,7 @@ function createStore() {
 
     MOVE_FRAGMENT({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
-      const fragment = state.fragments.find(f => f.id === payload.id)
+      const fragment = getFragmentById(payload.id)
       if (!fragment) return
       fragment.x = payload.x
       fragment.y = payload.y
@@ -355,7 +355,7 @@ function createStore() {
 
     RESIZE_FRAGMENT({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
-      const fragment = state.fragments.find(f => f.id === payload.id)
+      const fragment = getFragmentById(payload.id)
       if (!fragment) return
       fragment.w = payload.w
       fragment.h = payload.h
@@ -364,7 +364,7 @@ function createStore() {
 
     UPDATE_FRAGMENT({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
-      const fragment = state.fragments.find(f => f.id === payload.id)
+      const fragment = getFragmentById(payload.id)
       if (!fragment) return
       if (payload.kind !== undefined) fragment.kind = payload.kind
       if (payload.cond !== undefined) fragment.cond = payload.cond
@@ -373,7 +373,7 @@ function createStore() {
 
     DELETE_FRAGMENT({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
-      state.fragments = state.fragments.filter(f => f.id !== payload.id)
+      state.fragments = getFragmentsExcept(payload.id)
       emit('fragment:deleted', payload.id)
     },
 
@@ -587,6 +587,14 @@ function createStore() {
       { id: 'cybersec-zones', label: 'CyberSecurity: Zone Analysis' },
     ]
   }
+  function getActorById(id)       { return state.actors.find(a => a.id === id) }
+  function getMessageById(id)     { return state.messages.find(m => m.id === id) }
+  function getNoteById(id)        { return state.notes.find(n => n.id === id) }
+  function getFragmentById(id)    { return state.fragments.find(f => f.id === id) }
+  function getActorsExcept(id)    { return state.actors.filter(a => a.id !== id) }
+  function getMessagesExcept(id)  { return state.messages.filter(m => m.id !== id) }
+  function getNotesExcept(id)     { return state.notes.filter(n => n.id !== id) }
+  function getFragmentsExcept(id) { return state.fragments.filter(f => f.id !== id) }
   return {
     state,   // live reference — mutations are visible immediately
     log,     // full action log — live reference
@@ -595,7 +603,9 @@ function createStore() {
     off,
     get canUndo() { return _snapshots.length > 0 },  // true when undo stack is non-empty
     get canRedo()  { return _redoStack.length  > 0 },  // true when redo stack is non-empty
-}
+    getActorById, getMessageById, getNoteById, getFragmentById,
+    getActorsExcept, getMessagesExcept, getNotesExcept, getFragmentsExcept,
+ }
 }
 
 // ── CommonJS export ──────────────────────────────────────
