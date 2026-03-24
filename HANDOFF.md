@@ -2,7 +2,7 @@
 <!-- IMPORTANT: Update this file on every release. Version and backlog must stay current. -->
 
 ## FIRST ACTIONS (do these before anything else)
-1. GET http://localhost:3799/status — confirm version=0.9.68, clean=true
+1. GET http://localhost:3799/status — confirm version=0.9.69, clean=true
 2. GET http://localhost:3799/test — confirm gate is green (99/99)
 3. GET http://localhost:3799/test-render — confirm render gate green (15/15)
 4. Read this file fully, paying close attention to ## BACKLOG
@@ -164,9 +164,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.68
-- Bump pattern: html.split('0.9.68').join('0.9.69')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.68/sequence-builder.html
+- Current: 0.9.69
+- Bump pattern: html.split('0.9.69').join('0.9.70')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.69/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
