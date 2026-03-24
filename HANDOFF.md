@@ -168,16 +168,64 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 - cybersec-zones — CyberSecurity: Zone Analysis
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
-### Ready
-*(CRLF factory + lint structural checks shipped v0.9.64 — 2 icebox items remain)*
+
+### Rationale summary
+Items below emerged from two sources: (1) the v0.9.64 architectural review, which read the full codebase and
+identified structural risks; (2) a comparison of SequenceForge against Mermaid.js, draw.io, and PlantUML,
+which revealed where peer tools invest in quality infrastructure that SequenceForge currently lacks.
+The through-line: SequenceForge wins on visual GUI + store contract. It loses on render-layer safety.
+All icebox items below are either fixing that gap or borrowing proven patterns from the comparison tools.
+
+### Test gate — proposal
+The current gate (GET /test, 99 store unit tests) is blind to the render layer. Every tool in the
+comparison suite has render-layer coverage; SequenceForge has none. The proposed solution is a second
+local gate: GET /test-render, a new dev server endpoint that uses Playwright (npm install --save-dev
+playwright) to load the built HTML in headless Chromium, dispatch each of the three demos via
+window._store.dispatch, call render(), and capture the five SVG layer innerHTML strings as snapshots.
+Snapshots live in test-snapshots/ (gitignored on first run, committed after review). GET /test-render
+?update=1 writes or refreshes snapshots; subsequent calls diff against them and return pass/fail JSON
+in the same shape as GET /test. The full gate becomes: GET /test (store) → GET /test-render (render).
+Both are HTTP calls the existing AI workflow already knows how to make. No new paradigm, no CI service.
+Prerequisite: npm install --save-dev playwright && npx playwright install chromium (one-time, local).
 
 ### Icebox
-1. **Render test coverage** — adopt Mermaid.js’s visual regression pattern: headless Playwright loads the built HTML, dispatches a known demo, calls render(), and snapshots the SVG layer content. Borrowing a proven test strategy from a mature open-source project is lower-risk than inventing one — the pattern is validated at scale, failure modes are known, and the integration surface is small. Inspired by: Mermaid.js visual regression suite (identified in v0.9.64 architectural review session, 2026-03-24). Highest-leverage quality gap in the codebase.
-2. Define documentation standards — CHANGELOG.md format, HANDOFF.md sections, README structure, release notes template; ensure every AI instance documents consistently
-3. Export cost data as CSV from the Session Cost Panel
+1. **Render test coverage via GET /test-render** — implement the test gate proposal above. Inspired by
+   Mermaid.js’s visual regression suite (vitest + Playwright screenshot diffs in CI), which is the
+   most mature render-safety pattern among the three comparison tools. Borrowing a validated pattern
+   is lower-risk than inventing one: failure modes are known, integration surface is small, and the
+   approach fits the existing HTTP-gate workflow without structural changes. This is the single
+   highest-leverage quality gap in the codebase (v0.9.64 architectural review, 2026-03-24).
+
+2. **Move _saveDiagram() and updateOutput() out of render()** — render() currently mutates
+   store.state.messages[i].y (Y-position assignment) and calls _saveDiagram() + updateOutput() on
+   every frame, including during RAF-gated drag. This violates the one-way dependency rule the store
+   was designed around and makes localStorage writes synchronous on every animation frame. Fix:
+   move both to store event listeners (state:restored + all :added/:updated/:deleted events).
+   Render becomes a pure DOM projection. Identified in v0.9.64 architectural review.
+
+3. **CSS consolidation** — two <style> blocks with no documented boundary; 7 x !important
+   declarations patched over specificity fights. Merge into one block with section comments;
+   audit and remove !important where correct specificity solves it. Low-effort, removes a silent
+   trap for future contributors. Identified in v0.9.64 architectural review.
+
+4. **Selector layer for store queries** — the pattern state.actors.find(a => a.id === id)
+   appears in 12+ handler sites. Extract into named selectors (getActorById, getMessagesForActor).
+   No behaviour change; makes the codebase resilient if the state shape ever changes. Identified
+   in v0.9.64 architectural review; draw.io and Mermaid both use typed model layers for this.
+
+5. **Define documentation standards** — CHANGELOG.md format, HANDOFF.md sections, README
+   structure, release notes template; ensure every AI instance documents consistently.
+
+6. **Export cost data as CSV** from the Session Cost Panel (lowest priority — nice to have).
 
 ### Former icebox (good ideas, not yet scoped)
 1. Organise files into /server — move server files into server/ subfolder
+2. Evaluate esbuild for the build pipeline — only becomes necessary when the store needs to
+   import utilities; document the migration path now so it is not a surprise later. Identified
+   in v0.9.64 architectural review; Mermaid uses Rollup/Vite, PlantUML uses Gradle — both
+   show that a proper build pipeline unlocks module reuse without sacrificing testability.
+3. Tour DOM-ID regression protection — a build-time check that all STEPS[] target selectors
+   resolve to actual elements in the built HTML. Identified in v0.9.64 architectural review.
 
 ## REPO
 - GitHub: https://github.com/MeatPopSci1972/sequence-builder
