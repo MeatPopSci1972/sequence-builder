@@ -123,6 +123,52 @@ const server = http.createServer(function(req, res) {
       });
     }); return;
   }
+  // POST /changelog -- auto-generate entry from git log since last tag, prepend to CHANGELOG.md
+  // Body: {version} e.g. {version:'0.9.64'}. Returns: {ok,version,entry,length,ms}
+  if (req.method === 'POST' && urlPath === '/changelog') {
+    let body = ''; req.on('data',d=>body+=d); req.on('end',()=>{
+      let version = '0.0.0';
+      try { version = JSON.parse(body).version || version; } catch(e){}
+      const t0 = Date.now(); const {execSync} = require('child_process');
+      try {
+        let lastTag = '';
+        try { lastTag = execSync('git describe --tags --abbrev=0 HEAD~1',{cwd:ROOT}).toString().trim(); } catch(e){}
+        const range = lastTag ? lastTag+'..HEAD' : 'HEAD';
+        const raw = execSync('git log '+range+' --pretty=format:"%h %s"',{cwd:ROOT}).toString().trim();
+        const commits = raw ? raw.split('\n') : [];
+        const groups = {};
+        let title = 'Release v'+version;
+        commits.forEach(function(line){
+          const m = line.match(/^[a-f0-9]+ (feat|fix|chore): (.+?)( v\d+\.\d+\.\d+)?$/);
+          if(!m) return;
+          const type = m[1]; const msg = m[2];
+          if(type==='feat' && title==='Release v'+version) title = msg;
+          if(!groups[type]) groups[type]=[];
+          groups[type].push('- '+msg);
+        });
+        const date = new Date().toISOString().slice(0,10);
+        let entry = '## v'+version+' \u2014 '+title+'\n_'+date+'_\n\n';
+        if(groups.feat&&groups.feat.length)  entry += '### Features\n'+groups.feat.join('\n')+'\n\n';
+        if(groups.fix&&groups.fix.length)    entry += '### Fixes\n'+groups.fix.join('\n')+'\n\n';
+        if(groups.chore&&groups.chore.length) entry += '### Chores\n'+groups.chore.join('\n')+'\n\n';
+        entry += '---\n\n';
+        const clPath = path.join(ROOT,'CHANGELOG.md');
+        const existing = fs.existsSync(clPath) ? fs.readFileSync(clPath,'utf8') : '';
+        const firstNl = existing.indexOf('\n\n');
+        const header = firstNl !== -1 ? existing.slice(0, firstNl+2) : '';
+        const rest = firstNl !== -1 ? existing.slice(firstNl+2).replace(/^\n+/,'') : existing;
+        const updated = header + entry + rest;
+        fs.writeFileSync(clPath, updated, 'utf8');
+        res.writeHead(200,{'Content-Type':'application/json'});
+        res.end(JSON.stringify({ok:true,version,entry,length:updated.length,ms:Date.now()-t0}));
+        addLog('POST /changelog','v'+version+' '+commits.length+' commits from '+(lastTag||'beginning'));
+      } catch(err) {
+        res.writeHead(500,{'Content-Type':'application/json'});
+        res.end(JSON.stringify({ok:false,error:err.message,ms:Date.now()-t0}));
+        addLog('POST /changelog','FAIL: '+err.message.split('\n')[0]);
+      }
+    }); return;
+  }
   // POST /snapshot
   if (req.method === 'POST' && urlPath.startsWith('/snapshot')) {
     const version = urlObj.searchParams.get('v')||'0.0.0';
@@ -305,6 +351,10 @@ const server = http.createServer(function(req, res) {
     'RELEASE: gate->bump->build->lint->snapshot->validate-readme->HANDOFF->git->tag->push->GitHub Release',
       'POST /tag: create annotated tag. Body: {tag,message}. Returns {ok,tag,output,ms}. addLog fires.',
       'GITHUB RELEASE: New release->select tag->title+notes->attach releases/vX.Y.Z/sequence-builder.html->Publish',
+      'POST /changelog: auto-gen CHANGELOG.md entry from git log since last tag. Body:{version}. Returns:{ok,version,entry,length,ms}.',
+      'POST /changelog: auto-gen CHANGELOG.md entry from git log since last tag. Body:{version}. Returns:{ok,version,entry,length,ms}.',
+      'POST /changelog: auto-gen CHANGELOG.md entry from git log since last tag. Body: {version}. Returns {ok,version,entry,length,ms}.',
+      'POST /changelog: auto-gen CHANGELOG.md entry from git log since last tag. Body: {version}. Returns {ok,version,entry,length,ms}.',
       'HOT RELOAD: node launcher.js (not sf-server.js directly)',
       'LOG UI: http://localhost:3799/log.html',
     ].join('\n'));

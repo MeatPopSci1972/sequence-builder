@@ -72,6 +72,7 @@ fetch('http://localhost:3799/lint', {method:'POST'})
 8. POST /git with message
 9. Update HANDOFF.md — version + backlog
 10. POST /git again
+10.5 POST /changelog {version:"X.Y.Z"} — auto-generates entry from git log since last tag
 11. POST /tag {tag:"vX.Y.Z", message:"Release vX.Y.Z — <summary>"}
 12. git push && git push --tags (terminal)
 13. GitHub → Releases → New release → select tag → add title + notes → attach releases/vX.Y.Z/sequence-builder.html → Publish
@@ -162,10 +163,10 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 ### Ready
-*(all items shipped as of v0.9.64 — icebox cleared)*
+*(all items shipped as of v0.9.64 — see icebox below)*
 
 ### Icebox
-*(empty — all items shipped)*
+*(active — items shipped)*
 
 ### Icebox
 1. Export cost data as CSV from the Session Cost Panel
@@ -173,7 +174,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Organise EXPORT / IMPORT actions into a dropdown group modelled after the DEMO pattern
 4. addLog coverage audit — POST /patch and PUT /<file> are not logged (patch miss rate is the primary loop-detection signal); GET /git-log is logged but should not be (noise); /api doc reference for each endpoint should declare whether addLog fires
 5. sf-server.js hardening — update /usage to make CRLF requirement explicit for all /patch calls; consider a factory/builder pattern for constructing patch bodies so CRLF is injected automatically rather than relying on call-site discipline; this prevents crash loops from malformed patches
-6. lint.js structural checks — add DOM containment assertions: for each known dropdown wrap ID (demo-dropdown-wrap, export-dropdown-wrap, import-dropdown-wrap), verify its menu ul is a direct child (not displaced to a sibling container); catches orphaned fragment bugs where a patch anchor was too short and left malformed HTML that the browser silently restructures
+6. lint.js structural checks
+7. Define documentation standards — CHANGELOG.md format, HANDOFF.md sections, README structure, release notes template; ensure every AI instance documents consistently
+8. POST /git-restore — server endpoint to run git checkout HEAD -- <file>; allows recovery from corrupted tracked files without needing terminal access — add DOM containment assertions: for each known dropdown wrap ID (demo-dropdown-wrap, export-dropdown-wrap, import-dropdown-wrap), verify its menu ul is a direct child (not displaced to a sibling container); catches orphaned fragment bugs where a patch anchor was too short and left malformed HTML that the browser silently restructures
 
 ### Former icebox (good ideas, not yet scoped)
 1. Organise files into /server — move server files into server/ subfolder

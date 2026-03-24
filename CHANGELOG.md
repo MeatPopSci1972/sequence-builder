@@ -1,5 +1,14 @@
 # SequenceForge Changelog
 
+
+## v0.9.64 — Release v0.9.64
+_2026-03-24_
+
+### Fixes
+- dropdown menus position:absolute — Export/Import items now float below button not in flow
+
+---
+
 ## v0.9.26 — current working state
 _Unreleased — pending commit_
 
