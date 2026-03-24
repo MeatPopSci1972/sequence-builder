@@ -172,11 +172,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 *(CRLF factory + lint structural checks shipped v0.9.64 — 2 icebox items remain)*
 
 ### Icebox
-*(active — items shipped)*
-
-### Icebox
-1. Define documentation standards — CHANGELOG.md format, HANDOFF.md sections, README structure, release notes template; ensure every AI instance documents consistently
-2. Export cost data as CSV from the Session Cost Panel
+1. **Render test coverage** — adopt Mermaid.js’s visual regression pattern: headless Playwright loads the built HTML, dispatches a known demo, calls render(), and snapshots the SVG layer content. Borrowing a proven test strategy from a mature open-source project is lower-risk than inventing one — the pattern is validated at scale, failure modes are known, and the integration surface is small. Inspired by: Mermaid.js visual regression suite (identified in v0.9.64 architectural review session, 2026-03-24). Highest-leverage quality gap in the codebase.
+2. Define documentation standards — CHANGELOG.md format, HANDOFF.md sections, README structure, release notes template; ensure every AI instance documents consistently
+3. Export cost data as CSV from the Session Cost Panel
 
 ### Former icebox (good ideas, not yet scoped)
 1. Organise files into /server — move server files into server/ subfolder

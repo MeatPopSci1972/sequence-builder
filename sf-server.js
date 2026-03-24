@@ -20,7 +20,7 @@ function addLog(action, result) {
 // normalisePatch(file, old, new) — auto-converts bare LF to CRLF in old/new
 // strings when the target file uses CRLF line endings. Call sites can pass
 // plain LF strings; this ensures the anchor will match regardless.
-const CRLF_FILES = ['sequence-builder.html', 'sf-server.js'];
+const CRLF_FILES = ['sequence-builder.html', 'sf-server.js', 'HANDOFF.md'];
 function normalisePatch(file, oldStr, newStr) {
   const base = path.basename(file);
   if (!CRLF_FILES.includes(base)) return { old: oldStr, new: newStr };
