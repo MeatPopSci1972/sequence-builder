@@ -1,5 +1,13 @@
 # SequenceForge Changelog
 
+## v0.9.68 — selector layer — 8 named selectors on store, 52 call sites replaced
+_2026-03-24_
+
+### Features
+- selector layer — 8 named selectors on store, 52 call sites replaced
+
+---
+
 ## v0.9.67 — Release v0.9.67
 _2026-03-24_
 
