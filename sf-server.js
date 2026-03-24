@@ -269,6 +269,7 @@ const server = http.createServer(function(req, res) {
       {method:'POST',path:'/git-restore',       desc:'Restore tracked file to HEAD. Body:{file}. addLog fires.'},
       {method:'POST',path:'/tag',               desc:'Create annotated git tag. Body:{tag,message}. addLog fires.'},
       {method:'POST',path:'/changelog',         desc:'Auto-gen CHANGELOG.md from git log since last tag. Body:{version}. addLog fires.'},
+      {method:'POST',path:'/update-handoff', desc:'Populate live fields in HANDOFF.md from /status+/test+/test-render. Idempotent. addLog fires.'},
       {method:'POST',path:'/snapshot?v=X.Y.Z',  desc:'Copy build+HANDOFF to releases/vX.Y.Z/. addLog fires.'},
       {method:'GET', path:'/<file>',            desc:'Read any file in repo root'},
       {method:'PUT', path:'/<file>',            desc:'Write any file in repo root. ?verify=1 returns {ok,wrote,status}. addLog fires.'},
@@ -288,6 +289,7 @@ const server = http.createServer(function(req, res) {
       'RELEASE: gate->build->bump->lint->snapshot->validate-readme->changelog->HANDOFF->git->tag->push->GitHub Release',
       'POST /git-restore: restore tracked file to HEAD. Body:{file}. addLog fires.',
       'POST /tag: create annotated tag. Body:{tag,message}. addLog fires.',
+      'POST /update-handoff: populate all live fields in HANDOFF.md. Idempotent. addLog fires.',
       'POST /changelog: auto-gen CHANGELOG.md from git log. Body:{version}. addLog fires.',
       'GITHUB RELEASE: New release->select tag->title+notes->attach releases/vX.Y.Z/sequence-builder.html->Publish',
       'HOT RELOAD: node launcher.js',
@@ -315,7 +317,93 @@ const server = http.createServer(function(req, res) {
       });
     }); return;
   }
-  if (req.method === 'GET' && urlPath === '/test-render') {
+  if (req.method === 'POST' && urlPath === '/update-handoff') {
+  const t0 = Date.now();
+  // Step 1: read version from sequence-builder.html
+  let uhVer = '0.0.0';
+  try {
+    const uhHtml = fs.readFileSync(path.join(ROOT,'sequence-builder.html'),'utf8');
+    const uhVm = uhHtml.match(/SequenceForge v(\d+\.\d+\.\d+)/);
+    if (uhVm) uhVer = uhVm[1];
+  } catch(e){}
+  const uhParts = uhVer.split('.');
+  const uhNext = uhParts[0]+'.'+uhParts[1]+'.'+(parseInt(uhParts[2],10)+1);
+  // Step 2: run tests (skip build — already run in release flow)
+  execFile('node', ['sequence-builder.test.js'], { cwd: ROOT }, function(tErr, tOut, tErrOut) {
+    const tRaw = tOut || tErrOut || '';
+    const tM = tRaw.match(/(\d+) passed/);
+    const storeCount = tM ? tM[1] : '?';
+    // Step 3: render gate via playwright
+    let pw2;
+    try { pw2 = require('playwright'); } catch(e) {
+      res.writeHead(500,{'Content-Type':'application/json'});
+      res.end(JSON.stringify({ok:false,error:'playwright not installed',ms:Date.now()-t0}));
+      addLog('POST /update-handoff','FAIL: playwright missing');
+      return;
+    }
+    const uhSnapDir = path.join(ROOT,'test-snapshots');
+    const uhDemos = ['auth-flow','scada-control','cybersec-zones'];
+    const uhLayers = ['actors-layer','lifelines-layer','messages-layer','notes-layer','fragments-layer'];
+    (async function() {
+      let renderCount = '?';
+      let uhBrowser;
+      try {
+        uhBrowser = await pw2.chromium.launch({headless:true});
+        const uhPage = await uhBrowser.newPage();
+        const uhHPath = 'file:///'+path.join(ROOT,'sequence-builder.html').replace(/\\/g,'/');
+        await uhPage.goto(uhHPath,{waitUntil:'domcontentloaded'});
+        await uhPage.waitForFunction('typeof window.loadDemo === "function" && typeof window.render === "function"',{timeout:10000});
+        let uhPass = 0, uhFail = 0;
+        for (const uhDemo of uhDemos) {
+          await uhPage.evaluate(function(d){window.loadDemo(d);window.render();},uhDemo);
+          await uhPage.waitForTimeout(100);
+          for (const uhLayer of uhLayers) {
+            const actual = await uhPage.evaluate(function(id){var el=document.getElementById(id);return el?el.innerHTML:'';},uhLayer);
+            const snapFile = path.join(uhSnapDir,uhDemo+'--'+uhLayer+'.html');
+            try { if (actual === fs.readFileSync(snapFile,'utf8')) uhPass++; else uhFail++; } catch(e){uhFail++;}
+          }
+        }
+        await uhBrowser.close();
+        renderCount = String(uhPass);
+      } catch(e) {
+        if (uhBrowser) try{await uhBrowser.close();}catch(e2){}
+        renderCount = '?';
+      }
+      // Step 4: patch HANDOFF.md with live values
+      try {
+        const uhHPath2 = path.join(ROOT,'HANDOFF.md');
+        let uhContent = fs.readFileSync(uhHPath2,'utf8');
+        const uhReleaseUrl = 'https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v'+uhVer+'/sequence-builder.html';
+        // Live section: ## VERSION block
+        uhContent = uhContent.replace(/- Current: \d+\.\d+\.\d+/,'- Current: '+uhVer);
+        uhContent = uhContent.replace(/html\.split\('[^']*'\)\.join\('[^']*'\)/,"html.split('"+uhVer+"').join('"+uhNext+"')");
+        uhContent = uhContent.replace(/- Release handoff: [^\n]*/,'- Release handoff: '+uhReleaseUrl);
+        // Live section: ## FIRST ACTIONS gate lines
+        uhContent = uhContent.replace(/GET http:\/\/localhost:3799\/test[^\n]*confirm gate is green \(\d+\/\d+\)/,'GET http://localhost:3799/test — confirm gate is green ('+storeCount+'/'+storeCount+')');
+        uhContent = uhContent.replace(/GET http:\/\/localhost:3799\/test-render[^\n]*confirm render gate green \(\d+\/\d+\)/,'GET http://localhost:3799/test-render — confirm render gate green ('+renderCount+'/'+renderCount+')');
+        // Documentation standards — regex-based, idempotent on re-runs
+        uhContent = uhContent.replace(/`GET \/test` \(\d+\/\d+\)/g, '`GET /test` ('+storeCount+'/'+storeCount+')');
+        uhContent = uhContent.replace(/`GET \/test-render` \(\d+\/\d+\)/g, '`GET /test-render` ('+renderCount+'/'+renderCount+')');
+        // Standards section version references — regex-based
+        uhContent = uhContent.replace(/releases\/v\d+\.\d+\.\d+\/sequence-builder\.html`/g, 'releases/v'+uhVer+'/sequence-builder.html`');
+        uhContent = uhContent.replace(/`version` field \(\d+\.\d+\.\d+\)/g, '`version` field ('+uhVer+')');
+        uhContent = uhContent.replace(/html\.split\('\d+\.\d+\.\d+'\)\.join\('\d+\.\d+\.\d+'\)/g, "html.split('"+uhVer+"').join('"+uhNext+"')");
+        uhContent = uhContent.replace(/version snapshot \(\d+\.\d+\.\d+\)/g, 'version snapshot ('+uhVer+')');
+        fs.writeFileSync(uhHPath2,uhContent,'utf8');
+        const ms = Date.now()-t0;
+        res.writeHead(200,{'Content-Type':'application/json'});
+        res.end(JSON.stringify({ok:true,version:uhVer,next_version:uhNext,store_test_count:storeCount,render_test_count:renderCount,ms}));
+        addLog('POST /update-handoff','v'+uhVer+' store:'+storeCount+' render:'+renderCount);
+      } catch(uhErr) {
+        res.writeHead(500,{'Content-Type':'application/json'});
+        res.end(JSON.stringify({ok:false,error:uhErr.message,ms:Date.now()-t0}));
+        addLog('POST /update-handoff','FAIL: '+uhErr.message.split('\n')[0]);
+      }
+    })();
+  });
+  return;
+}
+if (req.method === 'GET' && urlPath === '/test-render') {
     const t0 = Date.now();
     const update = urlObj.searchParams.get('update') === '1';
     const snapshotDir = path.join(ROOT, 'test-snapshots');
