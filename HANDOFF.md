@@ -24,6 +24,9 @@
 | PUT | /<file> | Write any file in repo root. Add ?verify=1 to get {ok,wrote,status} back inline |
 | POST | /snapshot?v=X.Y.Z | Copy build + HANDOFF-vX.Y.Z.md into releases/vX.Y.Z/ |
 | GET | /validate-readme?v=X.Y.Z | Checks README has link to vX.Y.Z and no root loop link; logs WARN if not (addLog) |
+| POST | /git-restore | Restore tracked file to HEAD. Body: {file}. Returns {ok,file,output,ms}. **addLog fires** |
+| POST | /changelog | Auto-gen CHANGELOG.md entry from git log since last tag. Body: {version}. Returns {ok,version,entry,length,ms}. **addLog fires** |
+| POST | /tag | Create annotated git tag. Body: {tag,message}. Returns {ok,tag,output,ms}. **addLog fires** |
 | GET | / | List all files in repo root |
 
 ## KEY FILES
@@ -175,8 +178,7 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 4. sf-server.js hardening — CRLF factory/builder pattern for patch bodies; update /usage with explicit CRLF requirement
 5. lint.js structural checks — DOM containment assertions for dropdown wraps; verify .tbtn-io-menu has position:absolute
 6. Define documentation standards — CHANGELOG.md format, HANDOFF.md sections, README structure, release notes template
-7. POST /git-restore — server endpoint to run git checkout HEAD -- <file>; allows recovery from corrupted tracked files without needing terminal access
-8. Export cost data as CSV from the Session Cost Panel
+7. Export cost data as CSV from the Session Cost Panel
 
 ### Former icebox (good ideas, not yet scoped)
 1. Organise files into /server — move server files into server/ subfolder

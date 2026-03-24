@@ -103,6 +103,26 @@ const server = http.createServer(function(req, res) {
       });
     }); return;
   }
+  // POST /git-restore -- restore a tracked file to HEAD, no terminal needed
+  // Body: {file} e.g. {file:'HANDOFF.md'} or {file:'sf-server.js'}
+  // Returns: {ok, file, ms} -- addLog fires
+  if (req.method === 'POST' && urlPath === '/git-restore') {
+    let body = ''; req.on('data',d=>body+=d); req.on('end',()=>{
+      let file = '';
+      try { file = JSON.parse(body).file||''; } catch(e){}
+      if (!file) { res.writeHead(400); res.end(JSON.stringify({ok:false,error:'missing file'})); return; }
+      const t0 = Date.now(); const {exec} = require('child_process');
+      const cmd = 'git checkout HEAD -- ' + JSON.stringify(file);
+      exec(cmd, {cwd:ROOT}, (err,stdout,stderr)=>{
+        const out = (stdout+stderr).trim();
+        const ok = !err;
+        res.writeHead(ok?200:500,{'Content-Type':'application/json'});
+        res.end(JSON.stringify({ok,file,output:out,ms:Date.now()-t0}));
+        addLog('POST /git-restore', ok ? 'restored: '+file : 'FAIL: '+out.split('\n')[0]);
+        console.log('git-restore: '+(ok?file:'FAIL'));
+      });
+    }); return;
+  }
   // POST /tag -- create annotated git tag
   // Body: {tag, message} e.g. {tag:'v0.9.61', message:'Release v0.9.61'}
   // Returns: {ok, tag, hash, output, ms}
@@ -349,6 +369,8 @@ const server = http.createServer(function(req, res) {
       '  FACTORY PATTERN (planned): use patchBody(file,old,new) helper that auto-normalises line endings so call sites cannot get this wrong.',
     '  Use this when the browser = filter blocks your javascript_tool patch call.',
     'RELEASE: gate->bump->build->lint->snapshot->validate-readme->HANDOFF->git->tag->push->GitHub Release',
+      'POST /git-restore: restore tracked file to HEAD. Body: {file}. Returns {ok,file,output,ms}. addLog fires.',
+      'POST /git-restore: restore tracked file to HEAD. Body: {file}. Returns {ok,file,output,ms}. addLog fires.',
       'POST /tag: create annotated tag. Body: {tag,message}. Returns {ok,tag,output,ms}. addLog fires.',
       'GITHUB RELEASE: New release->select tag->title+notes->attach releases/vX.Y.Z/sequence-builder.html->Publish',
       'POST /changelog: auto-gen CHANGELOG.md entry from git log since last tag. Body:{version}. Returns:{ok,version,entry,length,ms}.',
