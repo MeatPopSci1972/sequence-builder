@@ -17,13 +17,13 @@ function addLog(action, result) {
 }
 
 // ── CRLF factory ──────────────────────────────────────────────────────────────
-// normalisePatch(file, old, new) — auto-converts bare LF to CRLF in old/new
-// strings when the target file uses CRLF line endings. Call sites can pass
-// plain LF strings; this ensures the anchor will match regardless.
-const CRLF_FILES = ['sequence-builder.html', 'sf-server.js', 'HANDOFF.md'];
+// normalisePatch(file, old, new) — auto-detects CRLF by reading the first
+// 512 bytes of the target file on disk. Call sites pass plain LF strings;
+// no hardcoded file list — the file itself is the source of truth.
 function normalisePatch(file, oldStr, newStr) {
-  const base = path.basename(file);
-  if (!CRLF_FILES.includes(base)) return { old: oldStr, new: newStr };
+  let raw = '';
+  try { raw = fs.readFileSync(path.resolve(ROOT, file), 'utf8').slice(0, 512); } catch(e) {}
+  if (!raw.includes('\r\n')) return { old: oldStr, new: newStr };
   const toCRLF = s => s.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
   return { old: toCRLF(oldStr), new: toCRLF(newStr) };
 }
