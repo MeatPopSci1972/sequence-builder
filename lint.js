@@ -44,6 +44,32 @@ const svgOpens  = (html.match(/<svg[\s>]/g) || []).length;
 const svgCloses = (html.match(/<\/svg>/g) || []).length;
 if (svgOpens !== svgCloses) fail("unbalanced <svg>: " + svgOpens + " open, " + svgCloses + " close");
 
+// 6. Dropdown DOM containment -- each wrap must contain its menu ul
+// Catches orphaned fragment bugs where a short patch anchor leaves <button class behind
+var dropdowns = [
+  {wrap:'tbtn-demo-wrap', menu:'tbtn-demo-menu', id:'demo-dropdown-wrap'},
+  {wrap:'tbtn-io-wrap',   menu:'tbtn-io-menu',   id:'export-dropdown-wrap'},
+  {wrap:'tbtn-io-wrap',   menu:'tbtn-io-menu',   id:'import-dropdown-wrap'},
+];
+dropdowns.forEach(function(d) {
+  // Find the wrap div
+  var wrapRe = new RegExp('id="' + d.id + '"[\\s\\S]*?(?=<div\\s|<button\\s|<\\!--|$)', '');
+  var wrapIdx = html.indexOf('id="' + d.id + '"');
+  if (wrapIdx === -1) { warn('dropdown wrap not found: #' + d.id); return; }
+  // Find closing tag of the wrap -- scan forward for the menu ul
+  var searchArea = html.substring(wrapIdx, wrapIdx + 2000);
+  if (searchArea.indexOf('class="' + d.menu + '"') === -1) {
+    fail('dropdown menu .' + d.menu + ' not found inside #' + d.id + ' -- possible orphaned fragment');
+  }
+});
+
+// 7. .tbtn-io-menu must have position:absolute in CSS
+// Catches the missing-property bug that caused menus to render in document flow
+if (html.indexOf('tbtn-io-menu{display:none;position:absolute') === -1 &&
+    html.indexOf('.tbtn-io-menu{display:none;position:absolute') === -1) {
+  fail('.tbtn-io-menu CSS missing position:absolute -- dropdown items will render in document flow not float below button');
+}
+
 // Report
 const all = failures.concat(warnings);
 if (all.length) all.forEach(function(l){ console.log(l); });

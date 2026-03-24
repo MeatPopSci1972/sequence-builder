@@ -140,6 +140,9 @@ Across multiple sessions, index-based HTML patching produced silent corruptions.
 Ghost SVG fragments leaked into toolbar button text nodes.
 POST /lint is now part of every gate. Call it after every HTML write, before /test.
 
+### PUT sf-server.js triggers hot-reload
+Launcher.js watches sf-server.js for changes. A PUT write triggers a server restart before the HTTP response is sent -- the connection drops with 'Failed to fetch'. The write still lands; verify with a fresh GET after restart. To rewrite sf-server.js: assemble the complete file content in one js_tool call and PUT atomically. Never send partial content -- hot-reload will fire on the partial write, crash-loop until a valid file is restored.
+
 ### sf-server.js patch rules
 NEVER splice sf-server.js by character position. Use POST /patch with single-line CRLF-matched anchors ONLY.
 A replaced:0 means CRLF vs LF mismatch -- read the raw bytes, confirm \r\n, retry.
@@ -166,16 +169,14 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 
 ## BACKLOG (priority order — always keep items here, never leave empty)
 ### Ready
-*(all items shipped as of v0.9.64 — see icebox below)*
+*(CRLF factory + lint structural checks shipped v0.9.64 — 2 icebox items remain)*
 
 ### Icebox
 *(active — items shipped)*
 
 ### Icebox
-1. sf-server.js CRLF hardening — factory/builder pattern for patch bodies so CRLF is injected automatically; prevents crash loops from malformed patches
-2. lint.js structural checks — DOM containment assertions: verify each dropdown menu ul is a direct child of its wrap div; verify .tbtn-io-menu has position:absolute; catches orphaned fragment bugs and missing CSS that slipped past tests
-3. Define documentation standards — CHANGELOG.md format, HANDOFF.md sections, README structure, release notes template; ensure every AI instance documents consistently
-4. Export cost data as CSV from the Session Cost Panel
+1. Define documentation standards — CHANGELOG.md format, HANDOFF.md sections, README structure, release notes template; ensure every AI instance documents consistently
+2. Export cost data as CSV from the Session Cost Panel
 
 ### Former icebox (good ideas, not yet scoped)
 1. Organise files into /server — move server files into server/ subfolder
