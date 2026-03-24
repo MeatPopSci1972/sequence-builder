@@ -315,6 +315,102 @@ const server = http.createServer(function(req, res) {
       });
     }); return;
   }
+  if (req.method === 'GET' && urlPath === '/test-render') {
+    const t0 = Date.now();
+    const update = urlObj.searchParams.get('update') === '1';
+    const snapshotDir = path.join(ROOT, 'test-snapshots');
+    const DEMOS = ['auth-flow', 'scada-control', 'cybersec-zones'];
+    const LAYERS = ['actors-layer', 'lifelines-layer', 'messages-layer', 'notes-layer', 'fragments-layer'];
+    fs.mkdirSync(snapshotDir, {recursive: true});
+    let pw;
+    try { pw = require('playwright'); } catch(e) {
+      res.writeHead(500, {'Content-Type': 'application/json'});
+      res.end(JSON.stringify({ok: false, error: 'playwright not installed: ' + e.message}));
+      return;
+    }
+    (async function() {
+      let browser;
+      try {
+        browser = await pw.chromium.launch({headless: true});
+        const page = await browser.newPage();
+        const htmlPath = 'file:///' + path.join(ROOT, 'sequence-builder.html').replace(/\\/g, '/');
+        await page.goto(htmlPath, {waitUntil: 'domcontentloaded'});
+        // wait for app to initialise — loadDemo and render are the public API
+        await page.waitForFunction('typeof window.loadDemo === "function" && typeof window.render === "function"', {timeout: 10000});
+        if (update) {
+          let wrote = 0;
+          for (const demo of DEMOS) {
+            await page.evaluate(function(d) {
+              window.loadDemo(d);
+              window.render();
+            }, demo);
+            await page.waitForTimeout(100);
+            for (const layer of LAYERS) {
+              const html = await page.evaluate(function(id) {
+                var el = document.getElementById(id);
+                return el ? el.innerHTML : '';
+              }, layer);
+              const snapFile = path.join(snapshotDir, demo + '--' + layer + '.html');
+              fs.writeFileSync(snapFile, html, 'utf8');
+              wrote++;
+            }
+          }
+          await browser.close();
+          const ms = Date.now() - t0;
+          res.writeHead(200, {'Content-Type': 'application/json'});
+          res.end(JSON.stringify({ok: true, wrote, demos: DEMOS.length, layers: LAYERS.length, ms}));
+          addLog('GET /test-render', 'update: wrote ' + wrote + ' snapshots');
+        } else {
+          const results = [];
+          let totalPassed = 0, totalFailed = 0;
+          for (const demo of DEMOS) {
+            await page.evaluate(function(d) {
+              window.loadDemo(d);
+              window.render();
+            }, demo);
+            await page.waitForTimeout(100);
+            const demoResult = {demo, passed: true, layers: {}};
+            for (const layer of LAYERS) {
+              const actual = await page.evaluate(function(id) {
+                var el = document.getElementById(id);
+                return el ? el.innerHTML : '';
+              }, layer);
+              const snapFile = path.join(snapshotDir, demo + '--' + layer + '.html');
+              let snapshotExists = false;
+              let snapshot = '';
+              try { snapshot = fs.readFileSync(snapFile, 'utf8'); snapshotExists = true; } catch(e) {}
+              if (!snapshotExists) {
+                demoResult.layers[layer] = {passed: false, error: 'no snapshot — run with ?update=1 first'};
+                demoResult.passed = false;
+                totalFailed++;
+              } else if (actual === snapshot) {
+                demoResult.layers[layer] = {passed: true, length: snapshot.length};
+                totalPassed++;
+              } else {
+                demoResult.layers[layer] = {passed: false, snapshotLength: snapshot.length, actualLength: actual.length};
+                demoResult.passed = false;
+                totalFailed++;
+              }
+            }
+            results.push(demoResult);
+          }
+          await browser.close();
+          const ms = Date.now() - t0;
+          const ok = totalFailed === 0;
+          res.writeHead(200, {'Content-Type': 'application/json'});
+          res.end(JSON.stringify({ok, passed: totalPassed, failed: totalFailed, total: totalPassed + totalFailed, ms, results}));
+          addLog('GET /test-render', ok ? totalPassed + ' passed' : totalPassed + ' passed, ' + totalFailed + ' FAILED');
+        }
+      } catch(err) {
+        if (browser) try { await browser.close(); } catch(e2) {}
+        res.writeHead(500, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify({ok: false, error: err.message}));
+        addLog('GET /test-render', 'ERROR: ' + err.message.split('\n')[0]);
+      }
+    })();
+    return;
+  }
+
   if (req.method === 'GET') {
     if (urlPath === '/') {
       try { res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify({files:fs.readdirSync(ROOT)})); }

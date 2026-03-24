@@ -1,3 +1,5 @@
 _*.txt
 test-*.txt
 releases/*-test/
+test-snapshots/
+node_modules/
