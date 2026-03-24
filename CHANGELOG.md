@@ -6,6 +6,9 @@ _2026-03-24_
 ### Features
 - selector layer — 8 named selectors on store, 52 call sites replaced
 
+### Design decisions
+- **UI element factories (icebox — no action):** Evaluated whether to encapsulate SVG/DOM element creation into factory functions (e.g. makeActorEl, makeMessageEl). Conclusion: deferred. The render gate (GET /test-render, 15 snapshots) already catches regressions at the output level without caring how elements are built. Factory functions would be the right move if element construction logic needed reuse outside render() — e.g. canvas export, thumbnail preview — but that need has not yet arrived. proto2prod rule: add infrastructure only when the cost of not having it is felt. Revisit if a second consumer of element construction appears.
+
 ---
 
 ## v0.9.67 — Release v0.9.67
