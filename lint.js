@@ -31,7 +31,7 @@ var dblBtn = html.split("</button></button>").length - 1;
 if (dblBtn > 0) fail("found " + dblBtn + " double </button></button> sequence(s)");
 
 // 3. Toolbar button count stable
-const EXPECTED_TBTNS = 14; // Export/Import are now dropdowns (tbtn-demo-trigger); 4 flat buttons replaced by menu items
+const EXPECTED_TBTNS = 10; // Export/Import are now dropdowns (tbtn-demo-trigger); 4 flat buttons replaced by menu items
 const tbtns = (html.match(/class="tbtn"/g) || []).length;
 if (tbtns !== EXPECTED_TBTNS) fail("expected " + EXPECTED_TBTNS + " .tbtn buttons, found " + tbtns);
 
