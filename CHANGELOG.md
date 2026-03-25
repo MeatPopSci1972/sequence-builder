@@ -1,5 +1,18 @@
 # SequenceForge Changelog
 
+## v0.9.71 — remove placement mode — actor add-and-drag consistent with note/fragment
+_2026-03-25_
+
+### Features
+- remove placement mode — actor add-and-drag consistent with note/fragment
+
+### Chores
+- HANDOFF —
+- add .gitattributes — normalise all text files to LF
+- CHANGELOG
+
+---
+
 ## v0.9.70 — POST /update-handoff — idempotent HANDOFF.md live-field automation
 _2026-03-25_
 
