@@ -1,5 +1,15 @@
 # SequenceForge Changelog
 
+## v0.9.74 — Release v0.9.74
+_2026-03-25_
+
+### Chores
+- HANDOFF —
+- remove ? toolbar button + CSS + var help; lint 9 buttons
+- CHANGELOG
+
+---
+
 ## v0.9.73 — Release v0.9.73
 _2026-03-25_
 
