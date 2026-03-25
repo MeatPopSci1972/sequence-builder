@@ -1,5 +1,15 @@
 # SequenceForge Changelog
 
+## v0.9.73 — Release v0.9.73
+_2026-03-25_
+
+### Chores
+- HANDOFF —
+- dead code removal — btn handlers, toggleConnectMode, getLastActor, duplicate getNextActorX
+- CHANGELOG
+
+---
+
 ## v0.9.72 — remove add-element toolbar buttons — keyboard shortcuts + palette sufficient
 _2026-03-25_
 
