@@ -165,9 +165,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.75
-- Bump pattern: html.split('0.9.75').join('0.9.76')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.75/sequence-builder.html
+- Current: 0.9.76
+- Bump pattern: html.split('0.9.76').join('0.9.77')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.76/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -178,7 +178,7 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 ## BACKLOG (priority order — always keep items here, never leave empty)
 
 ### Context for next session
-v0.9.75 shipped. Codebase is clean. Zoom controls float on canvas, Help modal exposes keyboard shortcuts and tour launch. No active agenda items. Review icebox before scoping new work.
+v0.9.76 shipped. Codebase is clean. kb-hint bar removed, zoom overlay properly clears debug console. No active agenda items. Review icebox before scoping new work.
 
 **Item 1 — HANDOFF template automation (icebox item 2):**
 Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
@@ -216,6 +216,7 @@ After template automation ships, open a design discussion on UI element factorie
 - v0.9.73 — Dead code removal: orphaned btn-add-actor/btn-connect handlers, toggleConnectMode, getLastActor, duplicate getNextActorX
 - v0.9.74 — Remove ? toolbar button (sf-tour-help-btn) + 2 CSS rules + var help= JS; lint updated to 9 buttons; icebox updated with 5 new UI refinement items
 - v0.9.75 — Floating zoom overlay (bottom-center canvas), Help modal with full keyboard shortcut table + Tour launch; lint updated to 6 buttons
+- v0.9.76 — Fix: remove kb-hint bar (HTML + 2 CSS rules); zoom overlay rides above debug console (body.debug-open rule)
 
 ## DOCUMENTATION STANDARDS
 <!-- @@DOC-STANDARDS-START — managed section, do not edit header/footer lines -->
@@ -236,9 +237,9 @@ FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
 - `## FIRST ACTIONS` — gate counts must match `GET /test` (99/99) and `GET /test-render` (15/15)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.75)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.75').join('0.9.76')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.75)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.76)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.76').join('0.9.77')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.76)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
