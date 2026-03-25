@@ -1,5 +1,17 @@
 # SequenceForge Changelog
 
+## v0.9.76 — Release v0.9.76
+_2026-03-25_
+
+### Fixes
+- remove kb-hint bar + CSS, zoom overlay clears debug console
+
+### Chores
+- HANDOFF —
+- CHANGELOG
+
+---
+
 ## v0.9.75 — floating zoom overlay + Help modal with keyboard shortcuts
 _2026-03-25_
 
