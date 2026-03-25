@@ -165,9 +165,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.72
-- Bump pattern: html.split('0.9.72').join('0.9.73')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.72/sequence-builder.html
+- Current: 0.9.73
+- Bump pattern: html.split('0.9.73').join('0.9.74')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.73/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -210,6 +210,7 @@ After template automation ships, open a design discussion on UI element factorie
 - v0.9.70 — POST /update-handoff: HANDOFF template automation, regex-based idempotent live-field population; .gitattributes LF normalisation
 - v0.9.71 — Remove placement mode: ghost rendering, place-actor mode, placeGhostX state, mousemove tracker, placing-actor CSS all removed; actor add now consistent with note/fragment
 - v0.9.72 — Remove add-element toolbar buttons (Add Actor, Message, Note, Fragment); keyboard shortcuts + palette sufficient; tour consolidated; lint updated to 10 buttons
+- v0.9.73 — Dead code removal: orphaned btn-add-actor/btn-connect handlers, toggleConnectMode, getLastActor, duplicate getNextActorX
 
 ## DOCUMENTATION STANDARDS
 <!-- @@DOC-STANDARDS-START — managed section, do not edit header/footer lines -->
@@ -230,9 +231,9 @@ FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
 - `## FIRST ACTIONS` — gate counts must match `GET /test` (99/99) and `GET /test-render` (15/15)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.72)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.72').join('0.9.73')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.72)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.73)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.73').join('0.9.74')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.73)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
