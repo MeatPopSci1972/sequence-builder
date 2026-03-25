@@ -1,5 +1,17 @@
 # SequenceForge Changelog
 
+## v0.9.75 — floating zoom overlay + Help modal with keyboard shortcuts
+_2026-03-25_
+
+### Features
+- floating zoom overlay + Help modal with keyboard shortcuts
+
+### Chores
+- HANDOFF —
+- CHANGELOG
+
+---
+
 ## v0.9.74 — Release v0.9.74
 _2026-03-25_
 
