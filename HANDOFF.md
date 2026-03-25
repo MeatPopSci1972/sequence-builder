@@ -165,9 +165,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.70
-- Bump pattern: html.split('0.9.70').join('0.9.71')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.70/sequence-builder.html
+- Current: 0.9.71
+- Bump pattern: html.split('0.9.71').join('0.9.72')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.71/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -178,7 +178,7 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 ## BACKLOG (priority order — always keep items here, never leave empty)
 
 ### Context for next session
-Documentation standards are shipped (v0.9.69). The codebase is architecturally clean. Two items are on the agenda:
+v0.9.71 shipped. Codebase is clean. Placement mode fully removed — actor add now consistent with note and fragment. No active agenda items. Review icebox before scoping new work.
 
 **Item 1 — HANDOFF template automation (icebox item 2):**
 Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
@@ -200,12 +200,14 @@ After template automation ships, open a design discussion on UI element factorie
 2. Evaluate esbuild for the build pipeline — only becomes necessary when the store needs to import utilities
 3. Tour DOM-ID regression protection — a build-time check that all STEPS[] target selectors resolve to actual elements in the built HTML
 
-### Shipped this cycle (v0.9.65-v0.9.68, from v0.9.64 architectural review)
+### Shipped this cycle (v0.9.65-v0.9.71)
 - v0.9.65 — GET /test-render render gate (Playwright, 3 demos x 5 SVG layers, 15 snapshots)
 - v0.9.66 — render() pure DOM projection (_saveDiagram + updateOutput moved to store listeners)
 - v0.9.67 — CSS: --violet + --amber defined, 2 !important removed
 - v0.9.68 — Selector layer: 8 named selectors, 52 call sites replaced
 - v0.9.69 — Documentation standards: ## DOCUMENTATION STANDARDS + ## HANDOFF SNAPSHOT AUDIT written; template {{placeholders}} defined; v0.9.61–v0.9.68 archives audited
+- v0.9.70 — POST /update-handoff: HANDOFF template automation, regex-based idempotent live-field population; .gitattributes LF normalisation
+- v0.9.71 — Remove placement mode: ghost rendering, place-actor mode, placeGhostX state, mousemove tracker, placing-actor CSS all removed; actor add now consistent with note/fragment
 
 ## DOCUMENTATION STANDARDS
 <!-- @@DOC-STANDARDS-START — managed section, do not edit header/footer lines -->
@@ -226,9 +228,9 @@ FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
 - `## FIRST ACTIONS` — gate counts must match `GET /test` (99/99) and `GET /test-render` (15/15)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.70)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.70').join('0.9.71')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.70)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.71)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.71').join('0.9.72')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.71)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
