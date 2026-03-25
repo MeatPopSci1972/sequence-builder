@@ -1,5 +1,17 @@
 # SequenceForge Changelog
 
+## v0.9.72 — remove add-element toolbar buttons — keyboard shortcuts + palette sufficient
+_2026-03-25_
+
+### Features
+- remove add-element toolbar buttons — keyboard shortcuts + palette sufficient
+
+### Chores
+- HANDOFF —
+- CHANGELOG
+
+---
+
 ## v0.9.71 — remove placement mode — actor add-and-drag consistent with note/fragment
 _2026-03-25_
 
