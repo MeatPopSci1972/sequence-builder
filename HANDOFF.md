@@ -165,9 +165,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.74
-- Bump pattern: html.split('0.9.74').join('0.9.75')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.74/sequence-builder.html
+- Current: 0.9.75
+- Bump pattern: html.split('0.9.75').join('0.9.76')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.75/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -178,7 +178,7 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 ## BACKLOG (priority order — always keep items here, never leave empty)
 
 ### Context for next session
-v0.9.72 shipped. Codebase is clean. Toolbar add-element buttons removed — keyboard shortcuts (A/M/N/F) and palette are sufficient. No active agenda items. Review icebox before scoping new work.
+v0.9.75 shipped. Codebase is clean. Zoom controls float on canvas, Help modal exposes keyboard shortcuts and tour launch. No active agenda items. Review icebox before scoping new work.
 
 **Item 1 — HANDOFF template automation (icebox item 2):**
 Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
@@ -192,9 +192,9 @@ After template automation ships, open a design discussion on UI element factorie
 2. ~~**HANDOFF template automation**~~ — DOCUMENTATION STANDARDS section uses {{placeholder}} markers for live-fetchable values (version, test counts, bump pattern, demo URL). Future work: implement `POST /update-handoff` that calls `GET /status` + `GET /test` + `GET /test-render` and populates all {{}} fields automatically, eliminating the manual VERSION staleness class of bug seen in v0.9.61–v0.9.64. Trigger for promotion: a second VERSION staleness incident, or when the release flow is next touched for another reason.
 
 3. **Tour: demonstrate keyboard shortcuts** — the tour palette step mentions A/M/N/F but a dedicated step showing each shortcut in action would improve discoverability. Trigger: next tour revision pass.
-4. **Zoom controls: float on canvas** — move btn-zoom-out, btn-zoom-reset, btn-zoom-in, btn-zoom-fit from toolbar to a floating pill anchored bottom-center of canvas. Standard pattern (Figma, Miro, Lucidchart). Toolbar slots vacated.
+4. ~~**Zoom controls: float on canvas**~~ — shipped v0.9.75 — move btn-zoom-out, btn-zoom-reset, btn-zoom-in, btn-zoom-fit from toolbar to a floating pill anchored bottom-center of canvas. Standard pattern (Figma, Miro, Lucidchart). Toolbar slots vacated.
 5. **Remove `?` toolbar button** — `sf-tour-help-btn` is redundant; Settings already has a "Launch Tour" button. Single HTML element + one JS handler to remove.
-6. **Help modal with keyboard shortcuts** — `?` Help icon triggers a modal listing all keyboard shortcuts (currently buried in an HTML comment). Tour launch button moves here too. Replaces the redundant toolbar `?` button with a richer entry point.
+6. ~~**Help modal with keyboard shortcuts**~~ — shipped v0.9.75 — `?` Help icon triggers a modal listing all keyboard shortcuts (currently buried in an HTML comment). Tour launch button moves here too. Replaces the redundant toolbar `?` button with a richer entry point.
 7. ~~**Right panel scrollbar**~~ — already handled: `.panel-body` has `overflow-y: auto`. No action needed.
 8. **UI element factories** — deferred. Trigger for promotion: a second consumer of element construction logic appears outside render(). Design decision recorded in CHANGELOG v0.9.68.
 9. **Export cost data as CSV** from the Session Cost Panel (lowest priority — nice to have).
@@ -215,6 +215,7 @@ After template automation ships, open a design discussion on UI element factorie
 - v0.9.72 — Remove add-element toolbar buttons (Add Actor, Message, Note, Fragment); keyboard shortcuts + palette sufficient; tour consolidated; lint updated to 10 buttons
 - v0.9.73 — Dead code removal: orphaned btn-add-actor/btn-connect handlers, toggleConnectMode, getLastActor, duplicate getNextActorX
 - v0.9.74 — Remove ? toolbar button (sf-tour-help-btn) + 2 CSS rules + var help= JS; lint updated to 9 buttons; icebox updated with 5 new UI refinement items
+- v0.9.75 — Floating zoom overlay (bottom-center canvas), Help modal with full keyboard shortcut table + Tour launch; lint updated to 6 buttons
 
 ## DOCUMENTATION STANDARDS
 <!-- @@DOC-STANDARDS-START — managed section, do not edit header/footer lines -->
@@ -235,9 +236,9 @@ FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
 - `## FIRST ACTIONS` — gate counts must match `GET /test` (99/99) and `GET /test-render` (15/15)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.74)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.74').join('0.9.75')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.74)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.75)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.75').join('0.9.76')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.75)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
