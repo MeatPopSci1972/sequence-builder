@@ -215,8 +215,7 @@ After template automation ships, open a design discussion on UI element factorie
 - v0.9.72 — Remove add-element toolbar buttons (Add Actor, Message, Note, Fragment); keyboard shortcuts + palette sufficient; tour consolidated; lint updated to 10 buttons
 - v0.9.73 — Dead code removal: orphaned btn-add-actor/btn-connect handlers, toggleConnectMode, getLastActor, duplicate getNextActorX
 - v0.9.74 — Remove ? toolbar button (sf-tour-help-btn) + 2 CSS rules + var help= JS; lint updated to 9 buttons; icebox updated with 5 new UI refinement items
-- v0.9.75 — Floating zoom overlay (bottom-center canvas), Help modal with full keyboard shortcut table + Tour launch; lint updated to 6 buttons
-- v0.9.76 — Fix: remove kb-hint bar (HTML + 2 CSS rules); zoom overlay rides above debug console (body.debug-open rule)
+- v0.9.75/v0.9.76 — Floating zoom overlay (bottom-center canvas); Help modal with keyboard shortcuts + Tour launch; lint 6 buttons; fix kb-hint bar removed; zoom overlay clears debug console. NOTE: v0.9.75 was never separately pushed — v0.9.76 was the first released tag covering both.
 
 ## DOCUMENTATION STANDARDS
 <!-- @@DOC-STANDARDS-START — managed section, do not edit header/footer lines -->
