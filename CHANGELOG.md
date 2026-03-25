@@ -1,5 +1,17 @@
 # SequenceForge Changelog
 
+## v0.9.70 — POST /update-handoff — idempotent HANDOFF.md live-field automation
+_2026-03-25_
+
+### Features
+- POST /update-handoff — idempotent HANDOFF.md live-field automation
+
+### Chores
+- HANDOFF —
+- HANDOFF — prepare next session brief, remove stale context block
+
+---
+
 ## v0.9.69 — Release v0.9.69
 _2026-03-24_
 
