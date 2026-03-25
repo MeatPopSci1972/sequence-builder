@@ -605,6 +605,7 @@ function createStore() {
     get canRedo()  { return _redoStack.length  > 0 },  // true when redo stack is non-empty
     getActorById, getMessageById, getNoteById, getFragmentById,
     getActorsExcept, getMessagesExcept, getNotesExcept, getFragmentsExcept,
+    getNextActorX,
  }
 }
 
