@@ -1686,6 +1686,146 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assert(s.state.actors.length === snap.actors.length, 'LOAD_DIAGRAM restores actor count')
   })
 }
+
+// ═══════════════════════════════════════════════════════
+//  SUITE 13 — Fragment geometry contract (interaction layer prerequisite)
+//
+//  The interaction layer needs precise fragment geometry to render the
+//  resize handle and selection decoration. These tests pin the store
+//  contract that the renderer depends on:
+//    - ADD_FRAGMENT stores x, y, w, h, kind, cond
+//    - RESIZE_FRAGMENT updates w and h correctly
+//    - RESIZE_FRAGMENT is undoable
+//    - UPDATE_FRAGMENT updates kind and cond
+//    - Geometry is preserved through UNDO/REDO cycle
+//    - Multiple fragments retain independent geometry
+// ═══════════════════════════════════════════════════════
+{
+  test('Suite 13: ADD_FRAGMENT stores x, y, w, h', () => {
+    const s = freshStore()
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 40, y: 80, w: 200, h: 120, kind: 'frag-alt', cond: 'ok' } })
+    const f = s.state.fragments[0]
+    assertEqual(f.x, 40, 'x must be stored')
+    assertEqual(f.y, 80, 'y must be stored')
+    assertEqual(f.w, 200, 'w must be stored')
+    assertEqual(f.h, 120, 'h must be stored')
+  })
+
+  test('Suite 13: ADD_FRAGMENT stores kind and cond', () => {
+    const s = freshStore()
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 100, kind: 'frag-loop', cond: 'i < 10' } })
+    const f = s.state.fragments[0]
+    assertEqual(f.kind, 'frag-loop', 'kind must be stored')
+    assertEqual(f.cond, 'i < 10', 'cond must be stored')
+  })
+
+  test('Suite 13: ADD_FRAGMENT assigns unique id', () => {
+    const s = freshStore()
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 100, kind: 'frag-alt', cond: 'a' } })
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 100, kind: 'frag-opt', cond: 'b' } })
+    assert(s.state.fragments[0].id !== s.state.fragments[1].id, 'ids must be unique')
+  })
+
+  test('Suite 13: RESIZE_FRAGMENT updates w and h', () => {
+    const s = freshStore()
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 10, y: 10, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
+    const id = s.state.fragments[0].id
+    s.dispatch({ type: 'RESIZE_FRAGMENT', payload: { id, w: 300, h: 200 } })
+    const f = s.getFragmentById(id)
+    assertEqual(f.w, 300, 'w must be updated by RESIZE_FRAGMENT')
+    assertEqual(f.h, 200, 'h must be updated by RESIZE_FRAGMENT')
+  })
+
+  test('Suite 13: RESIZE_FRAGMENT does not change x or y', () => {
+    const s = freshStore()
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 50, y: 60, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
+    const id = s.state.fragments[0].id
+    s.dispatch({ type: 'RESIZE_FRAGMENT', payload: { id, w: 300, h: 200 } })
+    const f = s.getFragmentById(id)
+    assertEqual(f.x, 50, 'x must not change on resize')
+    assertEqual(f.y, 60, 'y must not change on resize')
+  })
+
+  test('Suite 13: RESIZE_FRAGMENT is undoable', () => {
+    const s = freshStore()
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
+    const id = s.state.fragments[0].id
+    s.dispatch({ type: 'RESIZE_FRAGMENT', payload: { id, w: 300, h: 200 } })
+    assertEqual(s.getFragmentById(id).w, 300, 'w should be 300 after resize')
+    s.dispatch({ type: 'UNDO' })
+    assertEqual(s.getFragmentById(id).w, 100, 'UNDO must restore original w')
+    assertEqual(s.getFragmentById(id).h, 80, 'UNDO must restore original h')
+  })
+
+  test('Suite 13: RESIZE_FRAGMENT undo then redo restores resize', () => {
+    const s = freshStore()
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
+    const id = s.state.fragments[0].id
+    s.dispatch({ type: 'RESIZE_FRAGMENT', payload: { id, w: 250, h: 150 } })
+    s.dispatch({ type: 'UNDO' })
+    s.dispatch({ type: 'REDO' })
+    assertEqual(s.getFragmentById(id).w, 250, 'REDO must restore resized w')
+    assertEqual(s.getFragmentById(id).h, 150, 'REDO must restore resized h')
+  })
+
+  test('Suite 13: UPDATE_FRAGMENT updates kind and cond', () => {
+    const s = freshStore()
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'original' } })
+    const id = s.state.fragments[0].id
+    s.dispatch({ type: 'UPDATE_FRAGMENT', payload: { id, kind: 'frag-loop', cond: 'updated' } })
+    const f = s.getFragmentById(id)
+    assertEqual(f.kind, 'frag-loop', 'kind must be updated')
+    assertEqual(f.cond, 'updated', 'cond must be updated')
+  })
+
+  test('Suite 13: UPDATE_FRAGMENT does not change geometry', () => {
+    const s = freshStore()
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 30, y: 40, w: 180, h: 90, kind: 'frag-alt', cond: 'x' } })
+    const id = s.state.fragments[0].id
+    s.dispatch({ type: 'UPDATE_FRAGMENT', payload: { id, kind: 'frag-opt', cond: 'new' } })
+    const f = s.getFragmentById(id)
+    assertEqual(f.x, 30, 'x must not change on UPDATE_FRAGMENT')
+    assertEqual(f.y, 40, 'y must not change on UPDATE_FRAGMENT')
+    assertEqual(f.w, 180, 'w must not change on UPDATE_FRAGMENT')
+    assertEqual(f.h, 90, 'h must not change on UPDATE_FRAGMENT')
+  })
+
+  test('Suite 13: multiple fragments retain independent geometry', () => {
+    const s = freshStore()
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 10, y: 10, w: 100, h: 80, kind: 'frag-alt', cond: 'a' } })
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 200, y: 200, w: 300, h: 150, kind: 'frag-loop', cond: 'b' } })
+    const [f1, f2] = s.state.fragments
+    s.dispatch({ type: 'RESIZE_FRAGMENT', payload: { id: f1.id, w: 999, h: 999 } })
+    assertEqual(s.getFragmentById(f2.id).w, 300, 'resizing f1 must not affect f2 w')
+    assertEqual(s.getFragmentById(f2.id).h, 150, 'resizing f1 must not affect f2 h')
+  })
+
+  test('Suite 13: getFragmentById returns null for unknown id', () => {
+    const s = freshStore()
+    assert(s.getFragmentById('nonexistent') === null || s.getFragmentById('nonexistent') === undefined,
+      'getFragmentById must return null/undefined for unknown id')
+  })
+
+  test('Suite 13: DELETE_FRAGMENT removes fragment by id', () => {
+    const s = freshStore()
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
+    const id = s.state.fragments[0].id
+    s.dispatch({ type: 'DELETE_FRAGMENT', payload: { id } })
+    assert(s.state.fragments.length === 0, 'fragment must be removed')
+    assert(s.getFragmentById(id) === null || s.getFragmentById(id) === undefined, 'getFragmentById must return null after delete')
+  })
+
+  test('Suite 13: DELETE_FRAGMENT is undoable', () => {
+    const s = freshStore()
+    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
+    const id = s.state.fragments[0].id
+    s.dispatch({ type: 'DELETE_FRAGMENT', payload: { id } })
+    s.dispatch({ type: 'UNDO' })
+    assert(s.state.fragments.length === 1, 'UNDO must restore deleted fragment')
+    assertEqual(s.state.fragments[0].id, id, 'restored fragment must have original id')
+  })
+}
+
 //  RESULTS
 // ═══════════════════════════════════════════════════════
 console.log(`\n${'─'.repeat(50)}`)
