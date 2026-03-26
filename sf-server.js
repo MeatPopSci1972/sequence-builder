@@ -302,6 +302,7 @@ const server = http.createServer(function(req, res) {
     let body = ''; req.on('data', d => body += d);
     req.on('end', () => {
       fs.mkdirSync(path.dirname(fp), {recursive:true});
+      body = body.replace(/\r\n/g, '\n'); // normalise CRLF→LF on every PUT write
       fs.writeFile(fp, body, 'utf8', err => {
         if (err) { res.writeHead(500); res.end(err.message); return; }
         if (fp.endsWith('log.html')) logHtmlMtime = Date.now();
