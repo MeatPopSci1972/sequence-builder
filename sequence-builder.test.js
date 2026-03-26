@@ -50,6 +50,7 @@
 //  • grab cursor affordance on actor headers
 //  • dblclick trigger mechanics (DOM event wiring)
 //  • inline editor positioning & keyboard UX
+//  • interaction-layer routing (render() routes selected element to interactionLayer) — UI decision, store contract covered by Suite 13
 // ═══════════════════════════════════════════════════════
 
 // ── Minimal test harness (no deps) ──────────────────────

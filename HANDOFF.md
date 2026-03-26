@@ -2,7 +2,7 @@
 <!-- IMPORTANT: Update this file on every release. Version and backlog must stay current. -->
 
 ## FIRST ACTIONS (do these before anything else)
-1. GET http://localhost:3799/status — confirm version=0.9.69, clean=true
+1. GET http://localhost:3799/status — confirm version=0.9.78, clean=true
 2. GET http://localhost:3799/test — confirm gate is green (112/112)
 3. GET http://localhost:3799/test-render — confirm render gate green (15/15)
 4. Read this file fully, paying close attention to ## BACKLOG
@@ -38,7 +38,7 @@ Also available: GET /api (endpoint reference) | GET /usage (AI surgical guide)
 ## KEY FILES
 - sequence-builder.html — single-file app (toolbar, CSS, JS, store injected at build)
 - sequence-builder.store.js — store source (build.js syncs into HTML between sentinels)
-- sequence-builder.test.js — 99 contract tests (Suites 1-12)
+- sequence-builder.test.js — 112 contract tests (Suites 1-13)
 - build.js — syncs store.js into HTML between @@STORE-START / @@STORE-END
 - lint.js — HTML integrity checker: buttons, SVG balance, sentinels, version
 - sf-server.js — dev server v5 (GET/PUT files, POST /build /lint /git /snapshot /patch, GET /log /api /usage /test-render)
@@ -205,7 +205,7 @@ After template automation ships, open a design discussion on UI element factorie
 2. Evaluate esbuild for the build pipeline — only becomes necessary when the store needs to import utilities
 3. Tour DOM-ID regression protection — a build-time check that all STEPS[] target selectors resolve to actual elements in the built HTML
 
-### Shipped this cycle (v0.9.65-v0.9.72)
+### Shipped this cycle (v0.9.65-v0.9.78)
 - v0.9.65 — GET /test-render render gate (Playwright, 3 demos x 5 SVG layers, 15 snapshots)
 - v0.9.66 — render() pure DOM projection (_saveDiagram + updateOutput moved to store listeners)
 - v0.9.67 — CSS: --violet + --amber defined, 2 !important removed
@@ -217,6 +217,8 @@ After template automation ships, open a design discussion on UI element factorie
 - v0.9.73 — Dead code removal: orphaned btn-add-actor/btn-connect handlers, toggleConnectMode, getLastActor, duplicate getNextActorX
 - v0.9.74 — Remove ? toolbar button (sf-tour-help-btn) + 2 CSS rules + var help= JS; lint updated to 9 buttons; icebox updated with 5 new UI refinement items
 - v0.9.75/v0.9.76 — Floating zoom overlay (bottom-center canvas); Help modal with keyboard shortcuts + Tour launch; lint 6 buttons; fix kb-hint bar removed; zoom overlay clears debug console. NOTE: v0.9.75 was never separately pushed — v0.9.76 was the first released tag covering both.
+- v0.9.77 — Interaction layer: selected elements elevate above all SVG layers on selection; fragment resize handle 14px accent green; Suite 13 (13 tests) pins fragment geometry contract
+- v0.9.78 — PUT handler normalises CRLF→LF on every write; eliminates multi-line patch failure class permanently
 
 ## DOCUMENTATION STANDARDS
 <!-- @@DOC-STANDARDS-START — managed section, do not edit header/footer lines -->
