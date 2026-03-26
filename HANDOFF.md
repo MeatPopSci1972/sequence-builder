@@ -165,9 +165,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.77
-- Bump pattern: html.split('0.9.77').join('0.9.78')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.77/sequence-builder.html
+- Current: 0.9.78
+- Bump pattern: html.split('0.9.78').join('0.9.79')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.78/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -178,7 +178,7 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 ## BACKLOG (priority order — always keep items here, never leave empty)
 
 ### Context for next session
-v0.9.77 shipped. Interaction layer implemented — selected elements always reachable above all SVG layers. 112 store tests passing. CRLF-in-PUT fix icebox item added.
+v0.9.78 shipped. PUT handler normalises CRLF→LF — multi-line patch failure class eliminated. Icebox housekeeping done.
 
 **Item 1 — HANDOFF template automation (icebox item 2):**
 Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
@@ -237,9 +237,9 @@ FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
 - `## FIRST ACTIONS` — gate counts must match `GET /test` (112/112) and `GET /test-render` (15/15)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.77)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.77').join('0.9.78')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.77)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.78)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.78').join('0.9.79')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.78)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
