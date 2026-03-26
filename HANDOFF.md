@@ -3,7 +3,7 @@
 
 ## FIRST ACTIONS (do these before anything else)
 1. GET http://localhost:3799/status — confirm version=0.9.69, clean=true
-2. GET http://localhost:3799/test — confirm gate is green (99/99)
+2. GET http://localhost:3799/test — confirm gate is green (112/112)
 3. GET http://localhost:3799/test-render — confirm render gate green (15/15)
 4. Read this file fully, paying close attention to ## BACKLOG
 
@@ -165,9 +165,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.76
-- Bump pattern: html.split('0.9.76').join('0.9.77')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.76/sequence-builder.html
+- Current: 0.9.77
+- Bump pattern: html.split('0.9.77').join('0.9.78')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.77/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -178,7 +178,7 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 ## BACKLOG (priority order — always keep items here, never leave empty)
 
 ### Context for next session
-v0.9.76 shipped. Codebase is clean. kb-hint bar removed, zoom overlay properly clears debug console. No active agenda items. Review icebox before scoping new work.
+v0.9.77 shipped. Interaction layer implemented — selected elements always reachable above all SVG layers. 112 store tests passing. CRLF-in-PUT fix icebox item added.
 
 **Item 1 — HANDOFF template automation (icebox item 2):**
 Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
@@ -236,10 +236,10 @@ These standards define what each document type must contain, what format to use,
 FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW · READ CONSOLE PATTERN · STORE ARCHITECTURE · SECURITY NOTE · HOT RELOAD · LOG UI · TOUR SYSTEM · DEV LOOP WISDOM · VERSION · DEMOS · BACKLOG · REPO · (recovery note)
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
-- `## FIRST ACTIONS` — gate counts must match `GET /test` (99/99) and `GET /test-render` (15/15)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.76)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.76').join('0.9.77')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.76)
+- `## FIRST ACTIONS` — gate counts must match `GET /test` (112/112) and `GET /test-render` (15/15)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.77)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.77').join('0.9.78')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.77)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
