@@ -1,5 +1,17 @@
 # SequenceForge Changelog
 
+## v0.9.78 — Release v0.9.78
+_2026-03-26_
+
+### Fixes
+- PUT handler normalises CRLF→LF on write — eliminates multi-line patch failure class
+
+### Chores
+- HANDOFF —
+- CHANGELOG
+
+---
+
 ## v0.9.77 — interaction layer — selected elements elevate above all others; fragment resize handle 14px accent; Suite 13 pin-down tests
 _2026-03-26_
 
