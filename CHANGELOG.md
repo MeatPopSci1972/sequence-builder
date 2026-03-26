@@ -1,5 +1,18 @@
 # SequenceForge Changelog
 
+## v0.9.77 — interaction layer — selected elements elevate above all others; fragment resize handle 14px accent; Suite 13 pin-down tests
+_2026-03-26_
+
+### Features
+- interaction layer — selected elements elevate above all others; fragment resize handle 14px accent; Suite 13 pin-down tests
+
+### Chores
+- HANDOFF —
+- HANDOFF note v0.9.75 never separately released
+- CHANGELOG
+
+---
+
 ## v0.9.76 — Release v0.9.76
 _2026-03-25_
 
