@@ -2432,6 +2432,7 @@ function calcCanvasHeight() {
   return Math.max(base, 500);
 }
 
+// @@RENDER-START
 function render() {
   // Clear layers
   actorsLayer.innerHTML    = '';
@@ -2809,6 +2810,7 @@ function renderNote(n) {
     null  // click handled by mousedown drag system
   );
 }
+// @@RENDER-END
 
 function svgEl(tag, attrs={}) {
   const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -3092,6 +3094,7 @@ svg.addEventListener('click', e => {
   if (found) { setSelected(found, type, true); render(); }
 });
 
+// @@EVENTS-START
 // ── Connect mode ──
 function handleConnectClick(actorId) {
   dbg('handleConnectClick', `actorId=${actorId} connectFrom=${uiState.connectFrom}`);
@@ -3567,7 +3570,9 @@ const propertyVisitors = {
     },
   },
 };
+// @@EVENTS-END
 
+// @@TOOLBAR-START
 function renderProperties() {
   const el = document.getElementById('props-content');
   const s  = uiState.selected;
@@ -3832,6 +3837,8 @@ const ACTOR_EMOJIS = [
 
 let _actorModalResolve = null;
 let _actorSelectedEmoji = '⬜';
+
+// @@TOOLBAR-END
 
 function showActorModal() {
   return new Promise(resolve => {
