@@ -1,6 +1,5 @@
 // ═══════════════════════════════════════════════════════
 //  SequenceForge — DiagramStore
-//  Version: 0.6.0-pre
 //  Audience: Human + fresh AI instance
 //
 //  Pure JS module — zero DOM touches, zero external deps.
