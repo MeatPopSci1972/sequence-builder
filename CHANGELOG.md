@@ -1,5 +1,26 @@
 # SequenceForge Changelog
 
+## v0.9.79 — GET /slice scoped context loading + sentinel sections + preflight script
+_2026-03-27_
+
+### Features
+- GET /slice scoped context loading + sentinel sections + preflight script
+- GET /slice endpoint + sentinel comments for scoped context loading
+
+### Fixes
+- README live demo label v0.9.70 ->
+
+### Chores
+- remove duplicate /slice handler and /scan temp endpoint
+- sync store version banner removal into HTML
+- remove stale version banner from store file
+- icebox — cost-log persistent tracking item added
+- handoff — README label fix, validate-readme icebox, fresh clone notes
+- documentation review — HANDOFF version/count/icebox/shipped corrections; test NYT note added
+- CHANGELOG
+
+---
+
 ## v0.9.78 — Release v0.9.78
 _2026-03-26_
 
