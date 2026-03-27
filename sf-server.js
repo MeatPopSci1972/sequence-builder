@@ -276,60 +276,6 @@ const server = http.createServer(function(req, res) {
     }
     return;
   }
-  if (req.method === 'GET' && urlPath === '/slice') {
-    const fname = urlObj.searchParams.get('file') || 'sequence-builder.html';
-    const section = urlObj.searchParams.get('section') || '';
-    try {
-      const content = fs.readFileSync(path.join(ROOT, fname), 'utf8');
-      if (!section) {
-        // return manifest of available sections
-        const lines = content.split('\n');
-        const sections = [];
-        lines.forEach((l, i) => {
-          const m = l.match(/\/\/ @@([A-Z]+)-START/);
-          if (m) sections.push(m[1].toLowerCase());
-        });
-        res.writeHead(200, {'Content-Type': 'application/json'});
-        res.end(JSON.stringify({ok: true, file: fname, sections}));
-        return;
-      }
-      const key = section.toUpperCase();
-      const startMark = '// @@' + key + '-START';
-      const endMark   = '// @@' + key + '-END';
-      const si = content.indexOf(startMark);
-      const ei = content.indexOf(endMark);
-      if (si === -1 || ei === -1) {
-        res.writeHead(404, {'Content-Type': 'application/json'});
-        res.end(JSON.stringify({ok: false, error: 'section not found: ' + section}));
-        return;
-      }
-      const slice = content.slice(si, ei + endMark.length);
-      const lines = slice.split('\n').length;
-      const totalLines = content.split('\n').length;
-      res.writeHead(200, {'Content-Type': 'application/json'});
-      res.end(JSON.stringify({ok: true, file: fname, section, lines, totalFileLines: totalLines, content: slice}));
-    } catch(e) {
-      res.writeHead(500, {'Content-Type': 'application/json'});
-      res.end(JSON.stringify({ok: false, error: e.message}));
-    }
-    return;
-  }
-  if (req.method === 'GET' && urlPath === '/scan') {
-    const fname = urlObj.searchParams.get('file') || 'sequence-builder.html';
-    try {
-      const content = fs.readFileSync(path.join(ROOT, fname), 'utf8');
-      const lines = content.split('\n');
-      const hits = [];
-      lines.forEach((l, i) => {
-        const tr = l.trim();
-        if (tr.startsWith('function ') || tr.includes('@@'))
-          hits.push((i+1) + ': ' + tr.slice(0, 80));
-      });
-      res.writeHead(200, {'Content-Type': 'application/json'});
-      res.end(JSON.stringify({total: lines.length, hits}));
-    } catch(e) { res.writeHead(500); res.end(e.message); }
-    return;
-  }
   if (req.method === 'GET' && urlPath === '/log') {
     res.writeHead(200,{'Content-Type':'application/json'});
     res.end(JSON.stringify({entries:logBuffer,bufferSize:LOG_BUFFER_DEFAULT,logHtmlMtime}));
