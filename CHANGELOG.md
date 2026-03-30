@@ -1,5 +1,18 @@
 # SequenceForge Changelog
 
+## v0.9.83 — Release v0.9.83
+_2026-03-30_
+
+### Fixes
+- Add Message wires from selected actor, next actor as toId — v0.9.83\n\n- addFromPalette msg-sync/async/return now uses selected actor as fromId\n- toId set to next actor by x position after fromId\n- Falls back to leftmost actor when nothing selected\n- Self-message when only one actor exists
+
+### Chores
+- HANDOFF updated for v0.9.83 — Add Message actor-context wiring documented
+- sf-preflight.ps1 expected store test count 112 → 120
+- CHANGELOG + tag
+
+---
+
 ## v0.9.82 — simplified palette, horizontal-only pan, fit-to-diagram — v0.9.82\n\n- Palette reduced to 4 flat items: Add Actor, Add Message, Add Conditional, Add Note\n- Add Conditional adds frag-alt; type changed via Properties kind select\n- Zoom controls moved to statusbar — always visible, no layout fight\n- Fit button removed — clicking zoom label fits diagram to canvas\n- fitToZoom: top-anchor, horizontal centre, uses getBoundingClientRect for correct visible height\n- Horizontal-only pan — panY always 0; sequence diagrams scroll vertically\n- canvas-wrap overflow-y:auto — native vertical scroll enabled\n- Arrow Left/Right pan; Up/Down fall through to native scroll\n- UPDATE_ACTOR accepts x in partial patch (store fix)\n- Suite 14: 8 pin-down tests for pan/nudge store contracts
 _2026-03-30_
 
