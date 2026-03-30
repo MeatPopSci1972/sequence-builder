@@ -1,5 +1,16 @@
 # SequenceForge Changelog
 
+## v0.9.82 — simplified palette, horizontal-only pan, fit-to-diagram — v0.9.82\n\n- Palette reduced to 4 flat items: Add Actor, Add Message, Add Conditional, Add Note\n- Add Conditional adds frag-alt; type changed via Properties kind select\n- Zoom controls moved to statusbar — always visible, no layout fight\n- Fit button removed — clicking zoom label fits diagram to canvas\n- fitToZoom: top-anchor, horizontal centre, uses getBoundingClientRect for correct visible height\n- Horizontal-only pan — panY always 0; sequence diagrams scroll vertically\n- canvas-wrap overflow-y:auto — native vertical scroll enabled\n- Arrow Left/Right pan; Up/Down fall through to native scroll\n- UPDATE_ACTOR accepts x in partial patch (store fix)\n- Suite 14: 8 pin-down tests for pan/nudge store contracts
+_2026-03-30_
+
+### Features
+- simplified palette, horizontal-only pan, fit-to-diagram — v0.9.82\n\n- Palette reduced to 4 flat items: Add Actor, Add Message, Add Conditional, Add Note\n- Add Conditional adds frag-alt; type changed via Properties kind select\n- Zoom controls moved to statusbar — always visible, no layout fight\n- Fit button removed — clicking zoom label fits diagram to canvas\n- fitToZoom: top-anchor, horizontal centre, uses getBoundingClientRect for correct visible height\n- Horizontal-only pan — panY always 0; sequence diagrams scroll vertically\n- canvas-wrap overflow-y:auto — native vertical scroll enabled\n- Arrow Left/Right pan; Up/Down fall through to native scroll\n- UPDATE_ACTOR accepts x in partial patch (store fix)\n- Suite 14: 8 pin-down tests for pan/nudge store contracts
+
+### Chores
+- HANDOFF updated for v0.9.82 — simplified palette, horizontal pan, fit-to-diagram documented
+
+---
+
 ## v0.9.81 — canvas pan (drag + arrow keys) — v0.9.81\n\n- Left-click drag on empty canvas pans the viewport\n- Arrow keys pan canvas when nothing selected\n- Arrow keys nudge selected element (actor X-only, note/fragment X+Y)\n- UPDATE_ACTOR now accepts x in partial patch\n- Suite 14: 8 pin-down tests for pan/nudge store contracts\n- grab/grabbing cursor CSS on empty canvas
 _2026-03-30_
 
