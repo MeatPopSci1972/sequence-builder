@@ -179,7 +179,13 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 ## BACKLOG (priority order — always keep items here, never leave empty)
 
 ### Context for next session
-v0.9.80 shipped. Two sessions this cycle: v0.9.79 added GET /slice scoped context loading (4 sentinel sections: store/render/events/toolbar) + sf-preflight.ps1 pre-flight script. v0.9.80 closed icebox 0: validate-readme now asserts hasLabel (label text contains version string), not just hasLink. README label was 2 versions behind — now caught and fixed automatically. Launcher hot-reload confirmed — never restart manually. GET /slice is the primary token-saving tool for future sessions — use it before loading full files.
+v0.9.83 shipped. This cycle: simplified palette (4 items), horizontal-only pan, fit-to-diagram fix, zoom controls moved to statusbar, Add Message now wires from selected actor, POST /changelog auto-commits CHANGELOG.md. Two open bugs logged below — tackle BUG-001 first (simpler). GET /slice is the primary token-saving tool — use it before loading full files.
+
+**BUG-001 — Properties panel stale after message Y-drag:**
+After dragging a message vertically, the Properties panel sometimes shows stale From/To actor values. Root cause: uiState.selected._ref is not refreshed after the mouseup UPDATE_MESSAGE dispatch. Fix: re-wrap uiState.selected after the dispatch in the mouseup handler (events section, mouseup block, draggingMsg path).
+
+**BUG-002 — Message endpoint resize handles:**
+User should be able to drag the LEFT or RIGHT tip of a message arrow to reassign fromId or toId to any actor, not just the immediately adjacent one. Store already supports UPDATE_MESSAGE {fromId, toId}. Needs small SVG hit-target handles rendered at each arrow tip. Drag behaviour mirrors the fragment SE-corner resize pattern — mousedown on handle starts resize, mousemove updates, mouseup dispatches UPDATE_MESSAGE. UI-only change.
 
 **Item 1 — HANDOFF template automation (icebox item 2):**
 Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
