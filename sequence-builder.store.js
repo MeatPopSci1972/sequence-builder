@@ -223,6 +223,7 @@ function createStore() {
       if (payload.label !== undefined) actor.label = payload.label
       if (payload.type  !== undefined) actor.type  = payload.type
       if (payload.emoji !== undefined) actor.emoji = payload.emoji
+      if (payload.x     !== undefined) actor.x     = payload.x
       emit('actor:updated', actor)
     },
 

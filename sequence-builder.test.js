@@ -45,6 +45,8 @@
 //  No actor guard on element add     Suite 9
 //  autoFitOnLoad preference          Suite 11
 //  Action log & undoable flag        Suite 4
+//  Canvas pan (store boundary)        Suite 14
+//  Arrow-key nudge contracts           Suite 14
 //
 //  NOT YET TESTED (UI-only, no store contract):
 //  • grab cursor affordance on actor headers
@@ -1826,6 +1828,88 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assertEqual(s.state.fragments[0].id, id, 'restored fragment must have original id')
   })
 }
+// ═══════════════════════════════════════════════════════
+//  Suite 14 — Canvas pan & arrow-key nudge contracts
+//
+//  Pan (panX/panY) is UI-only state — not stored in the store.
+//  These tests pin the store-side contracts that arrow-key nudge
+//  dispatches, and assert that pan state does not leak into store.
+// ═══════════════════════════════════════════════════════
+
+console.log('\nSuite 14 — Canvas pan & arrow-key nudge contracts');
+
+test('Suite 14: UPDATE_ACTOR x-nudge moves actor by delta', () => {
+  const s = freshStore();
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 100 } });
+  const id = s.state.actors[0].id;
+  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, x: 120 } });
+  assert(s.state.actors[0].x === 120, 'actor x updated to 120');
+});
+
+test('Suite 14: UPDATE_ACTOR x-nudge is undoable', () => {
+  const s = freshStore();
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 100 } });
+  const id = s.state.actors[0].id;
+  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, x: 120 } });
+  s.dispatch({ type: 'UNDO' });
+  assert(s.state.actors[0].x === 100, 'UNDO restores actor x to 100');
+});
+
+test('Suite 14: MOVE_NOTE nudge moves note by delta', () => {
+  const s = freshStore();
+  s.dispatch({ type: 'ADD_NOTE', payload: { text: 'hi', x: 80, y: 200 } });
+  const id = s.state.notes[0].id;
+  s.dispatch({ type: 'MOVE_NOTE', payload: { id, x: 100, y: 220 } });
+  assert(s.state.notes[0].x === 100, 'note x updated');
+  assert(s.state.notes[0].y === 220, 'note y updated');
+});
+
+test('Suite 14: MOVE_NOTE nudge is undoable', () => {
+  const s = freshStore();
+  s.dispatch({ type: 'ADD_NOTE', payload: { text: 'hi', x: 80, y: 200 } });
+  const id = s.state.notes[0].id;
+  s.dispatch({ type: 'MOVE_NOTE', payload: { id, x: 100, y: 220 } });
+  s.dispatch({ type: 'UNDO' });
+  assert(s.state.notes[0].x === 80, 'UNDO restores note x');
+  assert(s.state.notes[0].y === 200, 'UNDO restores note y');
+});
+
+test('Suite 14: MOVE_FRAGMENT nudge moves fragment by delta', () => {
+  const s = freshStore();
+  s.dispatch({ type: 'ADD_FRAGMENT', payload: { kind: 'frag-alt', cond: 'c', x: 60, y: 100, w: 200, h: 80 } });
+  const id = s.state.fragments[0].id;
+  s.dispatch({ type: 'MOVE_FRAGMENT', payload: { id, x: 80, y: 120 } });
+  assert(s.state.fragments[0].x === 80, 'fragment x updated');
+  assert(s.state.fragments[0].y === 120, 'fragment y updated');
+});
+
+test('Suite 14: MOVE_FRAGMENT nudge is undoable', () => {
+  const s = freshStore();
+  s.dispatch({ type: 'ADD_FRAGMENT', payload: { kind: 'frag-alt', cond: 'c', x: 60, y: 100, w: 200, h: 80 } });
+  const id = s.state.fragments[0].id;
+  s.dispatch({ type: 'MOVE_FRAGMENT', payload: { id, x: 80, y: 120 } });
+  s.dispatch({ type: 'UNDO' });
+  assert(s.state.fragments[0].x === 60, 'UNDO restores fragment x');
+  assert(s.state.fragments[0].y === 100, 'UNDO restores fragment y');
+});
+
+test('Suite 14: pan state is not present on store.state', () => {
+  const s = freshStore();
+  assert(!('panX' in s.state), 'panX is not a store state field');
+  assert(!('panY' in s.state), 'panY is not a store state field');
+});
+
+test('Suite 14: actor x-nudge at left boundary (x:0) does not go negative', () => {
+  const s = freshStore();
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 5 } });
+  const id = s.state.actors[0].id;
+  // Simulate ArrowLeft nudge: Math.max(0, x - 10) = Math.max(0, -5) = 0
+  const nudged = Math.max(0, s.state.actors[0].x - 10);
+  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, x: nudged } });
+  assert(s.state.actors[0].x === 0, 'actor x clamped to 0 at left boundary');
+});
+
+
 
 //  RESULTS
 // ═══════════════════════════════════════════════════════
