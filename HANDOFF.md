@@ -2,7 +2,7 @@
 <!-- IMPORTANT: Update this file on every release. Version and backlog must stay current. -->
 
 ## FIRST ACTIONS (do these before anything else)
-1. GET http://localhost:3799/status — confirm version=0.9.78, clean=true
+1. GET http://localhost:3799/status — confirm version=0.9.80, clean=true
 2. GET http://localhost:3799/test — confirm gate is green (112/112)
 3. GET http://localhost:3799/test-render — confirm render gate green (15/15)
 4. Read this file fully, paying close attention to ## BACKLOG
@@ -17,6 +17,7 @@ Also available: GET /api (endpoint reference) | GET /usage (AI surgical guide)
 | GET | /HANDOFF.md | This file |
 | GET | /api | Full endpoint reference JSON |
 | GET | /usage | Surgical AI usage guide, plain text |
+| GET | /slice?file=&section= | Return named sentinel section of a file. No section = manifest of available sections {store,render,events,toolbar} |
 | GET | /log | Server event log JSON {entries, bufferSize, logHtmlMtime} |
 | GET | /git-log | git log --oneline JSON {n, lines} — default n=20 |
 | GET | /test | Run build + tests, returns HTML report |
@@ -29,7 +30,7 @@ Also available: GET /api (endpoint reference) | GET /usage (AI surgical guide)
 | PUT | /<file> | Write any file in repo root. Add ?verify=1 to get {ok,wrote,status} back inline |
 | POST | /update-handoff | Populate all live fields in HANDOFF.md from /status+/test+/test-render. Idempotent. |
 | POST | /snapshot?v=X.Y.Z | Copy build + HANDOFF-vX.Y.Z.md into releases/vX.Y.Z/ |
-| GET | /validate-readme?v=X.Y.Z | Checks README has link to vX.Y.Z and no root loop link; logs WARN if not (addLog) |
+| GET | /validate-readme?v=X.Y.Z | Checks README has link + label text + no loop for vX.Y.Z. Returns {ok,hasLink,hasLabel,hasLoop}. addLog fires. |
 | POST | /git-restore | Restore tracked file to HEAD. Body: {file}. Returns {ok,file,output,ms}. **addLog fires** |
 | POST | /changelog | Auto-gen CHANGELOG.md entry from git log since last tag. Body: {version}. Returns {ok,version,entry,length,ms}. **addLog fires** |
 | POST | /tag | Create annotated git tag. Body: {tag,message}. Returns {ok,tag,output,ms}. **addLog fires** |
@@ -178,7 +179,7 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 ## BACKLOG (priority order — always keep items here, never leave empty)
 
 ### Context for next session
-v0.9.78 shipped. PUT handler normalises CRLF→LF — multi-line patch failure class eliminated. Icebox housekeeping done.
+v0.9.80 shipped. Two sessions this cycle: v0.9.79 added GET /slice scoped context loading (4 sentinel sections: store/render/events/toolbar) + sf-preflight.ps1 pre-flight script. v0.9.80 closed icebox 0: validate-readme now asserts hasLabel (label text contains version string), not just hasLink. README label was 2 versions behind — now caught and fixed automatically. Launcher hot-reload confirmed — never restart manually. GET /slice is the primary token-saving tool for future sessions — use it before loading full files.
 
 **Item 1 — HANDOFF template automation (icebox item 2):**
 Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
@@ -187,8 +188,8 @@ Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` +
 After template automation ships, open a design discussion on UI element factories. The trigger condition (a second consumer of element construction logic outside render()) has not fired — this is a scoping conversation, not implementation. Proto2prod discipline applies: validate the need before building. Review render() with fresh eyes, identify any duplication that has emerged since v0.9.68, and decide together whether the trigger has been met.
 
 ### Icebox
-0. **Tighten `GET /validate-readme` — check label text not just URL** — the live demo label said "v0.9.70" while the URL was correct at "v0.9.78"; validate-readme passed because it only checks the URL. Fix: also assert the label text contains the version string. Trigger: already fired this session.
-0b. **Persistent cost log (`cost-log.json`)** — `POST /log-cost {tokens, model, note}` appends a timestamped entry to `cost-log.json` in the repo root. File is local-only: listed in `.gitignore`, never checked in. If the file does not exist the server creates it. Enables cross-session token/cost tracking. Pin down with store-side tests that seed a test instance (temp file, known entries, assert shape and append behaviour). Expose `GET /cost-log` to read entries as JSON. Trigger: already fired — cost visibility gap identified this session. — the live demo label said "v0.9.70" while the URL was correct at "v0.9.78"; validate-readme passed because it only checks the URL. Fix: also assert the label text contains the version string. Trigger: already fired this session.
+~~0. **Tighten `GET /validate-readme`**~~ — **shipped v0.9.80**. hasLabel check added; README label was 2 versions behind and is now caught automatically. validate-readme returns {ok,hasLink,hasLabel,hasLoop}.
+0b. **Persistent cost log (`cost-log.json`)** — `POST /log-cost {tokens, model, note}` appends a timestamped entry to `cost-log.json` in the repo root. File is local-only: listed in `.gitignore`, never checked in. If the file does not exist the server creates it. Enables cross-session token/cost tracking. Pin down with store-side tests that seed a test instance (temp file, known entries, assert shape and append behaviour). Expose `GET /cost-log` to read entries as JSON. Trigger: already fired — cost visibility gap identified this session. 
 1. ~~**Define documentation standards**~~ — **shipped v0.9.69**. ## DOCUMENTATION STANDARDS and ## HANDOFF SNAPSHOT AUDIT sections written. Standards cover HANDOFF.md, CHANGELOG.md, README.md, and GitHub release notes. Template {{placeholder}} markers added for future automation. Audit covers v0.9.61–v0.9.68 archives with cross-version pattern summary.
 
 2. ~~**HANDOFF template automation**~~ — DOCUMENTATION STANDARDS section uses {{placeholder}} markers for live-fetchable values (version, test counts, bump pattern, demo URL). Future work: implement `POST /update-handoff` that calls `GET /status` + `GET /test` + `GET /test-render` and populates all {{}} fields automatically, eliminating the manual VERSION staleness class of bug seen in v0.9.61–v0.9.64. Trigger for promotion: a second VERSION staleness incident, or when the release flow is next touched for another reason.
@@ -221,6 +222,8 @@ After template automation ships, open a design discussion on UI element factorie
 - v0.9.75/v0.9.76 — Floating zoom overlay (bottom-center canvas); Help modal with keyboard shortcuts + Tour launch; lint 6 buttons; fix kb-hint bar removed; zoom overlay clears debug console. NOTE: v0.9.75 was never separately pushed — v0.9.76 was the first released tag covering both.
 - v0.9.77 — Interaction layer: selected elements elevate above all SVG layers on selection; fragment resize handle 14px accent green; Suite 13 (13 tests) pins fragment geometry contract
 - v0.9.78 — PUT handler normalises CRLF→LF on every write; eliminates multi-line patch failure class permanently
+- v0.9.79 — GET /slice scoped context loading via sentinel sections (@@RENDER, @@EVENTS, @@TOOLBAR added); sf-preflight.ps1 pre-flight script added to repo
+- v0.9.80 — validate-readme hasLabel check (asserts label text contains version string, not just URL); README label staleness class eliminated
 
 ## DOCUMENTATION STANDARDS
 <!-- @@DOC-STANDARDS-START — managed section, do not edit header/footer lines -->
