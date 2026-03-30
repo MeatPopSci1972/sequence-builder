@@ -1,5 +1,20 @@
 # SequenceForge Changelog
 
+## v0.9.80 — validate-readme hasLabel check + README link and label updated
+_2026-03-30_
+
+### Features
+- validate-readme hasLabel check + README link and label updated
+
+### Fixes
+- README label and link updated to v0.9.80; validate-readme now checks label text
+- validate-readme now asserts label text contains version string (icebox 0)
+
+### Chores
+- CHANGELOG + HANDOFF
+
+---
+
 ## v0.9.79 — GET /slice scoped context loading + sentinel sections + preflight script
 _2026-03-27_
 
