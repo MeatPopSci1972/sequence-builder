@@ -233,8 +233,9 @@ const server = http.createServer(function(req, res) {
       const target = 'releases/v'+version+'/sequence-builder.html';
       const hasLink = rm.indexOf(target)!==-1;
       const hasLoop = rm.indexOf('github.io/sequence-builder/)')!==-1;
+      const hasLabel = rm.indexOf('v'+version)!==-1;
       res.writeHead(200,{'Content-Type':'application/json'});
-      res.end(JSON.stringify({ok:hasLink&&!hasLoop,hasLink,hasLoop,target,version}));
+      res.end(JSON.stringify({ok:hasLink&&!hasLoop&&hasLabel,hasLink,hasLoop,hasLabel,target,version}));
     } catch(e) { res.writeHead(500); res.end(JSON.stringify({ok:false,error:e.message})); }
     return;
   }
