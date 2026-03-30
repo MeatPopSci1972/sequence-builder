@@ -3,6 +3,14 @@
 ## v0.9.83 — Release v0.9.83
 _2026-03-30_
 
+### Chores
+- CHANGELOG + tag
+
+---
+
+## v0.9.83 — Release v0.9.83
+_2026-03-30_
+
 ### Fixes
 - Add Message wires from selected actor, next actor as toId — v0.9.83\n\n- addFromPalette msg-sync/async/return now uses selected actor as fromId\n- toId set to next actor by x position after fromId\n- Falls back to leftmost actor when nothing selected\n- Self-message when only one actor exists
 
