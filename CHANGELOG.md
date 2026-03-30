@@ -1,5 +1,18 @@
 # SequenceForge Changelog
 
+## v0.9.81 — canvas pan (drag + arrow keys) — v0.9.81\n\n- Left-click drag on empty canvas pans the viewport\n- Arrow keys pan canvas when nothing selected\n- Arrow keys nudge selected element (actor X-only, note/fragment X+Y)\n- UPDATE_ACTOR now accepts x in partial patch\n- Suite 14: 8 pin-down tests for pan/nudge store contracts\n- grab/grabbing cursor CSS on empty canvas
+_2026-03-30_
+
+### Features
+- canvas pan (drag + arrow keys) — v0.9.81\n\n- Left-click drag on empty canvas pans the viewport\n- Arrow keys pan canvas when nothing selected\n- Arrow keys nudge selected element (actor X-only, note/fragment X+Y)\n- UPDATE_ACTOR now accepts x in partial patch\n- Suite 14: 8 pin-down tests for pan/nudge store contracts\n- grab/grabbing cursor CSS on empty canvas
+
+### Chores
+- HANDOFF updated for v0.9.81 — Suite 14, pan feature, UPDATE_ACTOR x documented
+- HANDOFF updated for v0.9.80 — icebox 0 closed, /slice documented, context refreshed
+- CHANGELOG + HANDOFF
+
+---
+
 ## v0.9.80 — validate-readme hasLabel check + README link and label updated
 _2026-03-30_
 
