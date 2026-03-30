@@ -300,7 +300,7 @@ const server = http.createServer(function(req, res) {
       {method:'GET', path:'/log',               desc:'Server event log JSON'},
       {method:'GET', path:'/git-log',           desc:'git log --oneline JSON {n,lines}. Default n=20'},
       {method:'GET', path:'/test',              desc:'Run build+tests HTML report. addLog fires.'},
-      {method:'GET', path:'/validate-readme',   desc:'Check README link+loop for vX.Y.Z. addLog fires.'},
+      {method:'GET', path:'/validate-readme',   desc:'Check README link+loop+label for vX.Y.Z. Returns {ok,hasLink,hasLoop,hasLabel}. addLog fires.'},
       {method:'POST',path:'/build',             desc:'Run build.js. Returns {ok,output,ms,exitCode}. addLog fires.'},
       {method:'POST',path:'/lint',              desc:'Run lint.js. Returns {ok,output,ms}. addLog fires.'},
       {method:'POST',path:'/patch',             desc:'Find-replace in file. Body:{file,old,new}. CRLF auto-normalised for CRLF files. Returns {ok,replaced,length}. addLog fires.'},
