@@ -198,6 +198,10 @@ const server = http.createServer(function(req, res) {
         const rest = firstNl !== -1 ? existing.slice(firstNl+2).replace(/^\n+/,'') : existing;
         const updated = header + entry + rest;
         fs.writeFileSync(clPath, updated, 'utf8');
+        // Auto-commit CHANGELOG so tree stays clean after this call
+        try {
+          execSync('git add CHANGELOG.md && git commit -m "chore: CHANGELOG v'+version+'"',{cwd:ROOT});
+        } catch(e) { /* nothing to commit is fine */ }
         res.writeHead(200,{'Content-Type':'application/json'});
         res.end(JSON.stringify({ok:true,version,entry,length:updated.length,ms:Date.now()-t0}));
         addLog('POST /changelog','v'+version+' '+commits.length+' commits from '+(lastTag||'beginning'));
