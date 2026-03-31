@@ -1,5 +1,17 @@
 # SequenceForge Changelog
 
+## v0.9.86 — Release v0.9.86
+_2026-03-31_
+
+### Fixes
+- BUG-003 tour spotlight — retarget Import/Export step to visible #btn-import-menu — v0.9.86\n\n- #btn-import-uml is inside collapsed dropdown (getBoundingClientRect 0,0)\n- Now targets #btn-import-menu — always visible in toolbar\n- Title updated to "Import
+
+### Chores
+- HANDOFF updated for
+- HANDOFF — BUG-003 tour spotlight 0,0 on Import/Export step logged
+
+---
+
 ## v0.9.85 — theme engine — Dark, Light, System, LCARS — v0.9.85\n\n- themes.json: 4 themes with full CSS var sets incl --c-panel, --c-border, --kbd-*, --red, --amber\n- applyTheme() fetches themes.json on boot, applies CSS vars to :root, graceful fallback\n- state_settings.theme persisted to localStorage via existing _saveSettings pattern\n- Settings modal: Theme select row with 4 options\n- Pill CSS: hardcoded dark backgrounds replaced with var(--surface2) + CSS vars\n- Help modal: --bg2 → --surface (transparency fix)\n- Tour: all hardcoded GitHub dark palette replaced with CSS vars\n- Notes: .note-box/.note-text and JS render use var(--accent2) and var(--surface2)\n- Debug console: background var(--bg); inline edit box uses --accent/--surface/--text\n- Global kbd CSS rule using --kbd-bg/border/text vars\n- Light theme WCAG fix: accent #0d9e7a → #0a8f6e (surface2 pair 2.97→3.2)
 _2026-03-31_
 
