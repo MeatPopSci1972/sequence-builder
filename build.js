@@ -146,16 +146,47 @@ const after  = htmlRaw.slice(endIdx)    // includes @@STORE-END and everything a
 
 const htmlOut = before + '\n' + storeBody + after
 
+// ── Inject themes.json as window._SF_THEMES ─────────────────
+//
+//  themes.json is the source of truth. At build time we read it
+//  and splice it between @@THEMES-START / @@THEMES-END so the
+//  standalone HTML works without any fetch (GitHub Pages safe).
+
+const THEMES_SRC   = path.join(ROOT, 'themes.json')
+const THEMES_START = '// @@THEMES-START'
+const THEMES_END   = '// @@THEMES-END'
+
+let htmlFinal = htmlOut
+
+if (fs.existsSync(THEMES_SRC)) {
+  const themesRaw  = fs.readFileSync(THEMES_SRC, 'utf8')
+  const themesData = JSON.parse(themesRaw) // validate JSON before injecting
+  const injection  = `window._SF_THEMES = ${JSON.stringify(themesData, null, 2)};`
+
+  const tStart = htmlFinal.indexOf(THEMES_START)
+  const tEnd   = htmlFinal.indexOf(THEMES_END)
+
+  if (tStart !== -1 && tEnd !== -1 && tStart < tEnd) {
+    const tBefore = htmlFinal.slice(0, tStart + THEMES_START.length)
+    const tAfter  = htmlFinal.slice(tEnd) // includes @@THEMES-END and rest
+    htmlFinal = tBefore + '\n' + injection + '\n' + tAfter
+  } else {
+    warn('@@THEMES-START / @@THEMES-END sentinels not found — themes not injected')
+  }
+} else {
+  warn('themes.json not found — themes not injected')
+}
+
 // ── Write ────────────────────────────────────────────────────
-fs.writeFileSync(HTML_SRC, htmlOut, 'utf8')
+fs.writeFileSync(HTML_SRC, htmlFinal, 'utf8')
 
 // ── Report ───────────────────────────────────────────────────
 const storeLines = storeBody.split('\n').length
-const htmlLines  = htmlOut.split('\n').length
+const htmlLines  = htmlFinal.split('\n').length
 console.log(`✓ build.js complete`)
 console.log(`  store lines injected : ${storeLines}`)
 console.log(`  html total lines     : ${htmlLines}`)
-console.log(`  sentinel span        : ${HTML_SRC} lines ${findLineNumber(htmlOut, SENTINEL_START)}–${findLineNumber(htmlOut, SENTINEL_END)}`)
+console.log(`  sentinel span        : ${HTML_SRC} lines ${findLineNumber(htmlFinal, SENTINEL_START)}–${findLineNumber(htmlFinal, SENTINEL_END)}`)
 
 // ── Helpers ──────────────────────────────────────────────────
 function findLineNumber(text, needle) {
