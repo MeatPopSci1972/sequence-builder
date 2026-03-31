@@ -39,16 +39,19 @@ Also available: GET /api (endpoint reference) | GET /usage (AI surgical guide)
 ## KEY FILES
 - sequence-builder.html — single-file app (toolbar, CSS, JS, store injected at build)
 - sequence-builder.store.js — store source (build.js syncs into HTML between sentinels)
-- sequence-builder.test.js — 112 contract tests (Suites 1-13)
+- sequence-builder.test.js — 120 contract tests (Suites 1-14)
+- themes.json — theme definitions (dark/light/system/lcars), served as GET /themes.json
 - build.js — syncs store.js into HTML between @@STORE-START / @@STORE-END
 - lint.js — HTML integrity checker: buttons, SVG balance, sentinels, version
 - sf-server.js — dev server v5 (GET/PUT files, POST /build /lint /git /snapshot /patch, GET /log /api /usage /test-render)
 - test-snapshots/ — render layer snapshot files (gitignored; seed with GET /test-render?update=1)
 - launcher.js — hot-reload wrapper: USE THIS to start server (node launcher.js)
-- log.html — server log viewer UI: filter bar with Select All paradigm, checkmark icons on active chips
-- _gif_canary_inject.js — GIF capture loop (fetch+eval in canary tab)
-- CHANGELOG.md — release history, auto-generated via POST /changelog + manual design notes
+- sf-preflight.ps1 — pre-flight check script (run before each session)
+- log.html — server log viewer UI
+- CHANGELOG.md — release history, auto-generated via POST /changelog (auto-commits)
 - releases/ — per-version snapshots: releases/vX.Y.Z/sequence-builder.html + HANDOFF-vX.Y.Z.md
+- docs/sessions/ — archived session handoff files (v0.9.16–v0.9.33)
+- dev/ — canary test harness and dev tooling (replaced by GET /test + GET /test-render)
 
 ## WORKFLOW PATTERN
 ```js
