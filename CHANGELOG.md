@@ -1,5 +1,16 @@
 # SequenceForge Changelog
 
+## v0.9.88 — Help modal README link — v0.9.88\n\n- "README ↗" link added to Help modal footer between Launch Tour and Close\n- Opens GitHub README in new tab (target=_blank, rel=noopener)\n- Styled with var(--text3) and subtle underline — theme-aware
+_2026-03-31_
+
+### Features
+- Help modal README link — v0.9.88\n\n- "README ↗" link added to Help modal footer between Launch Tour and Close\n- Opens GitHub README in new tab (target=_blank, rel=noopener)\n- Styled with var(--text3) and subtle underline — theme-aware
+
+### Chores
+- HANDOFF updated for
+
+---
+
 ## v0.9.87 — themes injected at build — window._SF_THEMES, standalone/GitHub Pages safe — v0.9.87\n\n- Root cause: fetch(./themes.json) fails on GitHub Pages (only HTML deployed)\n- Fix: build.js now injects themes.json as window._SF_THEMES between @@THEMES-START/END\n- applyTheme() reads window._SF_THEMES — no fetch, works in any static context\n- themes.json remains source of truth; edit themes → POST /build to update\n- System theme kept: shows "System (Dark)" or "System (Light)" via matchMedia API\n- Graceful fallback: if _SF_THEMES undefined, built-in CSS vars remain active
 _2026-03-31_
 
