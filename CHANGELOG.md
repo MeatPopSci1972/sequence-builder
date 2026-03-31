@@ -1,5 +1,18 @@
 # SequenceForge Changelog
 
+## v0.9.87 — themes injected at build — window._SF_THEMES, standalone/GitHub Pages safe — v0.9.87\n\n- Root cause: fetch(./themes.json) fails on GitHub Pages (only HTML deployed)\n- Fix: build.js now injects themes.json as window._SF_THEMES between @@THEMES-START/END\n- applyTheme() reads window._SF_THEMES — no fetch, works in any static context\n- themes.json remains source of truth; edit themes → POST /build to update\n- System theme kept: shows "System (Dark)" or "System (Light)" via matchMedia API\n- Graceful fallback: if _SF_THEMES undefined, built-in CSS vars remain active
+_2026-03-31_
+
+### Features
+- themes injected at build — window._SF_THEMES, standalone/GitHub Pages safe — v0.9.87\n\n- Root cause: fetch(./themes.json) fails on GitHub Pages (only HTML deployed)\n- Fix: build.js now injects themes.json as window._SF_THEMES between @@THEMES-START/END\n- applyTheme() reads window._SF_THEMES — no fetch, works in any static context\n- themes.json remains source of truth; edit themes → POST /build to update\n- System theme kept: shows "System (Dark)" or "System (Light)" via matchMedia API\n- Graceful fallback: if _SF_THEMES undefined, built-in CSS vars remain active
+
+### Chores
+- HANDOFF updated for v0.9.87 — themes build injection documented
+- HANDOFF KEY FILES updated — test count 120, themes.json, docs/sessions/, dev/ documented, stale canary ref removed
+- repo cleanup — session handoffs → docs/sessions/, canary tools → dev/, remove leftover diagram JSON
+
+---
+
 ## v0.9.86 — Release v0.9.86
 _2026-03-31_
 
