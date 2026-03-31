@@ -3,7 +3,7 @@
 > A single-file, zero-dependency UML sequence diagram builder.
 > Runs entirely in the browser. No build step, no npm install.
 
-**[Live demo — v0.9.87](https://meatpopsci1972.github.io/sequence-builder/releases/v0.9.87/sequence-builder.html)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
+**[Live demo — v0.9.88](https://meatpopsci1972.github.io/sequence-builder/releases/v0.9.88/sequence-builder.html)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
 
 ---
 
