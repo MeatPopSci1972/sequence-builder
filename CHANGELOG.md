@@ -1,5 +1,16 @@
 # SequenceForge Changelog
 
+## v0.9.85 — theme engine — Dark, Light, System, LCARS — v0.9.85\n\n- themes.json: 4 themes with full CSS var sets incl --c-panel, --c-border, --kbd-*, --red, --amber\n- applyTheme() fetches themes.json on boot, applies CSS vars to :root, graceful fallback\n- state_settings.theme persisted to localStorage via existing _saveSettings pattern\n- Settings modal: Theme select row with 4 options\n- Pill CSS: hardcoded dark backgrounds replaced with var(--surface2) + CSS vars\n- Help modal: --bg2 → --surface (transparency fix)\n- Tour: all hardcoded GitHub dark palette replaced with CSS vars\n- Notes: .note-box/.note-text and JS render use var(--accent2) and var(--surface2)\n- Debug console: background var(--bg); inline edit box uses --accent/--surface/--text\n- Global kbd CSS rule using --kbd-bg/border/text vars\n- Light theme WCAG fix: accent #0d9e7a → #0a8f6e (surface2 pair 2.97→3.2)
+_2026-03-31_
+
+### Features
+- theme engine — Dark, Light, System, LCARS — v0.9.85\n\n- themes.json: 4 themes with full CSS var sets incl --c-panel, --c-border, --kbd-*, --red, --amber\n- applyTheme() fetches themes.json on boot, applies CSS vars to :root, graceful fallback\n- state_settings.theme persisted to localStorage via existing _saveSettings pattern\n- Settings modal: Theme select row with 4 options\n- Pill CSS: hardcoded dark backgrounds replaced with var(--surface2) + CSS vars\n- Help modal: --bg2 → --surface (transparency fix)\n- Tour: all hardcoded GitHub dark palette replaced with CSS vars\n- Notes: .note-box/.note-text and JS render use var(--accent2) and var(--surface2)\n- Debug console: background var(--bg); inline edit box uses --accent/--surface/--text\n- Global kbd CSS rule using --kbd-bg/border/text vars\n- Light theme WCAG fix: accent #0d9e7a → #0a8f6e (surface2 pair 2.97→3.2)
+
+### Chores
+- HANDOFF updated for v0.9.85 — theme engine documented
+
+---
+
 ## v0.9.84 — Release v0.9.84
 _2026-03-31_
 
