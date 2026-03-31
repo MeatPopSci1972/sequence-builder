@@ -1,5 +1,20 @@
 # SequenceForge Changelog
 
+## v0.9.84 — Release v0.9.84
+_2026-03-31_
+
+### Fixes
+- BUG-001 Properties panel refreshes after message Y-drag — v0.9.84\n\n- uiState.selected re-wrapped with _wrapSelected after UPDATE_MESSAGE dispatch in mouseup\n- Properties panel now shows correct From/To after drag-reassign\n- POST /changelog auto-commits CHANGELOG.md (sf-server.js fix)\n- HANDOFF context refreshed with BUG-001 and BUG-002 descriptions
+- POST /changelog auto-commits CHANGELOG.md — eliminates dirty-tree after release
+
+### Chores
+- HANDOFF updated for
+- HANDOFF context refreshed for v0.9.83 — BUG-001 and BUG-002 logged
+- CHANGELOG
+- CHANGELOG + tag
+
+---
+
 ## v0.9.83 — Release v0.9.83
 _2026-03-30_
 
