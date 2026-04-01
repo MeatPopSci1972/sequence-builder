@@ -2,12 +2,18 @@
 <!-- IMPORTANT: Update this file on every release. Version and backlog must stay current. -->
 
 ## FIRST ACTIONS (do these before anything else)
-1. GET http://localhost:3799/status — confirm version=0.9.80, clean=true
+1. GET http://localhost:3799/status — confirm version, clean=true
 2. GET http://localhost:3799/test — confirm gate is green (120/120)
 3. GET http://localhost:3799/test-render — confirm render gate green (15/15)
 4. Read this file fully, paying close attention to ## BACKLOG
 
 Also available: GET /api (endpoint reference) | GET /usage (AI surgical guide)
+
+## ⚠ TOKEN DISCIPLINE — MANDATORY
+NEVER fetch sequence-builder.html in full. It is 225KB+ and burns session tokens.
+ALWAYS use GET /slice?file=sequence-builder.html&section=SECTION to read only what you need.
+Available sections: store · render · events · toolbar · themes
+Use POST /patch with a known anchor string to write. Full-file reads are PROHIBITED.
 
 ## DEV SERVER API (sf-server.js v5, port 3799)
 
