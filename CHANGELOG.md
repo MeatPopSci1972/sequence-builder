@@ -1,5 +1,16 @@
 # SequenceForge Changelog
 
+## v0.9.89 — centre-on-add — smooth pan to new element on every add — v0.9.89\n\n- _centreOnElement(svgCentreX) pans canvas horizontally with 0.3s ease transition\n- Wired into all addFromPalette branches: actor, message, note, fragment\n- Message centres on fromActor.x (parent anchor) not midpoint\n- state_settings.centreOnAdd (default true) — persists to localStorage\n- Settings modal toggle: "Centre view on add"\n- Graceful: transition removed after 350ms so drag stays instant
+_2026-04-01_
+
+### Features
+- centre-on-add — smooth pan to new element on every add — v0.9.89\n\n- _centreOnElement(svgCentreX) pans canvas horizontally with 0.3s ease transition\n- Wired into all addFromPalette branches: actor, message, note, fragment\n- Message centres on fromActor.x (parent anchor) not midpoint\n- state_settings.centreOnAdd (default true) — persists to localStorage\n- Settings modal toggle: "Centre view on add"\n- Graceful: transition removed after 350ms so drag stays instant
+
+### Chores
+- HANDOFF updated for
+
+---
+
 ## v0.9.88 — Help modal README link — v0.9.88\n\n- "README ↗" link added to Help modal footer between Launch Tour and Close\n- Opens GitHub README in new tab (target=_blank, rel=noopener)\n- Styled with var(--text3) and subtle underline — theme-aware
 _2026-03-31_
 
