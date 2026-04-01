@@ -1,7 +1,7 @@
 # SequenceForge
 
 > A single-file, zero-dependency UML sequence diagram builder.
-> Runs entirely in the browser. No build step, no npm install.
+> Runs entirely in the browser. No build step, npm install ONLY for Playwright UI pin-down.
 
 **[Live demo — v0.9.89](https://meatpopsci1972.github.io/sequence-builder/releases/v0.9.89/sequence-builder.html)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
 
