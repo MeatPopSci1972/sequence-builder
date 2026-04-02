@@ -189,8 +189,10 @@ function createStore() {
         while (taken.has(base + '_' + n)) n++;
         return base + '_' + n;
       })(),
-        type:  payload.type  || 'actor-system',
-        ...(payload.emoji !== undefined ? { emoji: payload.emoji } : {}),
+        type: payload.type || 'actor-system',
+      ...(payload.emoji !== undefined ? { emoji: payload.emoji } : {}),
+      schema: Array.isArray(payload.schema) ? payload.schema : [],
+      properties: (payload.properties && typeof payload.properties === 'object') ? payload.properties : {},
       }
       state.actors.push(actor)
       emit('actor:added', actor)
@@ -223,7 +225,11 @@ function createStore() {
       if (payload.label !== undefined) actor.label = payload.label
       if (payload.type  !== undefined) actor.type  = payload.type
       if (payload.emoji !== undefined) actor.emoji = payload.emoji
-      if (payload.x     !== undefined) actor.x     = payload.x
+      if (payload.x !== undefined) actor.x = payload.x
+      if (Array.isArray(payload.schema)) actor.schema = payload.schema
+      if (payload.properties && typeof payload.properties === 'object') {
+        actor.properties = Object.assign({}, actor.properties || {}, payload.properties)
+      }
       emit('actor:updated', actor)
     },
 
@@ -258,6 +264,8 @@ function createStore() {
         ...(payload.port      ? { port:      payload.port      } : {}),
         ...(payload.auth      ? { auth:      payload.auth      } : {}),
         ...(payload.dataClass ? { dataClass: payload.dataClass } : {}),
+      schema: Array.isArray(payload.schema) ? payload.schema : [],
+      properties: (payload.properties && typeof payload.properties === 'object') ? payload.properties : {},
       }
       state.messages.push(message)
       emit('message:added', message)
@@ -280,6 +288,10 @@ function createStore() {
                       'protocol', 'port', 'auth', 'dataClass']
       for (const field of fields) {
         if (payload[field] !== undefined) message[field] = payload[field]
+      }
+      if (Array.isArray(payload.schema)) message.schema = payload.schema
+      if (payload.properties && typeof payload.properties === 'object') {
+        message.properties = Object.assign({}, message.properties || {}, payload.properties)
       }
       emit('message:updated', message)
     },

@@ -3,7 +3,7 @@
 > A single-file, zero-dependency UML sequence diagram builder.
 > Runs entirely in the browser. No build step, npm install ONLY for Playwright UI pin-down.
 
-**[Live demo — v0.9.89](https://meatpopsci1972.github.io/sequence-builder/releases/v0.9.89/sequence-builder.html)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
+**[Live demo — v0.9.90](https://meatpopsci1972.github.io/sequence-builder/releases/v0.9.90/sequence-builder.html)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
 
 ---
 
@@ -37,7 +37,7 @@ Open `http://localhost:3799` in your browser.
 |------|---------|
 | `sequence-builder.html` | Single-file app — toolbar, CSS, JS, store injected at build |
 | `sequence-builder.store.js` | Store source — `build.js` syncs into HTML |
-| `sequence-builder.test.js` | 99 contract tests (Suites 1–12) |
+| `sequence-builder.test.js` | 127 contract tests (Suites 1–15) |
 | `build.js` | Syncs store into HTML between `@@STORE-START` / `@@STORE-END` sentinels |
 | `lint.js` | HTML integrity checker: button count, SVG balance, sentinels |
 | `sf-server.js` | Dev server v5 (GET/PUT files, POST /build /lint /git /snapshot) |
@@ -66,7 +66,7 @@ Open `http://localhost:3799` in your browser.
 
 ```bash
 node build.js && node sequence-builder.test.js
-# Expected: 99 passed | 0 failed | 99 total
+# Expected: 127 passed | 0 failed | 127 total
 ```
 
 Or via the dev server: `GET http://localhost:3799/test`

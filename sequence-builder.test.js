@@ -26,24 +26,24 @@
 //  Unique actor label (auto-suffix)   Suite 1
 //  Actor reorder (drag left/right)   Suite 1 — REFLOW_ACTORS tests
 //  Delete Actor (cascade to msgs)    Suite 2
-//  Add Message                       Suite 9, Suite 12
-//  Message label (default & edit)    Suite 12
-//  Inline label editing (dblclick)   Suite 12
-//  Update Message (partial patch)    Suite 3, Suite 12
+//  Add Message                       Suite 9, Suite 11
+//  Message label (default & edit)    Suite 11
+//  Inline label editing (dblclick)   Suite 11
+//  Update Message (partial patch)    Suite 3, Suite 11
 //  Message wiring (fromId/toId)      Suite 9, Suite 10
 //  Self-message (1 actor)            Suite 9
 //  Move Message (Y axis drag)        Suite 8 e2e
 //  Undo / Redo                       Suite 5, Suite 6
 //  Undo is undoable (REDO after)     Suite 6
 //  UML import (PlantUML + Mermaid)   Suite 7
-//  Load Demo                         Suite 8 e2e, Suite 11
+//  Load Demo                         Suite 8 e2e, Suite 12
 //  Export / Import diagram JSON      Suite 8 e2e
 //  PlantUML output                   Suite 8 e2e
 //  Mermaid sequenceDiagram output    Suite 7 (_parseUML Mermaid tests)
 //  Clear diagram                     Suite 8 e2e
 //  Element bounding boxes            Suite 9
 //  No actor guard on element add     Suite 9
-//  autoFitOnLoad preference          Suite 11
+//  autoFitOnLoad preference          Suite 12
 //  Action log & undoable flag        Suite 4
 //  Canvas pan (store boundary)        Suite 14
 //  Arrow-key nudge contracts           Suite 14
@@ -1562,19 +1562,19 @@ test('Suite 9: note click after deselect — setSelected receives correct note',
 
 // ═══════════════════════════════════════════════════════
 // ══════�������════════════════════════════════════════════════
-//  Suite 12 — Message label contract & inline edit
+//  Suite 11 — Message label contract & inline edit
 //
 //  Pins down the label field that inline editing reads/writes.
 //  These tests would catch regressions in the dblclick-to-edit
 //  feature even though the DOM wiring itself is not tested here.
 // ═══════════════════════════════════════════════════════
-//  Suite 12 — Message label contract & inline edit
+//  Suite 11 — Message label contract & inline edit
 //
 //  Pins down the label field that inline editing reads/writes.
 //  These tests catch regressions in the dblclick-to-edit feature
 //  even though the DOM event wiring is not tested here.
 // ═══════════════════════════════════════════════════════
-console.log('\nSuite 12 — Message label contract & inline edit')
+console.log('\nSuite 11 — Message label contract & inline edit')
 
 test('ADD_MESSAGE stores the provided label', () => {
   const s = freshStore()
@@ -1629,13 +1629,13 @@ test('UPDATE_MESSAGE label update is undoable', () => {
   assert(s.state.messages[0].label === 'original', 'UNDO should restore original label')
 })
 
-//  Suite 11 — autoFitOnLoad preference
+//  Suite 12 — autoFitOnLoad preference
 // ═══════════════════════════════════════════════════════
 {
   // Pins the store-level contract that autoFitOnLoad depends on.
   // fitToZoom() is DOM-bound; those checks live in manual QA.
 
-  test('Suite 11: LOAD_DEMO fires diagram:loaded', () => {
+  test('Suite 12: LOAD_DEMO fires diagram:loaded', () => {
     const s = createStore()
     let fired = false
     s.on('diagram:loaded', () => { fired = true })
@@ -1643,7 +1643,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assert(fired, 'LOAD_DEMO must emit diagram:loaded')
   })
 
-  test('Suite 11: LOAD_DEMO event carries source demo', () => {
+  test('Suite 12: LOAD_DEMO event carries source demo', () => {
     const s = createStore()
     let src = 'none'
     s.on('diagram:loaded', p => { src = p.source })
@@ -1651,7 +1651,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assert(src === 'demo', 'expected demo, got: ' + src)
   })
 
-  test('Suite 11: LOAD_DIAGRAM fires diagram:loaded', () => {
+  test('Suite 12: LOAD_DIAGRAM fires diagram:loaded', () => {
     const s = createStore()
     let fired = false
     s.on('diagram:loaded', () => { fired = true })
@@ -1659,7 +1659,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assert(fired, 'LOAD_DIAGRAM must emit diagram:loaded')
   })
 
-  test('Suite 11: LOAD_DIAGRAM event source is import', () => {
+  test('Suite 12: LOAD_DIAGRAM event source is import', () => {
     const s = createStore()
     let src = 'none'
     s.on('diagram:loaded', p => { src = p.source })
@@ -1667,20 +1667,20 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assert(src === 'import', 'expected import, got: ' + src)
   })
 
-  test('Suite 11: LOAD_DEMO clears undo stack', () => {
+  test('Suite 12: LOAD_DEMO clears undo stack', () => {
     const s = createStore()
     s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'X' } })
     s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
     assert(!s.canUndo, 'LOAD_DEMO must clear undo stack')
   })
 
-  test('Suite 11: LOAD_DEMO populates actors', () => {
+  test('Suite 12: LOAD_DEMO populates actors', () => {
     const s = createStore()
     s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
     assert(s.state.actors.length > 0, 'LOAD_DEMO must populate actors')
   })
 
-  test('Suite 11: LOAD_DIAGRAM restores actor count from snapshot', () => {
+  test('Suite 12: LOAD_DIAGRAM restores actor count from snapshot', () => {
     const s = createStore()
     s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
     const snap = JSON.parse(JSON.stringify(s.state))
@@ -1907,6 +1907,76 @@ test('Suite 14: actor x-nudge at left boundary (x:0) does not go negative', () =
   const nudged = Math.max(0, s.state.actors[0].x - 10);
   s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, x: nudged } });
   assert(s.state.actors[0].x === 0, 'actor x clamped to 0 at left boundary');
+});
+
+
+// ── Suite 15 — Properties bag contracts ──────────────────────────────────────
+test('Suite 15: ADD_ACTOR initialises schema as empty array', () => {
+  const s = createStore();
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
+  const a = s.state.actors[0];
+  assert(Array.isArray(a.schema), 'schema is array');
+  assert(a.schema.length === 0, 'schema starts empty');
+});
+
+test('Suite 15: ADD_ACTOR initialises properties as empty object', () => {
+  const s = createStore();
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
+  const a = s.state.actors[0];
+  assert(typeof a.properties === 'object' && a.properties !== null, 'properties is object');
+  assert(Object.keys(a.properties).length === 0, 'properties starts empty');
+});
+
+test('Suite 15: ADD_MESSAGE initialises schema and properties', () => {
+  const s = createStore();
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
+  const aid = s.state.actors[0].id;
+  s.dispatch({ type: 'ADD_MESSAGE', payload: { fromId: aid, toId: aid, label: 'msg' } });
+  const m = s.state.messages[0];
+  assert(Array.isArray(m.schema), 'message schema is array');
+  assert(typeof m.properties === 'object' && m.properties !== null, 'message properties is object');
+});
+
+test('Suite 15: UPDATE_ACTOR schema full-replace', () => {
+  const s = createStore();
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
+  const id = s.state.actors[0].id;
+  const schema = [{ key: 'apiKey', label: 'API Key', type: 'password' }];
+  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, schema } });
+  assert(s.state.actors[0].schema.length === 1, 'schema replaced with 1 field');
+  assert(s.state.actors[0].schema[0].key === 'apiKey', 'schema field key correct');
+});
+
+test('Suite 15: UPDATE_ACTOR properties shallow-merge preserves untouched keys', () => {
+  const s = createStore();
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
+  const id = s.state.actors[0].id;
+  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, properties: { apiKey: 'secret', baseUrl: 'https://x' } } });
+  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, properties: { baseUrl: 'https://y' } } });
+  assert(s.state.actors[0].properties.apiKey === 'secret', 'untouched key preserved');
+  assert(s.state.actors[0].properties.baseUrl === 'https://y', 'updated key changed');
+});
+
+test('Suite 15: UPDATE_MESSAGE schema and properties merge', () => {
+  const s = createStore();
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
+  const aid = s.state.actors[0].id;
+  s.dispatch({ type: 'ADD_MESSAGE', payload: { fromId: aid, toId: aid } });
+  const mid = s.state.messages[0].id;
+  const schema = [{ key: 'env', label: 'Environment', type: 'select', options: ['prod', 'staging'] }];
+  s.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: mid, schema, properties: { env: 'prod' } } });
+  assert(s.state.messages[0].schema[0].key === 'env', 'message schema key correct');
+  assert(s.state.messages[0].properties.env === 'prod', 'message property stored');
+});
+
+test('Suite 15: UPDATE_ACTOR schema patch is undoable', () => {
+  const s = createStore();
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
+  const id = s.state.actors[0].id;
+  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, schema: [{ key: 'k', label: 'K', type: 'text' }] } });
+  assert(s.state.actors[0].schema.length === 1, 'schema set');
+  s.dispatch({ type: 'UNDO' });
+  assert(s.state.actors[0].schema.length === 0, 'schema undone');
 });
 
 

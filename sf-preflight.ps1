@@ -34,16 +34,16 @@ try {
 try {
     $html = Invoke-WebRequest -Uri "$base/test" -TimeoutSec 30 -UseBasicParsing
     $text = $html.Content
-    # Summary line looks like: "120 passed | 0 failed | 120 total"
+    # Summary line looks like: "127 passed | 0 failed | 127 total"
     if ($text -match '(\d+) passed \| (\d+) failed \| (\d+) total') {
         $p = [int]$Matches[1]
         $f = [int]$Matches[2]
-        if ($p -eq 120 -and $f -eq 0) {
+        if ($p -eq 127 -and $f -eq 0) {
             Ok "GET /test -- store gate"
-            Info "passed  : $p / 120"
+            Info "passed  : $p / 127"
         } else {
             Fail "GET /test -- store gate"
-            Info "passed  : $p / 120  failed: $f"
+            Info "passed  : $p / 127  failed: $f"
         }
     } else {
         Fail "GET /test -- could not parse summary line"

@@ -23,9 +23,43 @@ function addLog(action, result) {
 function normalisePatch(file, oldStr, newStr) {
   let raw = '';
   try { raw = fs.readFileSync(path.resolve(ROOT, file), 'utf8').slice(0, 512); } catch(e) {}
-  if (!raw.includes('\r\n')) return { old: oldStr, new: newStr };
+  const isCRLF = raw.includes('\r\n');
   const toCRLF = s => s.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
-  return { old: toCRLF(oldStr), new: toCRLF(newStr) };
+  return { old: isCRLF ? toCRLF(oldStr) : oldStr, new: isCRLF ? toCRLF(newStr) : newStr };
+}
+
+// Whitespace-tolerant find: collapses runs of spaces/tabs in both needle and
+// haystack for matching, then splices the replacement into the original bytes.
+function flexPatch(content, oldStr, newStr) {
+  const collapse = s => s.replace(/[ \t]+/g, ' ');
+  const needle = collapse(oldStr);
+  const collapsed = collapse(content);
+  const idx = collapsed.indexOf(needle);
+  if (idx === -1) return null; // no match
+  // Map collapsed index back to original content position
+  // Walk original content counting non-collapsed chars to find real start/end
+  let origIdx = 0, collIdx = 0;
+  while (collIdx < idx && origIdx < content.length) {
+    if (content[origIdx] === ' ' || content[origIdx] === '\t') {
+      // skip run of whitespace — counts as 1 in collapsed
+      while (origIdx < content.length && (content[origIdx] === ' ' || content[origIdx] === '\t')) origIdx++;
+      collIdx++;
+    } else {
+      origIdx++; collIdx++;
+    }
+  }
+  const start = origIdx;
+  // Now walk needle length in collapsed to find end in original
+  let ni = 0, oi = origIdx;
+  while (ni < needle.length && oi < content.length) {
+    if (content[oi] === ' ' || content[oi] === '\t') {
+      while (oi < content.length && (content[oi] === ' ' || content[oi] === '\t')) oi++;
+      ni++;
+    } else {
+      oi++; ni++;
+    }
+  }
+  return content.slice(0, start) + newStr + content.slice(oi);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -97,19 +131,28 @@ const server = http.createServer(function(req, res) {
   if (req.method === 'POST' && urlPath === '/patch') {
     let body = ''; req.on('data',d=>body+=d); req.on('end',()=>{
       let file='', oldStr='', newStr='';
-      try { const p=JSON.parse(body); file=p.file||''; oldStr=p.old||''; newStr=p.new||''; } catch(e){}
+      try { const p=JSON.parse(body); file=p.file||''; oldStr=p.old||p.anchor||''; newStr=p.new||p.replace||''; } catch(e){}
       if (!file) { res.writeHead(400); res.end(JSON.stringify({ok:false,error:'missing file'})); return; }
       const fp = path.join(ROOT, file);
       try {
         const norm = normalisePatch(file, oldStr, newStr);
         const content = fs.readFileSync(fp, 'utf8');
-        if (content.indexOf(norm.old) === -1) {
-          res.writeHead(200,{'Content-Type':'application/json'});
-          res.end(JSON.stringify({ok:false,replaced:0,length:content.length,error:'old string not found'}));
-          addLog('POST /patch','MISS: '+file); return;
+        let updated, replaced;
+        if (content.indexOf(norm.old) !== -1) {
+          // Exact match path
+          updated = content.split(norm.old).join(norm.new);
+          replaced = content.split(norm.old).length - 1;
+        } else {
+          // Whitespace-tolerant fallback
+          const flexResult = flexPatch(content, norm.old, norm.new);
+          if (flexResult === null) {
+            res.writeHead(200,{'Content-Type':'application/json'});
+            res.end(JSON.stringify({ok:false,replaced:0,length:content.length,error:'old string not found (exact + flex)'}));
+            addLog('POST /patch','MISS: '+file); return;
+          }
+          updated = flexResult;
+          replaced = 1; // flexPatch replaces first occurrence only
         }
-        const updated = content.split(norm.old).join(norm.new);
-        const replaced = content.split(norm.old).length - 1;
         fs.writeFileSync(fp, updated, 'utf8');
         res.writeHead(200,{'Content-Type':'application/json'});
         res.end(JSON.stringify({ok:true,replaced,length:updated.length}));
