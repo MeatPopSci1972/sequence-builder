@@ -1,5 +1,20 @@
 # SequenceForge Changelog
 
+## v0.9.91 — POST /generate-readme — live README from git+tests+endpoints+version; extract SF_ENDPOINTS to sf-endpoints.js; readme gen logic to sf-readme-gen.js; suite 9+13 headers; HANDOFF release flow updated
+_2026-04-03_
+
+### Features
+- POST /generate-readme — live README from git+tests+endpoints+version; extract SF_ENDPOINTS to sf-endpoints.js; readme gen logic to sf-readme-gen.js; suite 9+13 headers; HANDOFF release flow updated
+
+### Fixes
+- v0.9.91 — PNG export tainted canvas fixed; renderNote rewritten SVG text+tspan (no foreignObject); Suite 16 regex contract tests (9 tests); preflight 136
+- inline SVG favicon — resolves 404, zero external file dependency
+
+### Chores
+- HANDOFF v0.9.91 — live fields, Suite 16 regex rule added to DEV LOOP WISDOM
+
+---
+
 ## v0.9.90 — v0.9.90 — schema/properties bag on actor+message, dynamic Properties panel, Add Field UI, password strip on export, flexPatch whitespace-tolerant matching in POST /patch, anchor/replace field aliases, suite renumber 1-15
 _2026-04-03_
 
