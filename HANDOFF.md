@@ -49,7 +49,9 @@ Use POST /patch with a known anchor string to write. Full-file reads are PROHIBI
 - themes.json — theme definitions (dark/light/system/lcars), served as GET /themes.json
 - build.js — syncs store.js into HTML between @@STORE-START / @@STORE-END
 - lint.js — HTML integrity checker: buttons, SVG balance, sentinels, version
-- sf-server.js — dev server v5 (GET/PUT files, POST /build /lint /git /snapshot /patch, GET /log /api /usage /test-render)
+- sf-server.js — dev server v5 (entry point + route dispatcher; requires sf-endpoints.js + sf-readme-gen.js)
+- sf-endpoints.js — SF_ENDPOINTS const — single source of truth for all API endpoints (used by /api and /generate-readme)
+- sf-readme-gen.js — generateReadme() — generates README.md from live git, test, endpoint, version sources (GET/PUT files, POST /build /lint /git /snapshot /patch, GET /log /api /usage /test-render)
 - test-snapshots/ — render layer snapshot files (gitignored; seed with GET /test-render?update=1)
 - launcher.js — hot-reload wrapper: USE THIS to start server (node launcher.js)
 - sf-preflight.ps1 — pre-flight check script (run before each session)
@@ -85,19 +87,20 @@ fetch('http://localhost:3799/lint', {method:'POST'})
 ```
 
 ## RELEASE FLOW (v0.9.68+)
-1. GET /test (99/99) + GET /test-render (15/15) both green
+1. GET /test (127/127) + GET /test-render (15/15) both green
 2. Bump version strings in sequence-builder.html (3 occurrences)
 3. POST /build
 4. POST /lint — must be ok before continuing
 5. POST /snapshot?v=X.Y.Z
-6. GET /validate-readme?v=X.Y.Z — must return ok:true before continuing
-7. POST /git with feat/fix/chore commit message
-8. POST /update-handoff — populates all live fields automatically
-9. POST /git again (HANDOFF commit)
-10. POST /changelog {version:"X.Y.Z"}
-11. POST /tag {tag:"vX.Y.Z", message:"Release vX.Y.Z — <summary>"}
-12. git push && git push --tags (terminal)
-13. GitHub -> Releases -> New release -> select tag -> add title + notes -> attach releases/vX.Y.Z/sequence-builder.html -> Publish
+6. POST /generate-readme — regenerate README.md from live sources
+7. GET /validate-readme?v=X.Y.Z — must return ok:true before continuing
+8. POST /git with feat/fix/chore commit message
+9. POST /update-handoff — populates all live fields automatically
+10. POST /git again (HANDOFF commit)
+11. POST /changelog {version:"X.Y.Z"}
+12. POST /tag {tag:"vX.Y.Z", message:"Release vX.Y.Z — <summary>"}
+13. git push && git push --tags (terminal)
+14. GitHub -> Releases -> New release -> select tag -> add title + notes -> attach releases/vX.Y.Z/sequence-builder.html -> Publishlish
 
 ## READ CONSOLE PATTERN
 After every javascript_tool call: read_console_messages(pattern: 'YOUR_LABEL:', clear: true)

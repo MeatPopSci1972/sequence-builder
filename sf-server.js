@@ -4,6 +4,8 @@ const http     = require('http');
 const fs       = require('fs');
 const path     = require('path');
 const { execFile } = require('child_process');
+const { SF_ENDPOINTS } = require('./sf-endpoints');
+const { generateReadme } = require('./sf-readme-gen');
 const ROOT = path.resolve(__dirname);
 const PORT = 3799;
 const MIME = { '.html':'text/html','.js':'text/javascript','.json':'application/json','.md':'text/plain','.css':'text/css' };
@@ -273,6 +275,18 @@ const server = http.createServer(function(req, res) {
       } catch(e){ addLog('POST /snapshot','WARN: README unreadable'); }
     }); return;
   }
+  if (req.method === 'POST' && urlPath === '/generate-readme') {
+    try {
+      const readme = generateReadme(ROOT);
+      require('fs').writeFileSync(require('path').join(ROOT,'README.md'), readme, 'utf8');
+      addLog('POST /generate-readme','ok: '+readme.length+'b');
+      res.writeHead(200,{'Content-Type':'application/json'});
+      res.end(JSON.stringify({ok:true,length:readme.length}));
+    } catch(e) {
+      res.writeHead(500); res.end(JSON.stringify({ok:false,error:e.message}));
+    }
+    return;
+  }
   if (req.method === 'GET' && urlPath === '/validate-readme') {
     const version = urlObj.searchParams.get('v')||'0.0.0';
     try {
@@ -339,27 +353,7 @@ const server = http.createServer(function(req, res) {
   }
   if (req.method === 'GET' && urlPath === '/api') {
     res.writeHead(200,{'Content-Type':'application/json'});
-    res.end(JSON.stringify({server:'SequenceForge dev server v5',port:3799,endpoints:[
-      {method:'GET', path:'/status',           desc:'Session bootstrap. version, git, demos'},
-      {method:'GET', path:'/HANDOFF.md',        desc:'Session handoff doc'},
-      {method:'GET', path:'/api',               desc:'Endpoint reference JSON (this)'},
-      {method:'GET', path:'/usage',             desc:'AI usage guide plain text'},
-      {method:'GET', path:'/log',               desc:'Server event log JSON'},
-      {method:'GET', path:'/git-log',           desc:'git log --oneline JSON {n,lines}. Default n=20'},
-      {method:'GET', path:'/test',              desc:'Run build+tests HTML report. addLog fires.'},
-      {method:'GET', path:'/validate-readme',   desc:'Check README link+loop+label for vX.Y.Z. Returns {ok,hasLink,hasLoop,hasLabel}. addLog fires.'},
-      {method:'POST',path:'/build',             desc:'Run build.js. Returns {ok,output,ms,exitCode}. addLog fires.'},
-      {method:'POST',path:'/lint',              desc:'Run lint.js. Returns {ok,output,ms}. addLog fires.'},
-      {method:'POST',path:'/patch',             desc:'Find-replace in file. Body:{file,old,new}. CRLF auto-normalised for CRLF files. Returns {ok,replaced,length}. addLog fires.'},
-      {method:'POST',path:'/git',               desc:'git add -A && commit. Body:{message}. addLog fires.'},
-      {method:'POST',path:'/git-restore',       desc:'Restore tracked file to HEAD. Body:{file}. addLog fires.'},
-      {method:'POST',path:'/tag',               desc:'Create annotated git tag. Body:{tag,message}. addLog fires.'},
-      {method:'POST',path:'/changelog',         desc:'Auto-gen CHANGELOG.md from git log since last tag. Body:{version}. addLog fires.'},
-      {method:'POST',path:'/update-handoff', desc:'Populate live fields in HANDOFF.md from /status+/test+/test-render. Idempotent. addLog fires.'},
-      {method:'POST',path:'/snapshot?v=X.Y.Z',  desc:'Copy build+HANDOFF to releases/vX.Y.Z/. addLog fires.'},
-      {method:'GET', path:'/<file>',            desc:'Read any file in repo root'},
-      {method:'PUT', path:'/<file>',            desc:'Write any file in repo root. ?verify=1 returns {ok,wrote,status}. addLog fires.'},
-    ]},null,2)); return;
+    res.end(JSON.stringify({server:'SequenceForge dev server v5',port:3799,endpoints:SF_ENDPOINTS},null,2)); return;
   }
   if (req.method === 'GET' && urlPath === '/usage') {
     res.writeHead(200,{'Content-Type':'text/plain'});

@@ -1246,6 +1246,7 @@ test('e2e: full lifecycle — demo → modify → export → clear → import �
 //  Tests the bounding box logic for each element type.
 //  Runs in Node — simulates uiState and store, no DOM needed.
 // ═══════════════════════════════════════════════════════
+// Suite 9 — UI geometry contracts & proto2prod guard rails
 
 test('Suite 9: actor bounding box is right-edge, top of actor', () => {
   // Simulate the actor box calculation from _positionEditBtn
@@ -1703,6 +1704,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 //    - Geometry is preserved through UNDO/REDO cycle
 //    - Multiple fragments retain independent geometry
 // ═══════════════════════════════════════════════════════
+// Suite 13 — Fragment geometry contracts
 {
   test('Suite 13: ADD_FRAGMENT stores x, y, w, h', () => {
     const s = freshStore()

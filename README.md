@@ -1,9 +1,9 @@
 # SequenceForge
 
-> A single-file, zero-dependency UML sequence diagram builder.
-> Runs entirely in the browser. No build step, npm install ONLY for Playwright UI pin-down.
+> A single-file, zero-dependency UML sequence diagram builder.  
+> Runs entirely in the browser. No build step. npm install only for Playwright render tests.
 
-**[Live demo — v0.9.90](https://meatpopsci1972.github.io/sequence-builder/releases/v0.9.90/sequence-builder.html)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
+**[Live demo — v0.9.90](https://MeatPopSci1972.github.io/sequence-builder/releases/v0.9.90/sequence-builder.html)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
 
 ---
 
@@ -21,44 +21,77 @@ Open `http://localhost:3799` in your browser.
 
 ## What it does
 
-- **Add actors, messages, notes, fragments** via the palette or toolbar
-- **Drag** messages up/down to reorder · **drag actors** left/right to reorder columns
-- **Double-click** a message arrow label to edit it inline
-- **Export** as PlantUML, Mermaid `sequenceDiagram`, JSON, or PNG
-- **Import** JSON snapshots or raw PlantUML/Mermaid text
-- **Undo/Redo** all mutations · **auto-fit** on load
-- **Send to API** (Ollama / OpenAI-compatible) for diagram analysis
+Capabilities pinned by the contract test suites:
+
+- **Suite 1** — REFLOW_ACTORS tests
+- **Suite 2** — DELETE_ACTOR cascade
+- **Suite 3** — UPDATE_MESSAGE partial patch
+- **Suite 4** — meta.undoable = false
+- **Suite 5** — UNDO
+- **Suite 6** — REDO
+- **Suite 7** — _parseUML (PlantUML + Mermaid parser)
+- **Suite 8** — End-to-End scenario
+- **Suite 9** — UI geometry contracts & proto2prod guard rails
+- **Suite 10** — ADD_MESSAGE null contract
+- **Suite 11** — Message label contract & inline edit
+- **Suite 12** — autoFitOnLoad preference
+- **Suite 13** — Fragment geometry contracts
+- **Suite 14** — Canvas pan & arrow-key nudge contracts
+- **Suite 15** — Properties bag contracts
 
 ---
 
 ## Repository structure
 
-| File | Purpose |
-|------|---------|
-| `sequence-builder.html` | Single-file app — toolbar, CSS, JS, store injected at build |
-| `sequence-builder.store.js` | Store source — `build.js` syncs into HTML |
-| `sequence-builder.test.js` | 127 contract tests (Suites 1–15) |
-| `build.js` | Syncs store into HTML between `@@STORE-START` / `@@STORE-END` sentinels |
-| `lint.js` | HTML integrity checker: button count, SVG balance, sentinels |
-| `sf-server.js` | Dev server v5 (GET/PUT files, POST /build /lint /git /snapshot) |
-| `launcher.js` | Hot-reload wrapper — **always use this, not `node sf-server.js`** |
+| File | Notes |
+|------|-------|
+| `CHANGELOG.md` | |
+| `HANDOFF.md` | |
+| `LICENSE` | |
+| `README.md` | |
+| `build.js` | |
+| `launcher.js` | |
+| `lint.js` | |
+| `log.html` | |
+| `package-lock.json` | |
+| `package.json` | |
+| `sequence-builder.html` | |
+| `sequence-builder.store.js` | |
+| `sequence-builder.test.js` | |
+| `sf-preflight.ps1` | |
+| `sf-server.js` | |
+| `themes.json` | |
 
 ---
 
 ## Dev server API
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/status` | Version, git state, demos list |
-| GET | `/HANDOFF.md` | AI session handoff document |
-| GET | `/test` | Run build + tests, returns HTML report |
-| GET | `/git-log` | Recent commits as JSON `{n, lines}` |
-| POST | `/build` | Sync store into HTML |
-| POST | `/lint` | Check button count, SVG balance, sentinels |
-| POST | `/patch` | Server-side find-replace `{file, old, new}` |
-| POST | `/snapshot?v=X.Y.Z` | Copy build into `releases/vX.Y.Z/` |
-| POST | `/git` | `git add -A && commit` |
-| GET/PUT | `/<file>` | Read or write any file in repo root |
+Served by `sf-server.js` via `launcher.js` on port 3799.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/status` | Session bootstrap — version, git, demos |
+| GET | `/HANDOFF.md` | Session handoff doc |
+| GET | `/api` | Endpoint reference JSON (this) |
+| GET | `/usage` | AI usage guide plain text |
+| GET | `/log` | Server event log JSON |
+| GET | `/git-log` | git log --oneline JSON. Default n=20 |
+| GET | `/test` | Run build+tests — returns HTML report |
+| GET | `/test-render` | Playwright render gate — 3 demos x 5 SVG layers |
+| GET | `/validate-readme` | Check README link+label for vX.Y.Z. Returns {ok,hasLink,hasLabel} |
+| GET | `/slice` | Return named sentinel section of a file. No section = manifest |
+| POST | `/generate-readme` | Generate README.md from live sources — git, test suites, endpoints, version |
+| POST | `/build` | Run build.js — sync store.js into HTML |
+| POST | `/lint` | Run lint.js — button count, SVG balance, sentinels |
+| POST | `/patch` | Find-replace in file. Body:{file,anchor,replace}. Flex whitespace matching. Returns {ok,replaced,length} |
+| POST | `/git` | git add -A && commit. Body:{message} |
+| POST | `/git-restore` | Restore tracked file to HEAD. Body:{file} |
+| POST | `/tag` | Create annotated git tag. Body:{tag,message} |
+| POST | `/changelog` | Auto-gen CHANGELOG.md from git log since last tag. Body:{version} |
+| POST | `/update-handoff` | Populate live fields in HANDOFF.md from status+test+test-render |
+| POST | `/snapshot?v=X.Y.Z` | Copy build+HANDOFF to releases/vX.Y.Z/ |
+| GET | `/<file>` | Read any file in repo root |
+| PUT | `/<file>` | Write any file in repo root. ?verify=1 returns {ok,wrote,status} |
 
 ---
 
@@ -70,29 +103,6 @@ node build.js && node sequence-builder.test.js
 ```
 
 Or via the dev server: `GET http://localhost:3799/test`
-
----
-
-## UML import — supported syntax
-
-**PlantUML:**
-```plantuml
-@startuml
-participant "User" as U
-participant "API" as A
-U -> A: POST /login
-A --> U: 200 OK
-@enduml
-```
-
-**Mermaid:**
-```
-sequenceDiagram
-  participant User
-  participant API
-  User->>API: POST /login
-  API-->>User: 200 OK
-```
 
 ---
 
