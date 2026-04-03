@@ -3,7 +3,7 @@
 > A single-file, zero-dependency UML sequence diagram builder.  
 > Runs entirely in the browser. No build step. npm install only for Playwright render tests.
 
-**[Live demo — v0.9.90](https://MeatPopSci1972.github.io/sequence-builder/releases/v0.9.90/sequence-builder.html)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
+**[Live demo — v0.9.91](https://MeatPopSci1972.github.io/sequence-builder/releases/v0.9.91/sequence-builder.html)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
 
 ---
 
@@ -38,6 +38,7 @@ Capabilities pinned by the contract test suites:
 - **Suite 13** — Fragment geometry contracts
 - **Suite 14** — Canvas pan & arrow-key nudge contracts
 - **Suite 15** — Properties bag contracts
+- **Suite 16** — Regex contract tests
 
 ---
 
@@ -45,20 +46,19 @@ Capabilities pinned by the contract test suites:
 
 | File | Notes |
 |------|-------|
-| `CHANGELOG.md` | |
-| `HANDOFF.md` | |
 | `LICENSE` | |
 | `README.md` | |
 | `build.js` | |
 | `launcher.js` | |
 | `lint.js` | |
 | `log.html` | |
-| `package-lock.json` | |
 | `package.json` | |
 | `sequence-builder.html` | |
 | `sequence-builder.store.js` | |
 | `sequence-builder.test.js` | |
+| `sf-endpoints.js` | |
 | `sf-preflight.ps1` | |
+| `sf-readme-gen.js` | |
 | `sf-server.js` | |
 | `themes.json` | |
 

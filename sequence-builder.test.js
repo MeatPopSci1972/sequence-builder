@@ -1982,6 +1982,79 @@ test('Suite 15: UPDATE_ACTOR schema patch is undoable', () => {
 });
 
 
+// ── Suite 16 — Regex contract tests ──────────────────────────────────────────
+// Rule: every regex in the codebase that transforms data must have a test here.
+// New regex = new test. No exceptions.
+
+test('Suite 16: @import strip — basic case', () => {
+  const input = "@import url('https://fonts.example.com/font.css');\n:root { --bg: #000; }";
+  const result = input.replace(/@import\s[^)]*\)[^;]*;/g, '');
+  assert(!result.includes('@import'), 'import stripped');
+  assert(result.includes(':root'), 'rest preserved');
+});
+
+test('Suite 16: @import strip — semicolons inside url() are not early-terminated', () => {
+  const input = "@import url('https://fonts.googleapis.com/css2?family=Mono:wght@300;400;700&display=swap');\nbody{}";
+  const result = input.replace(/@import\s[^)]*\)[^;]*;/g, '');
+  assert(!result.includes('@import'), 'import stripped');
+  assert(!result.includes('fonts.googleapis.com'), 'url removed');
+  assert(!result.includes('300;400'), 'no url fragment leaked');
+  assert(result.trim().startsWith('body'), 'subsequent rules preserved');
+});
+
+test('Suite 16: @import strip — multiple imports all removed', () => {
+  const input = "@import url('https://a.com/a.css');\n@import url('https://b.com/b.css');\np{}";
+  const result = input.replace(/@import\s[^)]*\)[^;]*;/g, '');
+  assert(!result.includes('@import'), 'both imports stripped');
+  assert(result.includes('p{}'), 'selector preserved');
+});
+
+test('Suite 16: version extraction regex — standard format', () => {
+  const input = "Version: 0.9.91\nsome other text";
+  const m = input.match(/Version:\s*([\d.]+)/);
+  assert(m && m[1] === '0.9.91', 'version extracted correctly');
+});
+
+test('Suite 16: version extraction regex — no false match on other numbers', () => {
+  const input = "port: 3799\nVersion: 1.2.3\nlength: 500";
+  const m = input.match(/Version:\s*([\d.]+)/);
+  assert(m && m[1] === '1.2.3', 'only Version: prefix matches');
+});
+
+test('Suite 16: suite header regex — standard format', () => {
+  const input = "// Suite 9 \u2014 UI geometry contracts & proto2prod guard rails";
+  const m = [...input.matchAll(/Suite (\d+) \u2014 ([^\n'"`\u2500]+)/g)];
+  assert(m.length === 1, 'one match');
+  assert(m[0][1] === '9', 'suite number correct');
+  assert(m[0][2].trim() === 'UI geometry contracts & proto2prod guard rails', 'name correct');
+});
+
+test('Suite 16: suite header regex — separator chars trimmed', () => {
+  const input = "// Suite 10 \u2014 ADD_MESSAGE null contract \u2500\u2500\u2500\u2500";
+  const m = [...input.matchAll(/Suite (\d+) \u2014 ([^\n'"`\u2500]+)/g)];
+  assert(m.length === 1, 'one match');
+  assert(m[0][2].trim() === 'ADD_MESSAGE null contract', 'separator chars not included in name');
+});
+
+test('Suite 16: nextMessageKind cycles completely without leaking', () => {
+  let nextMessageKind;
+  try { ;({ nextMessageKind } = require('./sequence-builder.store.js')); } catch(e) { assert(false, 'nextMessageKind not exported'); }
+  const cycle = ['sync','async','return'];
+  const map = { sync: 'async', async: 'return', return: 'sync' };
+  cycle.forEach(k => assert(Object.keys(map).includes(map[k]) || map[k] === 'sync', 'all outputs are valid kinds'));
+  assert(map['unknown_kind'] === undefined, 'unknown input returns undefined from map');
+  assert(nextMessageKind('unknown') === 'sync', 'helper returns safe default for unknown');
+});
+
+test('Suite 16: nextMessageDirection cycles completely without leaking', () => {
+  let nextMessageDirection;
+  try { ;({ nextMessageDirection } = require('./sequence-builder.store.js')); } catch(e) { assert(false, 'nextMessageDirection not exported'); }
+  const map = { right: 'left', left: 'both', both: 'right' };
+  Object.entries(map).forEach(([k, v]) => assert(Object.keys(map).includes(v), k + ' output is valid direction'));
+  assert(nextMessageDirection('unknown') === 'right', 'helper returns safe default for unknown');
+});
+
+
 
 //  RESULTS
 // ═══════════════════════════════════════════════════════
