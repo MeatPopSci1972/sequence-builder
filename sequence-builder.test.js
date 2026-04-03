@@ -2055,6 +2055,15 @@ test('Suite 16: nextMessageDirection cycles completely without leaking', () => {
 });
 
 
+test('Suite 16: btn-export-png has exactly one click binding (no double-download)', () => {
+  // Regression: duplicate onclick= + addEventListener caused two downloads per click.
+  // This test pins that only addEventListener wiring exists — no onclick= assignment.
+  const html = require('fs').readFileSync(require('path').join(__dirname, 'sequence-builder.html'), 'utf8');
+  const onclickCount = (html.match(/getElementById\('btn-export-png'\)\.onclick/g) || []).length;
+  assert(onclickCount === 0, 'btn-export-png must not use .onclick assignment — use addEventListener only. Found: ' + onclickCount);
+});
+
+
 
 //  RESULTS
 // ═══════════════════════════════════════════════════════

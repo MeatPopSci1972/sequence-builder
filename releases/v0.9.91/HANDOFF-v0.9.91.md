@@ -3,7 +3,7 @@
 
 ## FIRST ACTIONS (do these before anything else)
 1. GET http://localhost:3799/status — confirm version, clean=true
-2. GET http://localhost:3799/test — confirm gate is green (127/127)
+2. GET http://localhost:3799/test — confirm gate is green (136/136)
 3. GET http://localhost:3799/test-render — confirm render gate green (15/15)
 4. Read this file fully, paying close attention to ## BACKLOG
 
@@ -155,6 +155,11 @@ Step 9 (Auto-fit on Load) uses both:
 
 ## DEV LOOP WISDOM
 
+### Suite 16 — Regex contract rule
+Every regex in the codebase that transforms data must have a test in Suite 16. New regex = new test. No exceptions.
+The canonical failure case: `/@import[^;]+;/g` appeared to strip Google Fonts imports but silently left URL fragments behind because semicolons inside `url(...)` strings terminated the match early. A Suite 16 test with that exact input would have caught it immediately.
+Test shape: exact input string → assert exact output, assert no leakage of partial matches.
+
 ### On /patch
 POST /patch is the preferred edit method. It bypasses the browser = filter entirely.
 Body accepts two field name conventions:
@@ -191,9 +196,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.90
-- Bump pattern: html.split('0.9.90').join('0.9.91')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.90/sequence-builder.html
+- Current: 0.9.91
+- Bump pattern: html.split('0.9.91').join('0.9.92')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.91/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -277,10 +282,10 @@ These standards define what each document type must contain, what format to use,
 FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW · READ CONSOLE PATTERN · STORE ARCHITECTURE · SECURITY NOTE · HOT RELOAD · LOG UI · TOUR SYSTEM · DEV LOOP WISDOM · VERSION · DEMOS · BACKLOG · REPO · (recovery note)
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
-- `## FIRST ACTIONS` — gate counts must match `GET /test` (127/127) and `GET /test-render` (15/15)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.90)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.90').join('0.9.91')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.90)
+- `## FIRST ACTIONS` — gate counts must match `GET /test` (136/136) and `GET /test-render` (15/15)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.91)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.91').join('0.9.92')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.91)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
