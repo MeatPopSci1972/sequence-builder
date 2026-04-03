@@ -1,5 +1,17 @@
 # SequenceForge Changelog
 
+## v0.9.90 — v0.9.90 — schema/properties bag on actor+message, dynamic Properties panel, Add Field UI, password strip on export, flexPatch whitespace-tolerant matching in POST /patch, anchor/replace field aliases, suite renumber 1-15
+_2026-04-03_
+
+### Features
+- v0.9.90 — schema/properties bag on actor+message, dynamic Properties panel, Add Field UI, password strip on export, flexPatch whitespace-tolerant matching in POST /patch, anchor/replace field aliases, suite renumber 1-15
+
+### Chores
+- update HANDOFF — v0.9.90 live fields, flexPatch docs, anchor/replace aliases, .gitattributes CRLF note
+- HANDOFF — TOKEN DISCIPLINE rule added to FIRST ACTIONS, prohibit full HTML reads, enforce GET /slice
+
+---
+
 ## v0.9.89 — centre-on-add — smooth pan to new element on every add — v0.9.89\n\n- _centreOnElement(svgCentreX) pans canvas horizontally with 0.3s ease transition\n- Wired into all addFromPalette branches: actor, message, note, fragment\n- Message centres on fromActor.x (parent anchor) not midpoint\n- state_settings.centreOnAdd (default true) — persists to localStorage\n- Settings modal toggle: "Centre view on add"\n- Graceful: transition removed after 350ms so drag stays instant
 _2026-04-01_
 
