@@ -1362,7 +1362,7 @@ test('Suite 9: selected state persists after deselect-then-reselect cycle', () =
   assertEqual(found.x, 40, 'actor x is correct for bbox calculation')
 })
 
-test('Suite 9: _positionEditBtn box defined for all element types when selected', () => {
+test('Suite 9: _renderEditBtn box defined for all element types when selected', () => {
   const ACTOR_W = 110, ACTOR_H = 42
   const actorCenterX = a => a.x + ACTOR_W / 2
 
