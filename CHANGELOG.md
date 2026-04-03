@@ -1,5 +1,21 @@
 # SequenceForge Changelog
 
+## v0.9.92 — v0.9.92 — SVG edit-layer replaces HTML edit button (pan/zoom invariant); pan+zoom reset on clear and last-actor-delete; _renderEditBtn eliminates _positionEditBtn coordinate conversion; test name updated
+_2026-04-03_
+
+### Features
+- v0.9.92 — SVG edit-layer replaces HTML edit button (pan/zoom invariant); pan+zoom reset on clear and last-actor-delete; _renderEditBtn eliminates _positionEditBtn coordinate conversion; test name updated
+
+### Fixes
+- PNG double-download — remove duplicate btn-export-png onclick= assignment; Suite 16 regression test pins single binding; preflight 137
+
+### Chores
+- HANDOFF v0.9.92 — edit-layer, pan reset, 137/15
+- CHANGELOG
+- HANDOFF v0.9.91 — 137/15, double-download regression note, QA gate added to release flow
+
+---
+
 ## v0.9.91 — Release v0.9.91
 _2026-04-03_
 
