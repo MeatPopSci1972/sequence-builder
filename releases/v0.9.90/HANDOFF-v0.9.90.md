@@ -3,7 +3,7 @@
 
 ## FIRST ACTIONS (do these before anything else)
 1. GET http://localhost:3799/status — confirm version, clean=true
-2. GET http://localhost:3799/test — confirm gate is green (120/120)
+2. GET http://localhost:3799/test — confirm gate is green (127/127)
 3. GET http://localhost:3799/test-render — confirm render gate green (15/15)
 4. Read this file fully, paying close attention to ## BACKLOG
 
@@ -154,6 +154,19 @@ Step 9 (Auto-fit on Load) uses both:
 
 ### On /patch
 POST /patch is the preferred edit method. It bypasses the browser = filter entirely.
+Body accepts two field name conventions:
+- `{file, old, new}` — original field names
+- `{file, anchor, replace}` — aliases added v0.9.90 (preferred for readability)
+Both conventions work. Use whichever is clearer in context.
+
+**Whitespace-tolerant matching (flexPatch — added v0.9.90):**
+If the exact anchor string is not found, the server automatically retries using whitespace-collapsed matching (runs of spaces/tabs treated as a single space). This handles alignment-space differences like `type:  payload.type  ||` vs `type: payload.type ||`. Exact match is always tried first; flex match is the fallback. A `replaced:1` result with a growing file length confirms a successful flex match.
+
+**Verification rule — non-negotiable:**
+After every patch, check `replaced` in the response. If `replaced === 0` → anchor did not match, nothing changed. Stop and diagnose. Do not proceed assuming the patch landed.
+
+**Note on .gitattributes + CRLF:**
+The repo enforces LF on commit/checkout via .gitattributes. The CRLF branch in normalisePatch() will never fire on a correctly checked-out repo. The whitespace flex match is the more important normalisation. It bypasses the browser = filter entirely.
 Body: {file, old, new} — returns {ok, replaced, length, error?}.
 replaced:0 almost always means a line-ending mismatch. Check the target file's EOL first.
 
@@ -175,9 +188,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.89
-- Bump pattern: html.split('0.9.89').join('0.9.90')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.89/sequence-builder.html
+- Current: 0.9.90
+- Bump pattern: html.split('0.9.90').join('0.9.91')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.90/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -261,10 +274,10 @@ These standards define what each document type must contain, what format to use,
 FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW · READ CONSOLE PATTERN · STORE ARCHITECTURE · SECURITY NOTE · HOT RELOAD · LOG UI · TOUR SYSTEM · DEV LOOP WISDOM · VERSION · DEMOS · BACKLOG · REPO · (recovery note)
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
-- `## FIRST ACTIONS` — gate counts must match `GET /test` (120/120) and `GET /test-render` (15/15)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.89)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.89').join('0.9.90')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.89)
+- `## FIRST ACTIONS` — gate counts must match `GET /test` (127/127) and `GET /test-render` (15/15)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.90)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.90').join('0.9.91')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.90)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
