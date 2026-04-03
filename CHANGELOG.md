@@ -1,5 +1,16 @@
 # SequenceForge Changelog
 
+## v0.9.91 — Release v0.9.91
+_2026-04-03_
+
+### Fixes
+- PNG double-download — remove duplicate btn-export-png onclick= assignment; Suite 16 regression test pins single binding; preflight 137
+
+### Chores
+- HANDOFF v0.9.91 — 137/15, double-download regression note, QA gate added to release flow
+
+---
+
 ## v0.9.91 — POST /generate-readme — live README from git+tests+endpoints+version; extract SF_ENDPOINTS to sf-endpoints.js; readme gen logic to sf-readme-gen.js; suite 9+13 headers; HANDOFF release flow updated
 _2026-04-03_
 
