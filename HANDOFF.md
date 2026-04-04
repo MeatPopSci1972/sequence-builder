@@ -196,9 +196,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.92
-- Bump pattern: html.split('0.9.92').join('0.9.93')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.92/sequence-builder.html
+- Current: 0.9.93
+- Bump pattern: html.split('0.9.93').join('0.9.94')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.93/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -283,9 +283,9 @@ FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
 - `## FIRST ACTIONS` — gate counts must match `GET /test` (137/137) and `GET /test-render` (15/15)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.92)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.92').join('0.9.93')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.92)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.93)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.93').join('0.9.94')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.93)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
