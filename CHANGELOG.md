@@ -1,5 +1,16 @@
 # SequenceForge Changelog
 
+## v0.9.94 — Release v0.9.94
+_2026-04-04_
+
+### Fixes
+- v0.9.94 — message drag ghost uses direct y-attr updates; ghost stays snapped to lifelines during drag
+
+### Chores
+- HANDOFF v0.9.94 — message ghost fix, 137/15
+
+---
+
 ## v0.9.93 — v0.9.93 — actor mousedown selects directly; actor-move overlay owns drag; fitToZoom removed from render(); single-click actor interaction restored
 _2026-04-04_
 
