@@ -1,5 +1,16 @@
 # SequenceForge Changelog
 
+## v0.9.93 — v0.9.93 — actor mousedown selects directly; actor-move overlay owns drag; fitToZoom removed from render(); single-click actor interaction restored
+_2026-04-04_
+
+### Features
+- v0.9.93 — actor mousedown selects directly; actor-move overlay owns drag; fitToZoom removed from render(); single-click actor interaction restored
+
+### Chores
+- HANDOFF v0.9.93 — interaction model, 137/15
+
+---
+
 ## v0.9.92 — v0.9.92 — SVG edit-layer replaces HTML edit button (pan/zoom invariant); pan+zoom reset on clear and last-actor-delete; _renderEditBtn eliminates _positionEditBtn coordinate conversion; test name updated
 _2026-04-03_
 
