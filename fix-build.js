@@ -1,24 +1,38 @@
 'use strict'
 const fs = require('fs')
 const NL = String.fromCharCode(10)
-let lines = fs.readFileSync('sequence-builder.test.js', 'utf8').split(NL)
+let t = fs.readFileSync('sequence-builder.test.js', 'utf8')
+const suites = require('./suites-data.js')
 
-// Verify anchors are still at expected lines (1-indexed)
-const checks = [[2179,'test('], [2075,'test('], [1315,'test(']]
-for (var i = 0; i < checks.length; i++) {
-  var li = checks[i][0] - 1
-  if (!lines[li].startsWith(checks[i][1])) {
-    console.error('ANCHOR MISS at line ' + checks[i][0] + ': ' + lines[li].slice(0,50))
-    process.exit(1)
-  }
+// Get entries for the three new groups only
+var newGroups = ['MessageElement contract', 'NoteElement contract', 'FragmentElement contract']
+var newEntries = suites.filter(function(s) { return newGroups.indexOf(s.group) !== -1 })
+console.log('new entries: ' + newEntries.length)
+
+// Build test lines grouped by group name
+var groupBlocks = {}
+for (var i = 0; i < newEntries.length; i++) {
+  var s = newEntries[i]
+  if (!groupBlocks[s.group]) groupBlocks[s.group] = []
+  groupBlocks[s.group].push(
+    'test(' + JSON.stringify(s.desc) + ', function() {' + NL +
+    '  ;(' + s.fn.toString() + ')(freshStore, assert)' + NL +
+    '})'
+  )
 }
-console.log('anchors verified')
 
-// Insert in descending order
-lines.splice(2178, 0, "setGroup('regex contracts')")
-lines.splice(2074, 0, "setGroup('schema + properties')")
-lines.splice(1314, 0, "setGroup('bounding boxes + selection')")
-console.log('setGroup calls inserted')
+var blocks = []
+for (var g in groupBlocks) {
+  blocks.push("setGroup('" + g + "')")
+  blocks.push(groupBlocks[g].join(NL + NL))
+}
+var insertText = NL + NL + blocks.join(NL + NL)
 
-fs.writeFileSync('sequence-builder.test.js', lines.join(NL), 'utf8')
-console.log('done')
+// Insert before the execute block
+var EXEC = ';(function runAll() {'
+var ei = t.indexOf(EXEC)
+if (ei === -1) { console.error('runAll not found'); process.exit(1) }
+t = t.slice(0, ei) + insertText + NL + t.slice(ei)
+
+fs.writeFileSync('sequence-builder.test.js', t, 'utf8')
+console.log('done. test() calls: ' + (t.match(/^test\(/gm)||[]).length)

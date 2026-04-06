@@ -1644,12 +1644,10 @@ class ActorElement /* extends SequenceElement */ {
 // Audience: Human + fresh AI instance
 //
 // Usage:
-//   const el = ElementFactory.create(storeRecord);
-//   el.render(layer, ctx);
+//   const el = ElementFactory.create(storeRecord)
+//   el.render(layer, ctx)
 //
-// The factory inspects the record shape to determine element type.
 // Type detection order: fragment > message > note > actor (by unique fields).
-//
 // ZERO side effects — create() is a pure mapping function.
 
 class ElementFactory {
@@ -1660,17 +1658,228 @@ class ElementFactory {
    */
   static create(data) {
     if (!data || !data.id) throw new Error('ElementFactory.create: data must have an id')
-    // In Node (tests), classes from sibling files are not in scope — require them locally.
-    // In the browser bundle, build.js injects all files into shared scope — typeof checks prevent double-require.
-    const _ActorElement =
-      typeof ActorElement !== 'undefined' ? ActorElement : require('./ActorElement.js').ActorElement
+    // In Node (tests), require siblings. In the browser bundle, all classes share scope.
+    const _ActorElement    = (typeof ActorElement    !== 'undefined') ? ActorElement    : require('./ActorElement.js').ActorElement
+    const _MessageElement  = (typeof MessageElement  !== 'undefined') ? MessageElement  : require('./MessageElement.js').MessageElement
+    const _NoteElement     = (typeof NoteElement     !== 'undefined') ? NoteElement     : require('./NoteElement.js').NoteElement
+    const _FragmentElement = (typeof FragmentElement !== 'undefined') ? FragmentElement : require('./FragmentElement.js').FragmentElement
     // Type detection by unique field signature
-    if ('w' in data && 'h' in data && 'kind' in data) return new FragmentElement(data)
-    if ('fromId' in data && 'toId' in data) return new MessageElement(data)
-    if ('text' in data && !('label' in data)) return new NoteElement(data)
-    if ('label' in data && 'type' in data) return new _ActorElement(data)
+    if ('w' in data && 'h' in data && 'kind' in data) return new _FragmentElement(data)
+    if ('fromId' in data && 'toId' in data)           return new _MessageElement(data)
+    if ('text' in data && !('label' in data))          return new _NoteElement(data)
+    if ('label' in data && 'type' in data)             return new _ActorElement(data)
     throw new Error('ElementFactory.create: unrecognised record shape for id=' + data.id)
   }
+}
+
+// ── FragmentElement.js ──
+// SequenceForge — FragmentElement.js
+// Implements SequenceElement for fragment (alt/loop/opt) records.
+// Audience: Human + fresh AI instance
+//
+// Store record shape: { id, x, y, w, h, kind, cond }
+//
+// Geometry is stored directly on the record — no derived dimensions.
+
+class FragmentElement /* extends SequenceElement */ {
+  constructor(data) {
+    this._data = data
+  }
+
+  get id() { return this._data.id }
+
+  /**
+   * Bounding box — taken directly from the stored geometry.
+   * @returns {{ x, y, w, h }}
+   */
+  getBounds() {
+    return { x: this._data.x, y: this._data.y, w: this._data.w, h: this._data.h }
+  }
+
+  /**
+   * Hit test against the fragment bounding box.
+   * @param {number} px
+   * @param {number} py
+   * @returns {boolean}
+   */
+  hitTest(px, py) {
+    const { x, y, w, h } = this.getBounds()
+    return px >= x && px <= x + w && py >= y && py <= y + h
+  }
+
+  /**
+   * Properties schema for the Properties panel.
+   * @returns {Array}
+   */
+  getPropertiesSchema() {
+    return [
+      { key: 'kind', label: 'Kind', type: 'select',
+        options: ['frag-alt', 'frag-loop', 'frag-opt'] },
+      { key: 'cond', label: 'Condition', type: 'text' },
+    ]
+  }
+
+  render(layer, ctx)      { throw new Error('FragmentElement.render() not yet wired') }
+  renderSelected(il, ctx) { /* stub */ }
+  onDragStart(e, ctx)     { /* stub */ }
+  onDragMove(e, ctx)      { /* stub */ }
+  onDragEnd(e, ctx)       { /* stub */ }
+  onSelect(ctx)           { /* stub */ }
+  onDeselect(ctx)         { /* stub */ }
+}
+
+// ── MessageElement.js ──
+// SequenceForge — MessageElement.js
+// Implements SequenceElement for message records.
+// Audience: Human + fresh AI instance
+//
+// Store record shape:
+//   { id, fromId, toId, label, kind, direction, y,
+//     protocol?, port?, auth?, dataClass?, schema, properties }
+//
+// getBounds() requires actor positions — passed via ctx.getActorById().
+// For hitTest() without ctx, a conservative y-band is used.
+
+class MessageElement /* extends SequenceElement */ {
+  constructor(data) {
+    this._data = data
+  }
+
+  get id() { return this._data.id }
+
+  /**
+   * Bounding box in SVG space.
+   * Requires ctx.getActorById to resolve x positions.
+   * Falls back to a default span if ctx is not provided.
+   * @param {object} [ctx] — InteractionContext with getActorById(id)
+   * @returns {{ x, y, w, h }}
+   */
+  getBounds(ctx) {
+    const y = this._data.y || 0
+    const h = 24 // hit band above and below the line
+    if (ctx && ctx.getActorById) {
+      const from = ctx.getActorById(this._data.fromId)
+      const to   = ctx.getActorById(this._data.toId)
+      if (from && to) {
+        const x1 = from.x + 55  // actorCenterX = x + ACTOR_W/2
+        const x2 = to.x   + 55
+        const x  = Math.min(x1, x2)
+        const w  = Math.abs(x2 - x1) || 60
+        return { x, y: y - h / 2, w, h }
+      }
+    }
+    // No ctx — return a positional stub
+    return { x: 0, y: y - h / 2, w: 200, h }
+  }
+
+  /**
+   * Hit test against the message y-band.
+   * @param {number} px
+   * @param {number} py
+   * @param {object} [ctx]
+   * @returns {boolean}
+   */
+  hitTest(px, py, ctx) {
+    const { x, y, w, h } = this.getBounds(ctx)
+    return px >= x && px <= x + w && py >= y && py <= y + h
+  }
+
+  /**
+   * Properties schema for the Properties panel.
+   * @returns {Array}
+   */
+  getPropertiesSchema() {
+    return [
+      { key: 'label',     label: 'Label',     type: 'text' },
+      { key: 'kind',      label: 'Kind',      type: 'select',
+        options: ['sync', 'async', 'return'] },
+      { key: 'direction', label: 'Direction', type: 'select',
+        options: ['right', 'left', 'both'] },
+      { key: 'fromId',    label: 'From',      type: 'actor-ref' },
+      { key: 'toId',      label: 'To',        type: 'actor-ref' },
+      { key: 'protocol',  label: 'Protocol',  type: 'text' },
+      { key: 'port',      label: 'Port',      type: 'text' },
+      { key: 'auth',      label: 'Auth',      type: 'text' },
+      { key: 'dataClass', label: 'Data Class',type: 'select',
+        options: ['Public', 'Internal', 'Confidential', 'PII', 'PHI', 'Secret'] },
+    ]
+  }
+
+  render(layer, ctx)      { throw new Error('MessageElement.render() not yet wired') }
+  renderSelected(il, ctx) { /* stub */ }
+  onDragStart(e, ctx)     { /* stub */ }
+  onDragMove(e, ctx)      { /* stub */ }
+  onDragEnd(e, ctx)       { /* stub */ }
+  onSelect(ctx)           { /* stub */ }
+  onDeselect(ctx)         { /* stub */ }
+}
+
+// ── NoteElement.js ──
+// SequenceForge — NoteElement.js
+// Implements SequenceElement for note records.
+// Audience: Human + fresh AI instance
+//
+// Store record shape: { id, x, y, text }
+//
+// Note width is fixed at 120px.
+// Note height is dynamic — computed from text content.
+
+const _NE_NOTE_W        = 120
+const _NE_CHARS_PER_LINE = 17
+const _NE_LINE_H         = 15
+const _NE_PADDING        = 14
+
+function _neNoteHeight(text) {
+  const lines = (text || 'note').split('\n').reduce(function(acc, seg) {
+    return acc + Math.max(1, Math.ceil(seg.length / _NE_CHARS_PER_LINE))
+  }, 0)
+  return Math.max(36, lines * _NE_LINE_H + _NE_PADDING)
+}
+
+class NoteElement /* extends SequenceElement */ {
+  constructor(data) {
+    this._data = data
+  }
+
+  get id() { return this._data.id }
+
+  /**
+   * Bounding box centred on the note's y position.
+   * @returns {{ x, y, w, h }}
+   */
+  getBounds() {
+    const h = _neNoteHeight(this._data.text)
+    return { x: this._data.x || 20, y: this._data.y - h / 2, w: _NE_NOTE_W, h }
+  }
+
+  /**
+   * Hit test against the note bounding box.
+   * @param {number} px
+   * @param {number} py
+   * @returns {boolean}
+   */
+  hitTest(px, py) {
+    const { x, y, w, h } = this.getBounds()
+    return px >= x && px <= x + w && py >= y && py <= y + h
+  }
+
+  /**
+   * Properties schema for the Properties panel.
+   * @returns {Array}
+   */
+  getPropertiesSchema() {
+    return [
+      { key: 'text', label: 'Text', type: 'textarea' },
+    ]
+  }
+
+  render(layer, ctx)      { throw new Error('NoteElement.render() not yet wired') }
+  renderSelected(il, ctx) { /* stub */ }
+  onDragStart(e, ctx)     { /* stub */ }
+  onDragMove(e, ctx)      { /* stub */ }
+  onDragEnd(e, ctx)       { /* stub */ }
+  onSelect(ctx)           { /* stub */ }
+  onDeselect(ctx)         { /* stub */ }
 }
 // @@ELEMENTS-END
 

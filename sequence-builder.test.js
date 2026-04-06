@@ -2539,6 +2539,146 @@ test('ElementFactory.create() throws for record without id', function () {
 })
 
 // ── Execute ───────────────────────────────────────────────────────────────
+
+
+setGroup('MessageElement contract')
+
+test("MessageElement.getBounds() returns y-band centred on message y", function() {
+  ;(function(freshStore, assert) {
+  const { MessageElement } = require('./src/elements/MessageElement.js')
+  const el = new MessageElement({ id: 'msg_T', fromId: null, toId: null, label: 'ping', kind: 'sync', direction: 'right', y: 100 })
+  const b = el.getBounds()
+  assert(b.y <= 100 && b.y + b.h >= 100, 'y-band should contain message y')
+  assert(b.h > 0, 'height should be positive')
+})(freshStore, assert)
+})
+
+test("MessageElement.getBounds() uses actor positions from ctx", function() {
+  ;(function(freshStore, assert) {
+  const { MessageElement } = require('./src/elements/MessageElement.js')
+  const el = new MessageElement({ id: 'msg_T', fromId: 'a1', toId: 'a2', label: 'ping', kind: 'sync', direction: 'right', y: 100 })
+  const ctx = { getActorById: function(id) { return id === 'a1' ? { x: 40 } : { x: 210 } } }
+  const b = el.getBounds(ctx)
+  assert(b.w > 0, 'width should be derived from actor positions')
+  assert(b.x >= 40, 'x should start at fromActor center')
+})(freshStore, assert)
+})
+
+test("MessageElement.getPropertiesSchema() has label, kind, direction, endpoints", function() {
+  ;(function(freshStore, assert) {
+  const { MessageElement } = require('./src/elements/MessageElement.js')
+  const el = new MessageElement({ id: 'msg_T', fromId: null, toId: null, label: 'ping', kind: 'sync', direction: 'right', y: 0 })
+  const s = el.getPropertiesSchema()
+  const keys = s.map(function(f) { return f.key })
+  assert(keys.includes('label'),     'schema should include label')
+  assert(keys.includes('kind'),      'schema should include kind')
+  assert(keys.includes('direction'), 'schema should include direction')
+  assert(keys.includes('fromId'),    'schema should include fromId')
+  assert(keys.includes('toId'),      'schema should include toId')
+})(freshStore, assert)
+})
+
+test("MessageElement.render() throws (not yet wired)", function() {
+  ;(function(freshStore, assert) {
+  const { MessageElement } = require('./src/elements/MessageElement.js')
+  const el = new MessageElement({ id: 'msg_T', fromId: null, toId: null, label: 'ping', kind: 'sync', direction: 'right', y: 0 })
+  let threw = false; try { el.render(null, null) } catch(e) { threw = true }
+  assert(threw, 'render() should throw until canvas dispatcher is wired')
+})(freshStore, assert)
+})
+
+test("ElementFactory creates MessageElement for message record", function() {
+  ;(function(freshStore, assert) {
+  const { MessageElement } = require('./src/elements/MessageElement.js')
+  const { ElementFactory } = require('./src/elements/ElementFactory.js')
+  const el = ElementFactory.create({ id: 'msg_T', fromId: 'a1', toId: 'a2', label: 'ping', kind: 'sync', direction: 'right', y: 0 })
+  assert(el instanceof MessageElement, 'factory should return MessageElement')
+})(freshStore, assert)
+})
+
+setGroup('NoteElement contract')
+
+test("NoteElement.getBounds() width is fixed at 120", function() {
+  ;(function(freshStore, assert) {
+  const { NoteElement, _NE_NOTE_W } = require('./src/elements/NoteElement.js')
+  const el = new NoteElement({ id: 'note_T', x: 20, y: 200, text: 'hello' })
+  assert(el.getBounds().w === _NE_NOTE_W, 'note width should be fixed at ' + _NE_NOTE_W)
+})(freshStore, assert)
+})
+
+test("NoteElement.getBounds() height grows with text content", function() {
+  ;(function(freshStore, assert) {
+  const { NoteElement } = require('./src/elements/NoteElement.js')
+  const short = new NoteElement({ id: 'note_T', x: 20, y: 200, text: 'hi' })
+  const long  = new NoteElement({ id: 'note_T', x: 20, y: 200, text: 'this is a much longer note that wraps across multiple lines' })
+  assert(long.getBounds().h > short.getBounds().h, 'longer text should produce taller note')
+})(freshStore, assert)
+})
+
+test("NoteElement.hitTest() true for point inside", function() {
+  ;(function(freshStore, assert) {
+  const { NoteElement } = require('./src/elements/NoteElement.js')
+  const el = new NoteElement({ id: 'note_T', x: 20, y: 200, text: 'hello' })
+  const b = el.getBounds()
+  assert(el.hitTest(b.x + b.w / 2, b.y + b.h / 2) === true, 'centre should hit')
+})(freshStore, assert)
+})
+
+test("NoteElement.getPropertiesSchema() has text field", function() {
+  ;(function(freshStore, assert) {
+  const { NoteElement } = require('./src/elements/NoteElement.js')
+  const el = new NoteElement({ id: 'note_T', x: 20, y: 200, text: 'hello' })
+  const s = el.getPropertiesSchema()
+  assert(s.length === 1 && s[0].key === 'text', 'schema should have single text field')
+})(freshStore, assert)
+})
+
+test("ElementFactory creates NoteElement for note record", function() {
+  ;(function(freshStore, assert) {
+  const { NoteElement } = require('./src/elements/NoteElement.js')
+  const { ElementFactory } = require('./src/elements/ElementFactory.js')
+  const el = ElementFactory.create({ id: 'note_T', x: 20, y: 200, text: 'hello' })
+  assert(el instanceof NoteElement, 'factory should return NoteElement')
+})(freshStore, assert)
+})
+
+setGroup('FragmentElement contract')
+
+test("FragmentElement.getBounds() returns stored geometry", function() {
+  ;(function(freshStore, assert) {
+  const { FragmentElement } = require('./src/elements/FragmentElement.js')
+  const el = new FragmentElement({ id: 'frag_T', x: 60, y: 80, w: 300, h: 150, kind: 'frag-alt', cond: 'ok' })
+  const b = el.getBounds()
+  assert(b.x === 60 && b.y === 80 && b.w === 300 && b.h === 150, 'bounds should match stored geometry')
+})(freshStore, assert)
+})
+
+test("FragmentElement.hitTest() true for point inside", function() {
+  ;(function(freshStore, assert) {
+  const { FragmentElement } = require('./src/elements/FragmentElement.js')
+  const el = new FragmentElement({ id: 'frag_T', x: 60, y: 80, w: 300, h: 150, kind: 'frag-alt', cond: 'ok' })
+  assert(el.hitTest(210, 155) === true,  'centre should hit')
+  assert(el.hitTest(10,  155) === false, 'outside left should miss')
+})(freshStore, assert)
+})
+
+test("FragmentElement.getPropertiesSchema() has kind and condition", function() {
+  ;(function(freshStore, assert) {
+  const { FragmentElement } = require('./src/elements/FragmentElement.js')
+  const el = new FragmentElement({ id: 'frag_T', x: 60, y: 80, w: 300, h: 150, kind: 'frag-alt', cond: 'ok' })
+  const keys = el.getPropertiesSchema().map(function(f) { return f.key })
+  assert(keys.includes('kind') && keys.includes('cond'), 'schema should have kind and cond')
+})(freshStore, assert)
+})
+
+test("ElementFactory creates FragmentElement for fragment record", function() {
+  ;(function(freshStore, assert) {
+  const { FragmentElement } = require('./src/elements/FragmentElement.js')
+  const { ElementFactory } = require('./src/elements/ElementFactory.js')
+  const el = ElementFactory.create({ id: 'frag_T', x: 60, y: 80, w: 300, h: 150, kind: 'frag-alt', cond: 'ok' })
+  assert(el instanceof FragmentElement, 'factory should return FragmentElement')
+})(freshStore, assert)
+})
 ;(function runAll() {
   var groups = [], groupMap = {}
   for (var i = 0; i < _tests.length; i++) {
