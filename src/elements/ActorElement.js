@@ -69,13 +69,50 @@ class ActorElement /* extends SequenceElement */ {
     /* stub */
   }
   onDragStart(e, ctx) {
-    /* stub */
+    const actor = this._data
+    const canvasRect = ctx.canvasWrap.getBoundingClientRect()
+    ctx._drag = {
+      type: 'actor',
+      baseX: actor.x,
+      offsetX: (e.clientX - canvasRect.left) / ctx.zoom - actor.x,
+      ghostEl:
+        e.target.closest('g[data-id]') ||
+        ctx.svg.querySelector('g[data-type="actor"][data-id="' + actor.id + '"]'),
+    }
+    if (ctx._drag.ghostEl) ctx._drag.ghostEl.style.opacity = '0.5'
+    e.preventDefault()
   }
   onDragMove(e, ctx) {
-    /* stub */
+    if (!ctx._drag) return
+    const canvasRect = ctx.canvasWrap.getBoundingClientRect()
+    const newX = Math.max(0, (e.clientX - canvasRect.left) / ctx.zoom - ctx._drag.offsetX)
+    this._data.x = newX
+    if (ctx._drag.ghostEl) {
+      const dx = newX - ctx._drag.baseX
+      ctx._drag.ghostEl.setAttribute('transform', 'translate(' + dx + ', 0)')
+    }
   }
   onDragEnd(e, ctx) {
-    /* stub */
+    if (!ctx._drag) return
+    if (ctx._drag.ghostEl) {
+      ctx._drag.ghostEl.style.opacity = ''
+      ctx._drag.ghostEl = null
+    }
+    const actors = ctx.store.state.actors
+    if (actors.length > 1) {
+      const SLOT = _AE_ACTOR_W + 60
+      const sorted = actors.slice().sort(function(a, b) { return a.x - b.x })
+      const positions = sorted.map(function(a, i) { return { id: a.id, x: 40 + i * SLOT } })
+      const changed = positions.some(function(p) {
+        const cur = ctx.store.getActorById(p.id)
+        return cur && Math.round(cur.x) !== Math.round(p.x)
+      })
+      if (changed) {
+        ctx.store.dispatch({ type: 'REFLOW_ACTORS', payload: { positions: positions } })
+        setTimeout(ctx.render, 0)
+      }
+    }
+    ctx._drag = null
   }
   onSelect(ctx) {
     /* stub */
