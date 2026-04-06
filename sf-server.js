@@ -63,6 +63,24 @@ function flexPatch(content, oldStr, newStr) {
   }
   return content.slice(0, start) + newStr + content.slice(oi);
 }
+// normalizeWS: collapse runs of whitespace to single space for fuzzy matching.
+// Used by flexPatch, /slice search, and any string comparison that should be
+// whitespace-tolerant. Single definition — consistent behaviour everywhere.
+function normalizeWS(s) {
+  return s.replace(/[ 	]+/g, ' ')
+}
+// normalizeWS: collapse runs of whitespace to single space for fuzzy matching.
+// Used by flexPatch, /slice search, and any string comparison that should be
+// whitespace-tolerant. Single definition — consistent behaviour everywhere.
+function normalizeWS(s) {
+  return s.replace(/[ 	]+/g, ' ')
+}
+// normalizeWS: collapse runs of whitespace to single space for fuzzy matching.
+// Used by flexPatch, /slice search, and any string comparison that should be
+// whitespace-tolerant. Single definition — consistent behaviour everywhere.
+function normalizeWS(s) {
+  return s.replace(/[ 	]+/g, ' ')
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 function runTests(cb) {

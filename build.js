@@ -27,36 +27,36 @@
 
 'use strict'
 
-const fs   = require('fs')
+const fs = require('fs')
 const path = require('path')
 
 // ── Paths ────────────────────────────────────────────────────
-const ROOT      = path.dirname(__filename)
+const ROOT = path.dirname(__filename)
 const STORE_SRC = path.join(ROOT, 'sequence-builder.store.js')
-const HTML_SRC  = path.join(ROOT, 'sequence-builder.html')
+const HTML_SRC = path.join(ROOT, 'sequence-builder.html')
 
 const SENTINEL_START = '// @@STORE-START'
-const SENTINEL_END   = '// @@STORE-END'
+const SENTINEL_END = '// @@STORE-END'
 
 // ── Read sources ─────────────────────────────────────────────
 if (!fs.existsSync(STORE_SRC)) fatal(`Store source not found: ${STORE_SRC}`)
-if (!fs.existsSync(HTML_SRC))  fatal(`HTML target not found:  ${HTML_SRC}`)
+if (!fs.existsSync(HTML_SRC)) fatal(`HTML target not found:  ${HTML_SRC}`)
 
 const storeRaw = fs.readFileSync(STORE_SRC, 'utf8')
-const htmlRaw  = fs.readFileSync(HTML_SRC,  'utf8')
+const htmlRaw = fs.readFileSync(HTML_SRC, 'utf8')
 
 // ── Validate sentinels ───────────────────────────────────────
 const startIdx = htmlRaw.indexOf(SENTINEL_START)
-const endIdx   = htmlRaw.indexOf(SENTINEL_END)
+const endIdx = htmlRaw.indexOf(SENTINEL_END)
 
 if (startIdx === -1) fatal(`Sentinel not found in HTML: ${SENTINEL_START}`)
-if (endIdx   === -1) fatal(`Sentinel not found in HTML: ${SENTINEL_END}`)
+if (endIdx === -1) fatal(`Sentinel not found in HTML: ${SENTINEL_END}`)
 if (startIdx >= endIdx) fatal('@@STORE-START must appear before @@STORE-END')
 
 const startCount = (htmlRaw.match(/\/\/ @@STORE-START/g) || []).length
-const endCount   = (htmlRaw.match(/\/\/ @@STORE-END/g)   || []).length
+const endCount = (htmlRaw.match(/\/\/ @@STORE-END/g) || []).length
 if (startCount !== 1) fatal(`Expected exactly 1 @@STORE-START, found ${startCount}`)
-if (endCount   !== 1) fatal(`Expected exactly 1 @@STORE-END, found ${endCount}`)
+if (endCount !== 1) fatal(`Expected exactly 1 @@STORE-END, found ${endCount}`)
 
 // ── Strip CommonJS export block from store source ────────────
 //
@@ -99,9 +99,9 @@ if (/module\.exports/.test(storeBody)) {
 //
 //  Word-boundary replace so e.g. ACTOR_WIDTH is not touched.
 const RENAMES = [
-  [/\bACTOR_W\b/g,    'STORE_ACTOR_W'],
-  [/\bACTOR_GAP\b/g,  'STORE_ACTOR_GAP'],
-  [/\bUNDO_LIMIT\b/g, 'STORE_UNDO_LIMIT'],
+  [/\bACTOR_W\b/g, 'STORE_ACTOR_W'],
+  [/\bACTOR_GAP\b/g, 'STORE_ACTOR_GAP'],
+  [/\bUNDO_LIMIT\b/g, 'STORE_UNDO_LIMIT']
 ]
 for (const [pattern, replacement] of RENAMES) {
   storeBody = storeBody.replace(pattern, replacement)
@@ -118,12 +118,11 @@ storeBody = storeBody.trimEnd() + '\n'
 //  No re-indentation needed — but we verify by checking the
 //  sentinel's own leading whitespace and warning if non-zero.
 
-const sentinelLine = htmlRaw.slice(
-  htmlRaw.lastIndexOf('\n', startIdx) + 1,
-  startIdx
-)
+const sentinelLine = htmlRaw.slice(htmlRaw.lastIndexOf('\n', startIdx) + 1, startIdx)
 if (sentinelLine.trim() !== '' && sentinelLine !== '') {
-  warn(`@@STORE-START has leading whitespace: ${JSON.stringify(sentinelLine)} — store content will not match indentation`)
+  warn(
+    `@@STORE-START has leading whitespace: ${JSON.stringify(sentinelLine)} — store content will not match indentation`
+  )
 }
 
 // ── Splice ───────────────────────────────────────────────────
@@ -142,7 +141,7 @@ if (sentinelLine.trim() !== '' && sentinelLine !== '') {
 //    // @@STORE-END\n
 
 const before = htmlRaw.slice(0, startIdx + SENTINEL_START.length)
-const after  = htmlRaw.slice(endIdx)    // includes @@STORE-END and everything after
+const after = htmlRaw.slice(endIdx) // includes @@STORE-END and everything after
 
 const htmlOut = before + '\n' + storeBody + after
 
@@ -152,23 +151,23 @@ const htmlOut = before + '\n' + storeBody + after
 //  and splice it between @@THEMES-START / @@THEMES-END so the
 //  standalone HTML works without any fetch (GitHub Pages safe).
 
-const THEMES_SRC   = path.join(ROOT, 'themes.json')
+const THEMES_SRC = path.join(ROOT, 'themes.json')
 const THEMES_START = '// @@THEMES-START'
-const THEMES_END   = '// @@THEMES-END'
+const THEMES_END = '// @@THEMES-END'
 
 let htmlFinal = htmlOut
 
 if (fs.existsSync(THEMES_SRC)) {
-  const themesRaw  = fs.readFileSync(THEMES_SRC, 'utf8')
+  const themesRaw = fs.readFileSync(THEMES_SRC, 'utf8')
   const themesData = JSON.parse(themesRaw) // validate JSON before injecting
-  const injection  = `window._SF_THEMES = ${JSON.stringify(themesData, null, 2)};`
+  const injection = `window._SF_THEMES = ${JSON.stringify(themesData, null, 2)};`
 
   const tStart = htmlFinal.indexOf(THEMES_START)
-  const tEnd   = htmlFinal.indexOf(THEMES_END)
+  const tEnd = htmlFinal.indexOf(THEMES_END)
 
   if (tStart !== -1 && tEnd !== -1 && tStart < tEnd) {
     const tBefore = htmlFinal.slice(0, tStart + THEMES_START.length)
-    const tAfter  = htmlFinal.slice(tEnd) // includes @@THEMES-END and rest
+    const tAfter = htmlFinal.slice(tEnd) // includes @@THEMES-END and rest
     htmlFinal = tBefore + '\n' + injection + '\n' + tAfter
   } else {
     warn('@@THEMES-START / @@THEMES-END sentinels not found — themes not injected')
@@ -180,31 +179,39 @@ if (fs.existsSync(THEMES_SRC)) {
 // ── Inject elements (src/elements/*.js) ────────────────────────────────────
 // Concatenates all element source files between @@ELEMENTS-START / @@ELEMENTS-END.
 // SequenceElement.js is always injected first (base class), then others alphabetically.
-const ELEMENTS_DIR   = path.join(ROOT, 'src', 'elements')
+const ELEMENTS_DIR = path.join(ROOT, 'src', 'elements')
 const ELEMENTS_START = '// @@ELEMENTS-START'
-const ELEMENTS_END   = '// @@ELEMENTS-END'
+const ELEMENTS_END = '// @@ELEMENTS-END'
 
 const NL = String.fromCharCode(10)
 if (fs.existsSync(ELEMENTS_DIR)) {
-  let elementFiles = fs.readdirSync(ELEMENTS_DIR).filter(f => f.endsWith('.js')).sort()
+  let elementFiles = fs
+    .readdirSync(ELEMENTS_DIR)
+    .filter(f => f.endsWith('.js'))
+    .sort()
   // SequenceElement must be first — base class must be defined before subclasses
   const seIdx = elementFiles.indexOf('SequenceElement.js')
-  if (seIdx > 0) { elementFiles.splice(seIdx, 1); elementFiles.unshift('SequenceElement.js') }
+  if (seIdx > 0) {
+    elementFiles.splice(seIdx, 1)
+    elementFiles.unshift('SequenceElement.js')
+  }
 
-  const elementBodies = elementFiles.map(f => {
-    let src = fs.readFileSync(path.join(ELEMENTS_DIR, f), 'utf8')
-    const exportMarker = "if (typeof module !== 'undefined')"
-    const exportIdx = src.lastIndexOf(exportMarker)
-    if (exportIdx !== -1) src = src.slice(0, exportIdx).trimEnd() + NL
-    return '// ── ' + f + ' ──' + NL + src.trimEnd()
-  }).join(NL + NL)
+  const elementBodies = elementFiles
+    .map(f => {
+      let src = fs.readFileSync(path.join(ELEMENTS_DIR, f), 'utf8')
+      const exportMarker = "if (typeof module !== 'undefined')"
+      const exportIdx = src.lastIndexOf(exportMarker)
+      if (exportIdx !== -1) src = src.slice(0, exportIdx).trimEnd() + NL
+      return '// ── ' + f + ' ──' + NL + src.trimEnd()
+    })
+    .join(NL + NL)
 
   const eStart = htmlFinal.indexOf(ELEMENTS_START)
-  const eEnd   = htmlFinal.indexOf(ELEMENTS_END)
+  const eEnd = htmlFinal.indexOf(ELEMENTS_END)
 
   if (eStart !== -1 && eEnd !== -1 && eStart < eEnd) {
     const eBefore = htmlFinal.slice(0, eStart + ELEMENTS_START.length)
-    const eAfter  = htmlFinal.slice(eEnd)
+    const eAfter = htmlFinal.slice(eEnd)
     htmlFinal = eBefore + NL + elementBodies + NL + eAfter
     console.log('  element files injected : ' + elementFiles.join(', '))
   } else {
@@ -219,11 +226,13 @@ fs.writeFileSync(HTML_SRC, htmlFinal, 'utf8')
 
 // ── Report ───────────────────────────────────────────────────
 const storeLines = storeBody.split('\n').length
-const htmlLines  = htmlFinal.split('\n').length
+const htmlLines = htmlFinal.split('\n').length
 console.log(`✓ build.js complete`)
 console.log(`  store lines injected : ${storeLines}`)
 console.log(`  html total lines     : ${htmlLines}`)
-console.log(`  sentinel span        : ${HTML_SRC} lines ${findLineNumber(htmlFinal, SENTINEL_START)}–${findLineNumber(htmlFinal, SENTINEL_END)}`)
+console.log(
+  `  sentinel span        : ${HTML_SRC} lines ${findLineNumber(htmlFinal, SENTINEL_START)}–${findLineNumber(htmlFinal, SENTINEL_END)}`
+)
 
 // ── Helpers ──────────────────────────────────────────────────
 function findLineNumber(text, needle) {

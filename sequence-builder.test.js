@@ -7,17 +7,19 @@
 let createStore, nextMessageKind, nextMessageDirection
 try {
   const m = require('./sequence-builder.store.js')
-  createStore          = m.createStore
-  nextMessageKind      = m.nextMessageKind
+  createStore = m.createStore
+  nextMessageKind = m.nextMessageKind
   nextMessageDirection = m.nextMessageDirection
-} catch(err) {
+} catch (err) {
   console.log('  sequence-builder.store.js not found or failed to load.')
   console.log('  ' + err.message)
   process.exit(1)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
-function freshStore() { return createStore() }
+function freshStore() {
+  return createStore()
+}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || 'Assertion failed')
@@ -25,12 +27,18 @@ function assert(condition, message) {
 
 function assertEqual(actual, expected, message) {
   if (actual !== expected)
-    throw new Error((message || 'Expected ' + JSON.stringify(expected) + ' got ' + JSON.stringify(actual)))
+    throw new Error(
+      message || 'Expected ' + JSON.stringify(expected) + ' got ' + JSON.stringify(actual)
+    )
 }
 
 // ── Collector ─────────────────────────────────────────────────────────────
 const _tests = []
-function test(desc, fn) { _tests.push({ desc: desc, fn: fn }) }
+let _currentGroup = 'Store contract'
+function setGroup(name) { _currentGroup = name }
+function test(desc, fn) {
+  _tests.push({ group: _currentGroup, desc: desc, fn: fn })
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 //  TESTS GO HERE
@@ -121,18 +129,19 @@ function assertDeepEqual(actual, expected, message) {
 //  Forces: dispatch(), store.state.actors, uid(), getNextActorX()
 // ═══════════════════════════════════════════════════════
 
-test('dispatching ADD_ACTOR appends one actor to state.actors', () => {
+setGroup("ADD_ACTOR")
+test('adding an actor appends it to the diagram', () => {
   const store = freshStore()
 
   store.dispatch({
-    type:    'ADD_ACTOR',
-    payload: { label: 'User', type: 'actor-person' },
+    type: 'ADD_ACTOR',
+    payload: { label: 'User', type: 'actor-person' }
   })
 
   assertEqual(store.state.actors.length, 1, 'expected 1 actor')
 })
 
-test('dispatching ADD_ACTOR assigns a unique id', () => {
+test('each actor gets a unique ULID identifier', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -142,8 +151,7 @@ test('dispatching ADD_ACTOR assigns a unique id', () => {
   assert(a.id !== b.id, `expected unique ids, got ${a.id} and ${b.id}`)
 })
 
-
-test('dispatching ADD_ACTOR places actors at non-overlapping x positions', () => {
+test('actors are placed without overlapping existing actors', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -153,18 +161,18 @@ test('dispatching ADD_ACTOR places actors at non-overlapping x positions', () =>
   assert(b.x > a.x, `second actor x (${b.x}) should be greater than first (${a.x})`)
 })
 
-test('dispatching ADD_ACTOR stores optional emoji field', () => {
+test('actors can store an optional emoji', () => {
   const store = freshStore()
 
   store.dispatch({
-    type:    'ADD_ACTOR',
-    payload: { label: 'Bot', type: 'actor-system', emoji: '🤖' },
+    type: 'ADD_ACTOR',
+    payload: { label: 'Bot', type: 'actor-system', emoji: '🤖' }
   })
 
   assertEqual(store.state.actors[0].emoji, '🤖', 'emoji should be stored on actor')
 })
 
-test('dispatching ADD_ACTOR honours payload.x when provided', () => {
+test('explicit x position is honoured when provided', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system', x: 350 } })
@@ -172,7 +180,7 @@ test('dispatching ADD_ACTOR honours payload.x when provided', () => {
   assertEqual(store.state.actors[0].x, 350, 'actor should land at payload.x when supplied')
 })
 
-test('dispatching ADD_ACTOR falls back to getNextActorX() when payload.x is absent', () => {
+test('x position defaults to after the rightmost actor', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -182,7 +190,7 @@ test('dispatching ADD_ACTOR falls back to getNextActorX() when payload.x is abse
   assert(b.x > a.x, 'second actor without payload.x should be placed to the right of first')
 })
 
-test('REFLOW_ACTORS repositions all actors in one undoable step', () => {
+test('reflowing actors repositions all of them in one undoable step', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -191,37 +199,48 @@ test('REFLOW_ACTORS repositions all actors in one undoable step', () => {
 
   const [a, b, c] = store.state.actors
 
-  store.dispatch({ type: 'REFLOW_ACTORS', payload: { positions: [
-    { id: a.id, x: 40  },
-    { id: b.id, x: 210 },
-    { id: c.id, x: 380 },
-  ]}})
+  store.dispatch({
+    type: 'REFLOW_ACTORS',
+    payload: {
+      positions: [
+        { id: a.id, x: 40 },
+        { id: b.id, x: 210 },
+        { id: c.id, x: 380 }
+      ]
+    }
+  })
 
-  assertEqual(store.state.actors.find(ac => ac.id === a.id).x, 40,  'A at 40')
+  assertEqual(store.state.actors.find(ac => ac.id === a.id).x, 40, 'A at 40')
   assertEqual(store.state.actors.find(ac => ac.id === b.id).x, 210, 'B at 210')
   assertEqual(store.state.actors.find(ac => ac.id === c.id).x, 380, 'C at 380')
 })
 
-test('REFLOW_ACTORS is undone in a single UNDO step', () => {
+test('reflowing actors can be undone in a single step', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B', type: 'actor-system' } })
 
   const [a, b] = store.state.actors
-  const origA = a.x, origB = b.x
+  const origA = a.x,
+    origB = b.x
 
-  store.dispatch({ type: 'REFLOW_ACTORS', payload: { positions: [
-    { id: a.id, x: 999 },
-    { id: b.id, x: 1200 },
-  ]}})
+  store.dispatch({
+    type: 'REFLOW_ACTORS',
+    payload: {
+      positions: [
+        { id: a.id, x: 999 },
+        { id: b.id, x: 1200 }
+      ]
+    }
+  })
 
   store.dispatch({ type: 'UNDO' })
 
   assertEqual(store.state.actors.find(ac => ac.id === a.id).x, origA, 'A restored by single UNDO')
   assertEqual(store.state.actors.find(ac => ac.id === b.id).x, origB, 'B restored by single UNDO')
 })
-test('ADD_ACTOR duplicate label gets auto-suffixed with _2', () => {
+test('duplicate label gets auto-suffixed: Actor becomes Actor_2', () => {
   const s = freshStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'User' } })
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'User' } })
@@ -230,7 +249,7 @@ test('ADD_ACTOR duplicate label gets auto-suffixed with _2', () => {
   assert(labels[1] === 'User_2', 'duplicate should become User_2, got: ' + labels[1])
 })
 
-test('ADD_ACTOR third duplicate gets _3 suffix', () => {
+test('third duplicate continues the sequence: Actor_2 becomes Actor_3', () => {
   const s = freshStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Svc' } })
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Svc' } })
@@ -239,7 +258,6 @@ test('ADD_ACTOR third duplicate gets _3 suffix', () => {
   assert(labels[2] === 'Svc_3', 'third duplicate should be Svc_3, got: ' + labels[2])
 })
 
-
 // ═══════════════════════════════════════════════════════
 //  SUITE 2 — DELETE_ACTOR cascade
 //
@@ -247,6 +265,7 @@ test('ADD_ACTOR third duplicate gets _3 suffix', () => {
 //  This is the most important invariant in the store.
 // ═══════════════════════════════════════════════════════
 
+setGroup("DELETE_ACTOR cascade")
 test('dispatching DELETE_ACTOR removes the actor', () => {
   const store = freshStore()
 
@@ -266,8 +285,8 @@ test('dispatching DELETE_ACTOR removes messages where actor is fromId', () => {
 
   const [a, b] = store.state.actors
   store.dispatch({
-    type:    'ADD_MESSAGE',
-    payload: { fromId: a.id, toId: b.id, kind: 'sync', label: 'call' },
+    type: 'ADD_MESSAGE',
+    payload: { fromId: a.id, toId: b.id, kind: 'sync', label: 'call' }
   })
 
   assertEqual(store.state.messages.length, 1, 'setup: message should exist')
@@ -275,7 +294,8 @@ test('dispatching DELETE_ACTOR removes messages where actor is fromId', () => {
   store.dispatch({ type: 'DELETE_ACTOR', payload: { id: a.id } })
 
   assertEqual(
-    store.state.messages.length, 0,
+    store.state.messages.length,
+    0,
     'message with deleted actor as fromId should be removed'
   )
 })
@@ -288,14 +308,15 @@ test('dispatching DELETE_ACTOR removes messages where actor is toId', () => {
 
   const [a, b] = store.state.actors
   store.dispatch({
-    type:    'ADD_MESSAGE',
-    payload: { fromId: a.id, toId: b.id, kind: 'sync', label: 'call' },
+    type: 'ADD_MESSAGE',
+    payload: { fromId: a.id, toId: b.id, kind: 'sync', label: 'call' }
   })
 
   store.dispatch({ type: 'DELETE_ACTOR', payload: { id: b.id } })
 
   assertEqual(
-    store.state.messages.length, 0,
+    store.state.messages.length,
+    0,
     'message with deleted actor as toId should be removed'
   )
 })
@@ -309,12 +330,12 @@ test('dispatching DELETE_ACTOR leaves unrelated messages intact', () => {
 
   const [a, b, c] = store.state.actors
   store.dispatch({
-    type:    'ADD_MESSAGE',
-    payload: { fromId: a.id, toId: b.id, kind: 'sync', label: 'a-to-b' },
+    type: 'ADD_MESSAGE',
+    payload: { fromId: a.id, toId: b.id, kind: 'sync', label: 'a-to-b' }
   })
   store.dispatch({
-    type:    'ADD_MESSAGE',
-    payload: { fromId: b.id, toId: c.id, kind: 'sync', label: 'b-to-c' },
+    type: 'ADD_MESSAGE',
+    payload: { fromId: b.id, toId: c.id, kind: 'sync', label: 'b-to-c' }
   })
 
   // Delete actor A — only the a-to-b message should go
@@ -331,6 +352,7 @@ test('dispatching DELETE_ACTOR leaves unrelated messages intact', () => {
 //  Critical: UPDATE_MESSAGE must not clobber fields not in payload
 // ═══════════════════════════════════════════════════════
 
+setGroup("UPDATE_MESSAGE")
 test('dispatching UPDATE_MESSAGE changes only the provided fields', () => {
   const store = freshStore()
 
@@ -339,24 +361,24 @@ test('dispatching UPDATE_MESSAGE changes only the provided fields', () => {
 
   const [a, b] = store.state.actors
   store.dispatch({
-    type:    'ADD_MESSAGE',
-    payload: { fromId: a.id, toId: b.id, kind: 'sync', label: 'original', direction: 'right' },
+    type: 'ADD_MESSAGE',
+    payload: { fromId: a.id, toId: b.id, kind: 'sync', label: 'original', direction: 'right' }
   })
 
   const id = store.state.messages[0].id
 
   // Only update the label — kind, direction, fromId, toId must be untouched
   store.dispatch({
-    type:    'UPDATE_MESSAGE',
-    payload: { id, label: 'updated' },
+    type: 'UPDATE_MESSAGE',
+    payload: { id, label: 'updated' }
   })
 
   const m = store.state.messages[0]
-  assertEqual(m.label,     'updated', 'label should be updated')
-  assertEqual(m.kind,      'sync',    'kind should be untouched')
-  assertEqual(m.direction, 'right',   'direction should be untouched')
-  assertEqual(m.fromId,    a.id,      'fromId should be untouched')
-  assertEqual(m.toId,      b.id,      'toId should be untouched')
+  assertEqual(m.label, 'updated', 'label should be updated')
+  assertEqual(m.kind, 'sync', 'kind should be untouched')
+  assertEqual(m.direction, 'right', 'direction should be untouched')
+  assertEqual(m.fromId, a.id, 'fromId should be untouched')
+  assertEqual(m.toId, b.id, 'toId should be untouched')
 })
 
 test('dispatching UPDATE_MESSAGE with network fields stores them correctly', () => {
@@ -367,22 +389,22 @@ test('dispatching UPDATE_MESSAGE with network fields stores them correctly', () 
 
   const [a, b] = store.state.actors
   store.dispatch({
-    type:    'ADD_MESSAGE',
-    payload: { fromId: a.id, toId: b.id, kind: 'sync', label: 'call' },
+    type: 'ADD_MESSAGE',
+    payload: { fromId: a.id, toId: b.id, kind: 'sync', label: 'call' }
   })
 
   const id = store.state.messages[0].id
 
   store.dispatch({
-    type:    'UPDATE_MESSAGE',
-    payload: { id, protocol: 'HTTPS', port: '443', auth: 'JWT', dataClass: 'PII' },
+    type: 'UPDATE_MESSAGE',
+    payload: { id, protocol: 'HTTPS', port: '443', auth: 'JWT', dataClass: 'PII' }
   })
 
   const m = store.state.messages[0]
-  assertEqual(m.protocol,  'HTTPS', 'protocol should be stored')
-  assertEqual(m.port,      '443',   'port should be stored')
-  assertEqual(m.auth,      'JWT',   'auth should be stored')
-  assertEqual(m.dataClass, 'PII',   'dataClass should be stored')
+  assertEqual(m.protocol, 'HTTPS', 'protocol should be stored')
+  assertEqual(m.port, '443', 'port should be stored')
+  assertEqual(m.auth, 'JWT', 'auth should be stored')
+  assertEqual(m.dataClass, 'PII', 'dataClass should be stored')
 })
 
 test('nextMessageKind helper cycles sync → async → return → sync', () => {
@@ -390,27 +412,27 @@ test('nextMessageKind helper cycles sync → async → return → sync', () => {
   let nextMessageKind
   try {
     ;({ nextMessageKind } = require('./sequence-builder.store.js'))
-  } catch(e) {
+  } catch (e) {
     assert(false, 'nextMessageKind not exported from store module')
   }
 
-  assertEqual(nextMessageKind('sync'),   'async',  'sync → async')
-  assertEqual(nextMessageKind('async'),  'return', 'async → return')
-  assertEqual(nextMessageKind('return'), 'sync',   'return → sync')
-  assertEqual(nextMessageKind('bogus'),  'sync',   'unknown → sync (safe default)')
+  assertEqual(nextMessageKind('sync'), 'async', 'sync → async')
+  assertEqual(nextMessageKind('async'), 'return', 'async → return')
+  assertEqual(nextMessageKind('return'), 'sync', 'return → sync')
+  assertEqual(nextMessageKind('bogus'), 'sync', 'unknown → sync (safe default)')
 })
 
 test('nextMessageDirection helper cycles right → left → both → right', () => {
   let nextMessageDirection
   try {
     ;({ nextMessageDirection } = require('./sequence-builder.store.js'))
-  } catch(e) {
+  } catch (e) {
     assert(false, 'nextMessageDirection not exported from store module')
   }
 
-  assertEqual(nextMessageDirection('right'), 'left',  'right → left')
-  assertEqual(nextMessageDirection('left'),  'both',  'left → both')
-  assertEqual(nextMessageDirection('both'),  'right', 'both → right')
+  assertEqual(nextMessageDirection('right'), 'left', 'right → left')
+  assertEqual(nextMessageDirection('left'), 'both', 'left → both')
+  assertEqual(nextMessageDirection('both'), 'right', 'both → right')
   assertEqual(nextMessageDirection('bogus'), 'right', 'unknown → right (safe default)')
 })
 
@@ -421,6 +443,7 @@ test('nextMessageDirection helper cycles right → left → both → right', () 
 //  Validates: mid-drag actions are logged but invisible to undo
 // ═══════════════════════════════════════════════════════
 
+setGroup("meta.undoable")
 test('every dispatched action appears in the action log', () => {
   const store = freshStore()
 
@@ -449,14 +472,14 @@ test('actions with meta.undoable: false appear in log but not in undo history', 
 
   // Simulate mid-drag: non-undoable move
   store.dispatch({
-    type:    'MOVE_ACTOR',
+    type: 'MOVE_ACTOR',
     payload: { id: a.id, x: 200 },
-    meta:    { undoable: false },
+    meta: { undoable: false }
   })
   store.dispatch({
-    type:    'MOVE_ACTOR',
+    type: 'MOVE_ACTOR',
     payload: { id: a.id, x: 300 },
-    meta:    { undoable: false },
+    meta: { undoable: false }
   })
 
   // All 4 actions in the full log
@@ -486,6 +509,7 @@ test('dispatch stamps meta.timestamp on every action', () => {
 //  The most complex suite — builds on all prior suites passing
 // ═══════════════════════════════════════════════════════
 
+setGroup("UNDO")
 test('dispatching UNDO after ADD_ACTOR removes the actor', () => {
   const store = freshStore()
 
@@ -503,21 +527,25 @@ test('dispatching UNDO restores state before a DELETE_ACTOR', () => {
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B', type: 'actor-system' } })
   store.dispatch({
-    type:    'ADD_MESSAGE',
-    payload: { fromId: store.state.actors[0].id, toId: store.state.actors[1].id,
-               kind: 'sync', label: 'call' },
+    type: 'ADD_MESSAGE',
+    payload: {
+      fromId: store.state.actors[0].id,
+      toId: store.state.actors[1].id,
+      kind: 'sync',
+      label: 'call'
+    }
   })
 
   // Delete actor A (cascades to message)
   const deletedId = store.state.actors[0].id
   store.dispatch({ type: 'DELETE_ACTOR', payload: { id: deletedId } })
 
-  assertEqual(store.state.actors.length,  1, 'setup: one actor after delete')
+  assertEqual(store.state.actors.length, 1, 'setup: one actor after delete')
   assertEqual(store.state.messages.length, 0, 'setup: message cascaded away')
 
   store.dispatch({ type: 'UNDO' })
 
-  assertEqual(store.state.actors.length,   2, 'both actors restored')
+  assertEqual(store.state.actors.length, 2, 'both actors restored')
   assertEqual(store.state.messages.length, 1, 'cascaded message restored')
 })
 
@@ -579,6 +607,7 @@ test('multiple UNDO steps walk back through history correctly', () => {
 //  Depends on Suite 5 (UNDO) passing.
 // ═══════════════════════════════════════════════════════
 
+setGroup("REDO")
 test('dispatching REDO after UNDO restores the undone state', () => {
   const store = freshStore()
 
@@ -590,7 +619,7 @@ test('dispatching REDO after UNDO restores the undone state', () => {
   store.dispatch({ type: 'REDO' })
 
   assertEqual(store.state.actors.length, 1, 'actor restored by redo')
-  assertEqual(store.state.actors[0].id,  id, 'restored actor has same id')
+  assertEqual(store.state.actors[0].id, id, 'restored actor has same id')
 })
 
 test('dispatching REDO when stack is empty does not throw', () => {
@@ -650,7 +679,7 @@ test('canRedo getter reflects redo stack depth', () => {
   assert(!store.canRedo, 'canRedo is false before any undo')
 
   store.dispatch({ type: 'UNDO' })
-  assert(store.canRedo,  'canRedo is true after undo')
+  assert(store.canRedo, 'canRedo is true after undo')
 
   store.dispatch({ type: 'REDO' })
   assert(!store.canRedo, 'canRedo is false after redo exhausts stack')
@@ -682,7 +711,9 @@ test('state:restored event carries direction field', () => {
   const store = freshStore()
   let lastRestoreDir = null
 
-  store.on('state:restored', p => { lastRestoreDir = p.direction })
+  store.on('state:restored', p => {
+    lastRestoreDir = p.direction
+  })
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
   store.dispatch({ type: 'UNDO' })
@@ -699,113 +730,131 @@ test('state:restored event carries direction field', () => {
 // Inline the parser so it runs in Node without a browser
 // (mirrors sequence-builder.html _parseUML exactly)
 function _parseUML(text) {
-  if (!text || !text.trim()) throw new Error('Empty input');
+  if (!text || !text.trim()) throw new Error('Empty input')
 
-  const lines = text.split(/\r?\n/);
+  const lines = text.split(/\r?\n/)
 
   // Detect format
-  const isMermaid  = lines.some(l => /^\s*sequenceDiagram\s*$/i.test(l));
-  const isPlantUML = !isMermaid && (
-    lines.some(l => /^\s*@startuml/i.test(l)) ||
-    lines.some(l => /--?>?>?\s/.test(l) || /<--?-?\s/.test(l))
-  );
+  const isMermaid = lines.some(l => /^\s*sequenceDiagram\s*$/i.test(l))
+  const isPlantUML =
+    !isMermaid &&
+    (lines.some(l => /^\s*@startuml/i.test(l)) ||
+      lines.some(l => /--?>?>?\s/.test(l) || /<--?-?\s/.test(l)))
 
   if (!isMermaid && !isPlantUML) {
     throw new Error(
       'Format not recognised. Start with "@startuml" (PlantUML) or "sequenceDiagram" (Mermaid).'
-    );
+    )
   }
 
-  const aliasMap   = {};
-  const actorOrder = [];
-  const warnings   = [];   // { lineNum, raw, hint }
+  const aliasMap = {}
+  const actorOrder = []
+  const warnings = [] // { lineNum, raw, hint }
 
   function resolveActor(raw) {
-    const trimmed = raw.trim();
-    const label   = aliasMap[trimmed] ?? trimmed;
-    if (!actorOrder.includes(label)) actorOrder.push(label);
-    return label;
+    const trimmed = raw.trim()
+    const label = aliasMap[trimmed] ?? trimmed
+    if (!actorOrder.includes(label)) actorOrder.push(label)
+    return label
   }
 
   function registerActor(labelRaw, alias) {
-    const disp = labelRaw.replace(/^["']|["']$/g, '').trim();
-    const key  = (alias || disp).trim();
-    aliasMap[key] = disp;
-    if (!actorOrder.includes(disp)) actorOrder.push(disp);
+    const disp = labelRaw.replace(/^["']|["']$/g, '').trim()
+    const key = (alias || disp).trim()
+    aliasMap[key] = disp
+    if (!actorOrder.includes(disp)) actorOrder.push(disp)
   }
 
-  const messages = [];
+  const messages = []
 
   // Declaration: participant/actor, with optional 'as Alias'
-  const DECL_RE = /^\s*(?:participant|actor)\s+(.+?)(?:\s+as\s+(\S+))?\s*$/i;
+  const DECL_RE = /^\s*(?:participant|actor)\s+(.+?)(?:\s+as\s+(\S+))?\s*$/i
 
   // Arrow: optional label after colon; no-space Mermaid style supported
-  const ARROW_RE = /^\s*([^<>\-\s][^\s<>\-]*|[^<>\-\s])\s*(<-->|<->|--?>>?|<--?>>?|<--?-?|->|<-)\s*([^:\s]+)(?:\s*:\s*(.*?))?\s*$/;
+  const ARROW_RE =
+    /^\s*([^<>\-\s][^\s<>\-]*|[^<>\-\s])\s*(<-->|<->|--?>>?|<--?>>?|<--?-?|->|<-)\s*([^:\s]+)(?:\s*:\s*(.*?))?\s*$/
 
   // Known directives to skip silently (not user-authored diagram content)
-  const SKIP_RE = /^(@startuml|@enduml|sequenceDiagram|title\s|note\s|end\s|loop\s|alt\s|else\s|opt\s|group\s|box\s|skinparam\s|autonumber|activate\s|deactivate\s|return$)/i;
+  const SKIP_RE =
+    /^(@startuml|@enduml|sequenceDiagram|title\s|note\s|end\s|loop\s|alt\s|else\s|opt\s|group\s|box\s|skinparam\s|autonumber|activate\s|deactivate\s|return$)/i
 
-  lines.forEach(function(raw, idx) {
-    var lineNum = idx + 1;
+  lines.forEach(function (raw, idx) {
+    var lineNum = idx + 1
     // Strip line comments
-    var line = raw.replace(/^\s*'.*$/, '').replace(/^\s*\/\/.*$/, '').trim();
-    if (!line) return;
-    if (SKIP_RE.test(line)) return;
+    var line = raw
+      .replace(/^\s*'.*$/, '')
+      .replace(/^\s*\/\/.*$/, '')
+      .trim()
+    if (!line) return
+    if (SKIP_RE.test(line)) return
 
-    var decl = DECL_RE.exec(line);
+    var decl = DECL_RE.exec(line)
     if (decl) {
-      var labelPart = decl[1].trim();
+      var labelPart = decl[1].trim()
       // Warn if looks like 'actor Label ShortAlias' without 'as' keyword
       if (!decl[2] && /\s/.test(labelPart) && !/^["']/.test(labelPart)) {
-        var tokens = labelPart.split(/\s+/);
-        var suggestedAlias = tokens[tokens.length - 1];
-        var suggestedLabel = tokens.slice(0, -1).join(' ');
+        var tokens = labelPart.split(/\s+/)
+        var suggestedAlias = tokens[tokens.length - 1]
+        var suggestedLabel = tokens.slice(0, -1).join(' ')
         warnings.push({
           lineNum: lineNum,
           raw: raw.trim(),
-          hint: 'Use "as" for aliases — e.g.: ' +
-                line.split(/\s+/)[0] + ' "' + suggestedLabel + '" as ' + suggestedAlias
-        });
+          hint:
+            'Use "as" for aliases — e.g.: ' +
+            line.split(/\s+/)[0] +
+            ' "' +
+            suggestedLabel +
+            '" as ' +
+            suggestedAlias
+        })
       }
-      registerActor(decl[1], decl[2]);
-      return;
+      registerActor(decl[1], decl[2])
+      return
     }
 
-    var arrow = ARROW_RE.exec(line);
+    var arrow = ARROW_RE.exec(line)
     if (arrow) {
-      var a        = arrow[1];
-      var arrowStr = arrow[2];
-      var b        = arrow[3];
-      var msgLabel = arrow[4];
-      var isBidirectional = arrowStr === '<->' || arrowStr === '<-->';
-      var isLeftward      = !isBidirectional && arrowStr.charAt(0) === '<';
-      var from = resolveActor(isLeftward ? b : a);
-      var to   = resolveActor(isLeftward ? a : b);
+      var a = arrow[1]
+      var arrowStr = arrow[2]
+      var b = arrow[3]
+      var msgLabel = arrow[4]
+      var isBidirectional = arrowStr === '<->' || arrowStr === '<-->'
+      var isLeftward = !isBidirectional && arrowStr.charAt(0) === '<'
+      var from = resolveActor(isLeftward ? b : a)
+      var to = resolveActor(isLeftward ? a : b)
 
-      var kind = 'sync';
-      if (/-->>/.test(arrowStr))                             kind = 'return';
-      else if (/-->/.test(arrowStr) || arrowStr === '<-->') kind = 'async';
-      else if (/->>/.test(arrowStr))                        kind = 'async';
+      var kind = 'sync'
+      if (/-->>/.test(arrowStr)) kind = 'return'
+      else if (/-->/.test(arrowStr) || arrowStr === '<-->') kind = 'async'
+      else if (/->>/.test(arrowStr)) kind = 'async'
 
-      var direction = isBidirectional ? 'both' : 'right';
-      messages.push({ from: from, to: to, label: msgLabel || '', kind: kind, direction: direction });
-      return;
+      var direction = isBidirectional ? 'both' : 'right'
+      messages.push({ from: from, to: to, label: msgLabel || '', kind: kind, direction: direction })
+      return
     }
 
     // Not blank, not comment, not directive, not decl, not arrow — user needs to fix it
-    warnings.push({ lineNum: lineNum, raw: raw.trim(), hint: null });
-  });
+    warnings.push({ lineNum: lineNum, raw: raw.trim(), hint: null })
+  })
 
   if (actorOrder.length === 0) {
-    throw new Error('No actors found. Declare actors with:\n  participant Alice\n  participant Bob as B');
+    throw new Error(
+      'No actors found. Declare actors with:\n  participant Alice\n  participant Bob as B'
+    )
   }
 
-  return { actors: actorOrder.map(function(l) { return { label: l }; }), messages: messages, warnings: warnings };
+  return {
+    actors: actorOrder.map(function (l) {
+      return { label: l }
+    }),
+    messages: messages,
+    warnings: warnings
+  }
 }
 
-
+setGroup("_parseUML")
 test('PlantUML: parses participant declarations and arrows', () => {
-    const result = _parseUML(`
+  const result = _parseUML(`
 @startuml
 participant Alice
 participant Bob
@@ -813,18 +862,18 @@ Alice -> Bob : Hello
 Bob --> Alice : Hi back
 @enduml
     `)
-    assertEqual(result.actors.length, 2, 'two actors parsed')
-    assertEqual(result.actors[0].label, 'Alice', 'first actor is Alice')
-    assertEqual(result.actors[1].label, 'Bob', 'second actor is Bob')
-    assertEqual(result.messages.length, 2, 'two messages parsed')
-    assertEqual(result.messages[0].from, 'Alice', 'first message from Alice')
-    assertEqual(result.messages[0].to, 'Bob', 'first message to Bob')
-    assertEqual(result.messages[0].kind, 'sync', 'solid arrow is sync')
-    assertEqual(result.messages[1].kind, 'async', 'dashed arrow is async')
-  })
+  assertEqual(result.actors.length, 2, 'two actors parsed')
+  assertEqual(result.actors[0].label, 'Alice', 'first actor is Alice')
+  assertEqual(result.actors[1].label, 'Bob', 'second actor is Bob')
+  assertEqual(result.messages.length, 2, 'two messages parsed')
+  assertEqual(result.messages[0].from, 'Alice', 'first message from Alice')
+  assertEqual(result.messages[0].to, 'Bob', 'first message to Bob')
+  assertEqual(result.messages[0].kind, 'sync', 'solid arrow is sync')
+  assertEqual(result.messages[1].kind, 'async', 'dashed arrow is async')
+})
 
-  test('PlantUML: alias resolution maps arrows through declared alias', () => {
-    const result = _parseUML(`
+test('PlantUML: alias resolution maps arrows through declared alias', () => {
+  const result = _parseUML(`
 @startuml
 participant "Order Service" as OS
 participant "Payment Service" as PS
@@ -832,54 +881,62 @@ OS -> PS : Charge
 PS -->> OS : Receipt
 @enduml
     `)
-    assertEqual(result.actors[0].label, 'Order Service', 'alias resolves to full label')
-    assertEqual(result.messages[0].from, 'Order Service', 'from uses resolved label')
-    assertEqual(result.messages[1].kind, 'return', 'double-dashed double-arrow is return')
-  })
+  assertEqual(result.actors[0].label, 'Order Service', 'alias resolves to full label')
+  assertEqual(result.messages[0].from, 'Order Service', 'from uses resolved label')
+  assertEqual(result.messages[1].kind, 'return', 'double-dashed double-arrow is return')
+})
 
-  test('PlantUML: undeclared actors in arrows are auto-created', () => {
-    const result = _parseUML(`@startuml
+test('PlantUML: undeclared actors in arrows are auto-created', () => {
+  const result = _parseUML(`@startuml
 A -> B : go
 B -> C : forward
 @enduml`)
-    assertEqual(result.actors.length, 3, 'three actors auto-created from arrows')
-  })
+  assertEqual(result.actors.length, 3, 'three actors auto-created from arrows')
+})
 
-  test('Mermaid: parses sequenceDiagram with participant and arrows', () => {
-    const result = _parseUML(`
+test('Mermaid: parses sequenceDiagram with participant and arrows', () => {
+  const result = _parseUML(`
 sequenceDiagram
   participant Alice
   participant Bob
   Alice->>Bob: Request
   Bob-->>Alice: Response
     `)
-    assertEqual(result.actors.length, 2, 'two actors from Mermaid')
-    assertEqual(result.messages[0].kind, 'async', '->> is async')
-    assertEqual(result.messages[1].kind, 'return', '-->> is return')
-    assertEqual(result.messages[0].label, 'Request', 'message label parsed')
-  })
+  assertEqual(result.actors.length, 2, 'two actors from Mermaid')
+  assertEqual(result.messages[0].kind, 'async', '->> is async')
+  assertEqual(result.messages[1].kind, 'return', '-->> is return')
+  assertEqual(result.messages[0].label, 'Request', 'message label parsed')
+})
 
-  test('Mermaid: participant with alias resolves correctly', () => {
-    const result = _parseUML(`
+test('Mermaid: participant with alias resolves correctly', () => {
+  const result = _parseUML(`
 sequenceDiagram
   participant Alice as A
   participant Bob as B
   A->>B: ping
     `)
-    assertEqual(result.actors[0].label, 'Alice', 'Mermaid alias resolves to label')
-    assertEqual(result.messages[0].from, 'Alice', 'from uses resolved label')
-  })
+  assertEqual(result.actors[0].label, 'Alice', 'Mermaid alias resolves to label')
+  assertEqual(result.messages[0].from, 'Alice', 'from uses resolved label')
+})
 
-  test('throws on empty input', () => {
-    let threw = false
-    try { _parseUML('') } catch(e) { threw = true }
-    assertEqual(threw, true, 'empty string throws')
-  })
+test('throws on empty input', () => {
+  let threw = false
+  try {
+    _parseUML('')
+  } catch (e) {
+    threw = true
+  }
+  assertEqual(threw, true, 'empty string throws')
+})
 
-  test('throws on unrecognised format', () => {
-    let threw = false
-    try { _parseUML('some random text with no arrows') } catch(e) { threw = true }
-    assertEqual(threw, true, 'unrecognised format throws')
+test('throws on unrecognised format', () => {
+  let threw = false
+  try {
+    _parseUML('some random text with no arrows')
+  } catch (e) {
+    threw = true
+  }
+  assertEqual(threw, true, 'unrecognised format throws')
 })
 
 test('basic @startuml block with -> and <- and <-> parses correctly', () => {
@@ -897,13 +954,12 @@ Alice <-> Bob : Bidirectional
   assertEqual(result.actors[1].label, 'Bob', 'second actor Bob')
   assertEqual(result.messages.length, 3, 'three messages')
   assertEqual(result.messages[0].from, 'Alice', 'msg[0] from Alice')
-  assertEqual(result.messages[0].to,   'Bob',   'msg[0] to Bob')
+  assertEqual(result.messages[0].to, 'Bob', 'msg[0] to Bob')
   assertEqual(result.messages[1].from, 'Alice', 'msg[1] from Alice (left arrow reverses)')
-  assertEqual(result.messages[1].to,   'Bob',   'msg[1] to Bob')
+  assertEqual(result.messages[1].to, 'Bob', 'msg[1] to Bob')
   assertEqual(result.messages[2].from, 'Alice', 'msg[2] from Alice (bidirectional)')
-  assertEqual(result.messages[2].to,   'Bob',   'msg[2] to Bob')
+  assertEqual(result.messages[2].to, 'Bob', 'msg[2] to Bob')
 })
-
 
 test('actor without "as" keyword produces a warning with a hint', () => {
   const input = '@startuml\nactor Alice a\nA -> B : go\n@enduml'
@@ -913,27 +969,27 @@ test('actor without "as" keyword produces a warning with a hint', () => {
 })
 
 test('valid input with "as" aliases and labelless arrows produces no warnings', () => {
-  const input = '@startuml\nactor Alice as a\nactor Bob as b\na -> b\na <- b\na <-> b\na --> b\na <-- b\na <--> b\na <-> a\nb <-> b\n@enduml'
+  const input =
+    '@startuml\nactor Alice as a\nactor Bob as b\na -> b\na <- b\na <-> b\na --> b\na <-- b\na <--> b\na <-> a\nb <-> b\n@enduml'
   const result = _parseUML(input)
   assertEqual(result.actors.length, 2, 'two actors')
   assertEqual(result.actors[0].label, 'Alice', 'first actor is Alice')
   assertEqual(result.actors[1].label, 'Bob', 'second actor is Bob')
   assertEqual(result.messages.length, 8, 'all eight arrow lines parsed')
   assertEqual(result.messages[0].from, 'Alice', 'msg[0] -> from Alice')
-  assertEqual(result.messages[0].to,   'Bob',   'msg[0] -> to Bob')
-  assertEqual(result.messages[1].from, 'Bob',   'msg[1] <- flipped: from Bob')
-  assertEqual(result.messages[1].to,   'Alice', 'msg[1] <- flipped: to Alice')
-  assertEqual(result.messages[2].direction, 'both',  'msg[2] <-> direction=both')
-  assertEqual(result.messages[3].kind,      'async', 'msg[3] --> is async')
-  assertEqual(result.messages[5].kind,      'async', 'msg[5] <--> is async')
-  assertEqual(result.messages[5].direction, 'both',  'msg[5] <--> direction=both')
+  assertEqual(result.messages[0].to, 'Bob', 'msg[0] -> to Bob')
+  assertEqual(result.messages[1].from, 'Bob', 'msg[1] <- flipped: from Bob')
+  assertEqual(result.messages[1].to, 'Alice', 'msg[1] <- flipped: to Alice')
+  assertEqual(result.messages[2].direction, 'both', 'msg[2] <-> direction=both')
+  assertEqual(result.messages[3].kind, 'async', 'msg[3] --> is async')
+  assertEqual(result.messages[5].kind, 'async', 'msg[5] <--> is async')
+  assertEqual(result.messages[5].direction, 'both', 'msg[5] <--> direction=both')
   assertEqual(result.messages[6].from, 'Alice', 'msg[6] self-message Alice->Alice')
-  assertEqual(result.messages[6].to,   'Alice', 'msg[6] self-message to Alice')
-  assertEqual(result.messages[7].from, 'Bob',   'msg[7] self-message Bob->Bob')
-  assertEqual(result.messages[7].to,   'Bob',   'msg[7] self-message to Bob')
+  assertEqual(result.messages[6].to, 'Alice', 'msg[6] self-message to Alice')
+  assertEqual(result.messages[7].from, 'Bob', 'msg[7] self-message Bob->Bob')
+  assertEqual(result.messages[7].to, 'Bob', 'msg[7] self-message to Bob')
   assertEqual(result.warnings.length, 0, 'no warnings on clean valid input')
 })
-
 
 // ═══════════════════════════════════════════════════════
 //  Suite 8 — End-to-End scenario
@@ -950,44 +1006,51 @@ test('valid input with "as" aliases and labelless arrows produces no warnings', 
 //  The PlantUML serializer is inlined (mirrors HTML adapter).
 // ═══════════════════════════════════════════════════════
 
-
 // ── Inline PlantUML serializer (mirrors PlantUMLAdapter in HTML) ─────────────
 function serializePlantUML(actors, messages, notes, fragments) {
-  function esc(s) { return (s||'unnamed').replace(/"/g, '\\"') }
+  function esc(s) {
+    return (s || 'unnamed').replace(/"/g, '\\"')
+  }
   function kw(type) {
-    return { 'actor-person':'actor', 'actor-system':'participant',
-             'actor-db':'database', 'actor-queue':'queue' }[type] || 'participant'
+    return (
+      {
+        'actor-person': 'actor',
+        'actor-system': 'participant',
+        'actor-db': 'database',
+        'actor-queue': 'queue'
+      }[type] || 'participant'
+    )
   }
   const lines = ['@startuml', '']
-  const sorted = [...actors].sort((a,b) => a.x - b.x)
+  const sorted = [...actors].sort((a, b) => a.x - b.x)
   for (const a of sorted) lines.push(`${kw(a.type)} "${esc(a.label)}" as ${a.id}`)
   if (sorted.length) lines.push('')
 
   const items = [
-    ...messages.map(m => ({...m, _k:'msg'})),
-    ...notes.map(n => ({...n, _k:'note'})),
+    ...messages.map(m => ({ ...m, _k: 'msg' })),
+    ...notes.map(n => ({ ...n, _k: 'note' }))
   ]
   for (const f of fragments) {
-    items.push({ y: f.y, _k:'frag-open', f })
-    items.push({ y: f.y + f.h, _k:'frag-close', f })
+    items.push({ y: f.y, _k: 'frag-open', f })
+    items.push({ y: f.y + f.h, _k: 'frag-close', f })
   }
-  items.sort((a,b) => (a.y||0) - (b.y||0))
+  items.sort((a, b) => (a.y || 0) - (b.y || 0))
 
   for (const item of items) {
     if (item._k === 'msg') {
       const from = actors.find(a => a.id === item.fromId)
-      const to   = actors.find(a => a.id === item.toId)
+      const to = actors.find(a => a.id === item.toId)
       if (!from || !to) continue
       const lbl = esc(item.label || 'message')
       const dir = item.direction || 'right'
       const [src, tgt] = dir === 'left' ? [to.id, from.id] : [from.id, to.id]
-      if (item.kind === 'sync')   lines.push(`${src} -> ${tgt} : ${lbl}`)
-      if (item.kind === 'async')  lines.push(`${src} ->> ${tgt} : ${lbl}`)
+      if (item.kind === 'sync') lines.push(`${src} -> ${tgt} : ${lbl}`)
+      if (item.kind === 'async') lines.push(`${src} ->> ${tgt} : ${lbl}`)
       if (item.kind === 'return') lines.push(`${src} --> ${tgt} : ${lbl}`)
     } else if (item._k === 'note') {
-      lines.push(`note right : ${item.text||'note'}`)
+      lines.push(`note right : ${item.text || 'note'}`)
     } else if (item._k === 'frag-open') {
-      lines.push(`${item.f.kind.replace('frag-','')} [${item.f.cond||'condition'}]`)
+      lines.push(`${item.f.kind.replace('frag-', '')} [${item.f.cond || 'condition'}]`)
     } else if (item._k === 'frag-close') {
       lines.push('end')
     }
@@ -997,24 +1060,25 @@ function serializePlantUML(actors, messages, notes, fragments) {
 }
 
 // ── Step 1: Load demo ────────────────────────────────────
+setGroup("end-to-end")
 test('e2e: LOAD_DEMO produces expected actor/message/fragment/note counts', () => {
   const store = freshStore()
   store.dispatch({ type: 'LOAD_DEMO' })
   const s = store.state
-  assertEqual(s.actors.length,    4, '4 actors')
-  assertEqual(s.messages.length,  6, '6 messages')
+  assertEqual(s.actors.length, 4, '4 actors')
+  assertEqual(s.messages.length, 6, '6 messages')
   assertEqual(s.fragments.length, 1, '1 fragment')
-  assertEqual(s.notes.length,     1, '1 note')
+  assertEqual(s.notes.length, 1, '1 note')
 })
 
 test('e2e: LOAD_DEMO actor labels are correct', () => {
   const store = freshStore()
   store.dispatch({ type: 'LOAD_DEMO' })
   const labels = store.state.actors.map(a => a.label)
-  assert(labels.includes('User'),         'has User')
-  assert(labels.includes('API Gateway'),  'has API Gateway')
+  assert(labels.includes('User'), 'has User')
+  assert(labels.includes('API Gateway'), 'has API Gateway')
   assert(labels.includes('Auth Service'), 'has Auth Service')
-  assert(labels.includes('Database'),     'has Database')
+  assert(labels.includes('Database'), 'has Database')
 })
 
 test('e2e: LOAD_DEMO first message is POST /login sync right', () => {
@@ -1022,13 +1086,13 @@ test('e2e: LOAD_DEMO first message is POST /login sync right', () => {
   store.dispatch({ type: 'LOAD_DEMO' })
   const s = store.state
   const user = s.actors.find(a => a.label === 'User')
-  const api  = s.actors.find(a => a.label === 'API Gateway')
-  const msg  = s.messages[0]
-  assertEqual(msg.label,     'POST /login', 'label')
-  assertEqual(msg.kind,      'sync',        'kind')
-  assertEqual(msg.direction, 'right',       'direction')
-  assertEqual(msg.fromId,    user.id,       'fromId')
-  assertEqual(msg.toId,      api.id,        'toId')
+  const api = s.actors.find(a => a.label === 'API Gateway')
+  const msg = s.messages[0]
+  assertEqual(msg.label, 'POST /login', 'label')
+  assertEqual(msg.kind, 'sync', 'kind')
+  assertEqual(msg.direction, 'right', 'direction')
+  assertEqual(msg.fromId, user.id, 'fromId')
+  assertEqual(msg.toId, api.id, 'toId')
 })
 
 // ── Step 2: Modify ───────────────────────────────────────
@@ -1037,7 +1101,10 @@ test('e2e: add actor after demo load increases actor count', () => {
   store.dispatch({ type: 'LOAD_DEMO' })
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Cache', type: 'actor-db' } })
   assertEqual(store.state.actors.length, 5, '5 actors after add')
-  assert(store.state.actors.some(a => a.label === 'Cache'), 'Cache actor present')
+  assert(
+    store.state.actors.some(a => a.label === 'Cache'),
+    'Cache actor present'
+  )
 })
 
 test('e2e: UPDATE_MESSAGE changes label on first message', () => {
@@ -1061,14 +1128,20 @@ test('e2e: ADD_NOTE after demo adds to note count', () => {
   store.dispatch({ type: 'LOAD_DEMO' })
   store.dispatch({ type: 'ADD_NOTE', payload: { x: 10, y: 50, text: 'Security boundary' } })
   assertEqual(store.state.notes.length, 2, '2 notes')
-  assert(store.state.notes.some(n => n.text === 'Security boundary'), 'note text present')
+  assert(
+    store.state.notes.some(n => n.text === 'Security boundary'),
+    'note text present'
+  )
 })
 
 // ── Step 3: Snapshot as exported JSON ───────────────────
 test('e2e: state snapshot is serializable and round-trips through JSON', () => {
   const store = freshStore()
   store.dispatch({ type: 'LOAD_DEMO' })
-  store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: store.state.messages[0].id, label: 'POST /auth/login' } })
+  store.dispatch({
+    type: 'UPDATE_MESSAGE',
+    payload: { id: store.state.messages[0].id, label: 'POST /auth/login' }
+  })
 
   // Simulate _exportDiagram: JSON.stringify(store.state)
   const exported = JSON.stringify(store.state)
@@ -1076,9 +1149,9 @@ test('e2e: state snapshot is serializable and round-trips through JSON', () => {
 
   // Round-trip: parse back
   const parsed = JSON.parse(exported)
-  assertEqual(parsed.actors.length,   store.state.actors.length,   'actors preserved')
+  assertEqual(parsed.actors.length, store.state.actors.length, 'actors preserved')
   assertEqual(parsed.messages.length, store.state.messages.length, 'messages preserved')
-  assertEqual(parsed.messages[0].label, 'POST /auth/login',        'modified label preserved')
+  assertEqual(parsed.messages[0].label, 'POST /auth/login', 'modified label preserved')
 })
 
 // ── Step 4: Clear canvas ─────────────────────────────────
@@ -1087,10 +1160,10 @@ test('e2e: CLEAR_DIAGRAM resets actors, messages, notes, fragments to empty', ()
   store.dispatch({ type: 'LOAD_DEMO' })
   store.dispatch({ type: 'CLEAR_DIAGRAM' })
   const s = store.state
-  assertEqual(s.actors.length,    0, 'actors empty')
-  assertEqual(s.messages.length,  0, 'messages empty')
+  assertEqual(s.actors.length, 0, 'actors empty')
+  assertEqual(s.messages.length, 0, 'messages empty')
   assertEqual(s.fragments.length, 0, 'fragments empty')
-  assertEqual(s.notes.length,     0, 'notes empty')
+  assertEqual(s.notes.length, 0, 'notes empty')
 })
 
 test('e2e: CLEAR_DIAGRAM is undoable — UNDO restores demo state', () => {
@@ -1098,7 +1171,7 @@ test('e2e: CLEAR_DIAGRAM is undoable — UNDO restores demo state', () => {
   store.dispatch({ type: 'LOAD_DEMO' })
   store.dispatch({ type: 'CLEAR_DIAGRAM' })
   store.dispatch({ type: 'UNDO' })
-  assertEqual(store.state.actors.length,   4, 'actors restored after undo')
+  assertEqual(store.state.actors.length, 4, 'actors restored after undo')
   assertEqual(store.state.messages.length, 6, 'messages restored after undo')
 })
 
@@ -1106,7 +1179,10 @@ test('e2e: CLEAR_DIAGRAM is undoable — UNDO restores demo state', () => {
 test('e2e: LOAD_DIAGRAM from exported snapshot restores full state', () => {
   const store = freshStore()
   store.dispatch({ type: 'LOAD_DEMO' })
-  store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: store.state.messages[0].id, label: 'POST /auth/login' } })
+  store.dispatch({
+    type: 'UPDATE_MESSAGE',
+    payload: { id: store.state.messages[0].id, label: 'POST /auth/login' }
+  })
 
   // Export
   const snapshot = JSON.parse(JSON.stringify(store.state))
@@ -1118,11 +1194,15 @@ test('e2e: LOAD_DIAGRAM from exported snapshot restores full state', () => {
   // Import
   store.dispatch({ type: 'LOAD_DIAGRAM', payload: { ...snapshot, _source: 'import' } })
 
-  assertEqual(store.state.actors.length,    snapshot.actors.length,    'actors restored')
-  assertEqual(store.state.messages.length,  snapshot.messages.length,  'messages restored')
+  assertEqual(store.state.actors.length, snapshot.actors.length, 'actors restored')
+  assertEqual(store.state.messages.length, snapshot.messages.length, 'messages restored')
   assertEqual(store.state.fragments.length, snapshot.fragments.length, 'fragments restored')
-  assertEqual(store.state.notes.length,     snapshot.notes.length,     'notes restored')
-  assertEqual(store.state.messages[0].label, 'POST /auth/login',       'modified label survives round-trip')
+  assertEqual(store.state.notes.length, snapshot.notes.length, 'notes restored')
+  assertEqual(
+    store.state.messages[0].label,
+    'POST /auth/login',
+    'modified label survives round-trip'
+  )
 })
 
 test('e2e: LOAD_DIAGRAM clears undo stack — UNDO after import is a no-op', () => {
@@ -1143,12 +1223,12 @@ test('e2e: PlantUML output contains all actor labels from demo', () => {
   const { actors, messages, notes, fragments } = store.state
   const output = serializePlantUML(actors, messages, notes, fragments)
 
-  assert(output.includes('@startuml'),    'has @startuml')
-  assert(output.includes('@enduml'),      'has @enduml')
-  assert(output.includes('User'),         'contains User')
-  assert(output.includes('API Gateway'),  'contains API Gateway')
+  assert(output.includes('@startuml'), 'has @startuml')
+  assert(output.includes('@enduml'), 'has @enduml')
+  assert(output.includes('User'), 'contains User')
+  assert(output.includes('API Gateway'), 'contains API Gateway')
   assert(output.includes('Auth Service'), 'contains Auth Service')
-  assert(output.includes('Database'),     'contains Database')
+  assert(output.includes('Database'), 'contains Database')
 })
 
 test('e2e: PlantUML output contains all message labels from demo', () => {
@@ -1157,12 +1237,12 @@ test('e2e: PlantUML output contains all message labels from demo', () => {
   const { actors, messages, notes, fragments } = store.state
   const output = serializePlantUML(actors, messages, notes, fragments)
 
-  assert(output.includes('POST /login'),          'POST /login present')
-  assert(output.includes('validateCredentials'),   'validateCredentials present')
-  assert(output.includes('SELECT user WHERE'),     'SELECT message present')
-  assert(output.includes('user record'),           'user record present')
-  assert(output.includes('JWT token'),             'JWT token present')
-  assert(output.includes('200 OK + token'),        '200 OK present')
+  assert(output.includes('POST /login'), 'POST /login present')
+  assert(output.includes('validateCredentials'), 'validateCredentials present')
+  assert(output.includes('SELECT user WHERE'), 'SELECT message present')
+  assert(output.includes('user record'), 'user record present')
+  assert(output.includes('JWT token'), 'JWT token present')
+  assert(output.includes('200 OK + token'), '200 OK present')
 })
 
 test('e2e: PlantUML output reflects modified label after UPDATE_MESSAGE', () => {
@@ -1174,8 +1254,10 @@ test('e2e: PlantUML output reflects modified label after UPDATE_MESSAGE', () => 
   const output = serializePlantUML(actors, messages, notes, fragments)
 
   assert(output.includes('POST /auth/login'), 'modified label in output')
-  assert(!output.includes('POST /login\n') && !output.includes('POST /login '),
-    'original label not present as standalone message')
+  assert(
+    !output.includes('POST /login\n') && !output.includes('POST /login '),
+    'original label not present as standalone message'
+  )
 })
 
 test('e2e: PlantUML output contains fragment keyword from demo', () => {
@@ -1184,9 +1266,9 @@ test('e2e: PlantUML output contains fragment keyword from demo', () => {
   const { actors, messages, notes, fragments } = store.state
   const output = serializePlantUML(actors, messages, notes, fragments)
 
-  assert(output.includes('alt'),                  'fragment alt keyword present')
-  assert(output.includes('valid credentials'),     'fragment condition present')
-  assert(output.includes('end'),                   'fragment end present')
+  assert(output.includes('alt'), 'fragment alt keyword present')
+  assert(output.includes('valid credentials'), 'fragment condition present')
+  assert(output.includes('end'), 'fragment end present')
 })
 
 test('e2e: full lifecycle — demo → modify → export → clear → import → serialize is consistent', () => {
@@ -1202,7 +1284,7 @@ test('e2e: full lifecycle — demo → modify → export → clear → import �
 
   // Export
   const snapshot = JSON.parse(JSON.stringify(store.state))
-  assertEqual(snapshot.actors.length,   5, 'snapshot has 5 actors')
+  assertEqual(snapshot.actors.length, 5, 'snapshot has 5 actors')
   assertEqual(snapshot.messages.length, 6, 'snapshot has 6 messages')
 
   // Clear
@@ -1211,19 +1293,17 @@ test('e2e: full lifecycle — demo → modify → export → clear → import �
 
   // Import
   store.dispatch({ type: 'LOAD_DIAGRAM', payload: { ...snapshot, _source: 'import' } })
-  assertEqual(store.state.actors.length,   5, '5 actors after import')
+  assertEqual(store.state.actors.length, 5, '5 actors after import')
   assertEqual(store.state.messages.length, 6, '6 messages after import')
 
   // Serialize — output must reflect the imported modifications
   const { actors, messages, notes, fragments } = store.state
   const output = serializePlantUML(actors, messages, notes, fragments)
   assert(output.includes('POST /auth/login'), 'modified label in final output')
-  assert(output.includes('Cache'),            'added actor in final output')
-  assert(output.includes('@startuml'),        'valid PlantUML wrapper')
-  assert(output.includes('@enduml'),          'valid PlantUML wrapper close')
+  assert(output.includes('Cache'), 'added actor in final output')
+  assert(output.includes('@startuml'), 'valid PlantUML wrapper')
+  assert(output.includes('@enduml'), 'valid PlantUML wrapper close')
 })
-
-
 
 // ═══════════════════════════════════════════════════════
 //  SUITE 9 — Edit button positioning (_positionEditBtn)
@@ -1237,57 +1317,57 @@ test('actor bounding box is right-edge, top of actor', () => {
   const ACTOR_W = 110
   const actor = { id: 'a1', x: 40 }
   const box = { x: actor.x, y: 4, w: ACTOR_W, h: 0 }
-  const btnX = (box.x + box.w) * 1.0  // zoom=1, no viewport offset
-  const btnY = (box.y) * 1.0
+  const btnX = (box.x + box.w) * 1.0 // zoom=1, no viewport offset
+  const btnY = box.y * 1.0
   assertEqual(btnX, 150, 'actor edit btn x = actor.x + ACTOR_W')
-  assertEqual(btnY, 4,   'actor edit btn y = 4px (above top edge)')
+  assertEqual(btnY, 4, 'actor edit btn y = 4px (above top edge)')
 })
 
 test('message box anchors to toA side (right arrow)', () => {
   const ACTOR_W = 110
-  const fromA = { id: 'a1', x: 40  }
-  const toA   = { id: 'a2', x: 210 }
-  const msg   = { id: 'm1', fromId: 'a1', toId: 'a2', y: 122, direction: 'right' }
+  const fromA = { id: 'a1', x: 40 }
+  const toA = { id: 'a2', x: 210 }
+  const msg = { id: 'm1', fromId: 'a1', toId: 'a2', y: 122, direction: 'right' }
   const actorCenterX = a => a.x + ACTOR_W / 2
-  const toX   = actorCenterX(toA)   // 265
+  const toX = actorCenterX(toA) // 265
   const fromX = actorCenterX(fromA) // 95
   const anchorX = msg.direction === 'both' ? (fromX + toX) / 2 : toX
   const box = { x: anchorX - 30, y: msg.y - 28, w: 60, h: 20 }
-  const btnX = box.x + box.w  // anchorX + 30 = 295
-  const btnY = box.y           // 94
+  const btnX = box.x + box.w // anchorX + 30 = 295
+  const btnY = box.y // 94
   assertEqual(btnX, 295, 'right-arrow edit btn x at toA side + 30')
-  assertEqual(btnY, 94,  'right-arrow edit btn y above arrow line')
+  assertEqual(btnY, 94, 'right-arrow edit btn y above arrow line')
 })
 
 test('message box anchors to toA side (left arrow)', () => {
   const ACTOR_W = 110
   const fromA = { id: 'a2', x: 210 }
-  const toA   = { id: 'a1', x: 40  }
-  const msg   = { id: 'm1', fromId: 'a2', toId: 'a1', y: 122, direction: 'left' }
+  const toA = { id: 'a1', x: 40 }
+  const msg = { id: 'm1', fromId: 'a2', toId: 'a1', y: 122, direction: 'left' }
   const actorCenterX = a => a.x + ACTOR_W / 2
-  const toX   = actorCenterX(toA)   // 95
+  const toX = actorCenterX(toA) // 95
   const anchorX = msg.direction === 'both' ? 0 : toX
   const box = { x: anchorX - 30, y: msg.y - 28, w: 60, h: 20 }
-  const btnX = box.x + box.w  // 95 + 30 = 125
+  const btnX = box.x + box.w // 95 + 30 = 125
   assertEqual(btnX, 125, 'left-arrow edit btn x anchors to left toA side')
 })
 
 test('message box midpoint for bidirectional arrow', () => {
   const ACTOR_W = 110
-  const fromA = { id: 'a1', x: 40  }
-  const toA   = { id: 'a2', x: 210 }
-  const msg   = { id: 'm1', fromId: 'a1', toId: 'a2', y: 122, direction: 'both' }
+  const fromA = { id: 'a1', x: 40 }
+  const toA = { id: 'a2', x: 210 }
+  const msg = { id: 'm1', fromId: 'a1', toId: 'a2', y: 122, direction: 'both' }
   const actorCenterX = a => a.x + ACTOR_W / 2
-  const toX   = actorCenterX(toA)   // 265
+  const toX = actorCenterX(toA) // 265
   const fromX = actorCenterX(fromA) // 95
-  const anchorX = (fromX + toX) / 2  // 180
-  const btnX = (anchorX - 30) + 60   // 180
+  const anchorX = (fromX + toX) / 2 // 180
+  const btnX = anchorX - 30 + 60 // 180
   assertEqual(btnX, 210, 'bidirectional edit btn x at midpoint + 30')
 })
 
 test('note bounding box right-edge at x + 120', () => {
   const note = { id: 'n1', x: 20, y: 122 }
-  const box  = { x: note.x, y: (note.y || 0) - 18, w: 120, h: 36 }
+  const box = { x: note.x, y: (note.y || 0) - 18, w: 120, h: 36 }
   const btnX = box.x + box.w
   const btnY = box.y
   assertEqual(btnX, 140, 'note edit btn x = note.x + 120')
@@ -1296,7 +1376,7 @@ test('note bounding box right-edge at x + 120', () => {
 
 test('fragment bounding box top-right corner', () => {
   const frag = { id: 'f1', x: 60, y: 200, w: 200, h: 100 }
-  const box  = { x: frag.x, y: frag.y, w: frag.w, h: frag.h }
+  const box = { x: frag.x, y: frag.y, w: frag.w, h: frag.h }
   const btnX = box.x + box.w
   const btnY = box.y
   assertEqual(btnX, 260, 'fragment edit btn x = frag.x + frag.w')
@@ -1307,9 +1387,9 @@ test('edit btn hidden when nothing selected', () => {
   // _positionEditBtn returns early and would remove visible class
   // We test the guard condition: !s || s._preview
   const noSelection = null
-  const preview     = { id: '__preview__', _preview: true }
-  assert(!noSelection,      'null selection triggers hide')
-  assert(preview._preview,  'preview object triggers hide')
+  const preview = { id: '__preview__', _preview: true }
+  assert(!noSelection, 'null selection triggers hide')
+  assert(preview._preview, 'preview object triggers hide')
 })
 
 test(':added store events set uiState.selected before render', () => {
@@ -1322,7 +1402,6 @@ test(':added store events set uiState.selected before render', () => {
   assert(actor.id, 'actor has an id for _wrapSelected')
   assertEqual(actor.label, 'Test', 'actor label matches payload')
 })
-
 
 test('selected state persists after deselect-then-reselect cycle', () => {
   // Simulates: add actor → click canvas (deselect) → click actor again
@@ -1338,7 +1417,7 @@ test('selected state persists after deselect-then-reselect cycle', () => {
   // Simulate re-click: setSelected sets selected back
   selected = { ...actor, _type: 'actor' }
   assert(selected._type === 'actor', 'reselected type is actor')
-  assert(selected.id === actor.id,   'reselected id matches store actor')
+  assert(selected.id === actor.id, 'reselected id matches store actor')
 
   // _positionEditBtn finds the actor by id in state.actors
   const found = store.state.actors.find(a => a.id === selected.id)
@@ -1347,38 +1426,38 @@ test('selected state persists after deselect-then-reselect cycle', () => {
 })
 
 test('_renderEditBtn box defined for all element types when selected', () => {
-  const ACTOR_W = 110, ACTOR_H = 42
+  const ACTOR_W = 110,
+    ACTOR_H = 42
   const actorCenterX = a => a.x + ACTOR_W / 2
 
   const cases = [
     {
       _type: 'actor',
       el: { id: 'a1', x: 40 },
-      getBox: (el) => ({ x: el.x, y: 8, w: ACTOR_W, h: ACTOR_H }),
+      getBox: el => ({ x: el.x, y: 8, w: ACTOR_W, h: ACTOR_H })
     },
     {
       _type: 'note',
       el: { id: 'n1', x: 20, y: 122 },
-      getBox: (el) => ({ x: el.x, y: (el.y || 0) - 18, w: 120, h: 36 }),
+      getBox: el => ({ x: el.x, y: (el.y || 0) - 18, w: 120, h: 36 })
     },
     {
       _type: 'fragment',
       el: { id: 'f1', x: 60, y: 200, w: 200, h: 100 },
-      getBox: (el) => ({ x: el.x, y: el.y, w: el.w, h: el.h }),
-    },
+      getBox: el => ({ x: el.x, y: el.y, w: el.w, h: el.h })
+    }
   ]
 
   for (const { _type, el, getBox } of cases) {
     const box = getBox(el)
-    assert(box !== null,        _type + ': box is not null')
-    assert(box.w > 0,           _type + ': box has positive width')
+    assert(box !== null, _type + ': box is not null')
+    assert(box.w > 0, _type + ': box has positive width')
     assert(typeof box.x === 'number', _type + ': box.x is a number')
     const btnX = box.x + box.w
     const btnY = box.y
     assert(btnX > 0, _type + ': btnX is positive')
   }
 })
-
 
 test('ADD_ACTOR succeeds with no prior actors (no 2-actor guard)', () => {
   const store = createStore()
@@ -1391,12 +1470,19 @@ test('ADD_MESSAGE with 1 actor uses self-message (fromId === toId)', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Solo', type: 'actor-person', x: 40 } })
   const id = store.state.actors[0].id
-  store.dispatch({ type: 'ADD_MESSAGE', payload: {
-    fromId: id, toId: id, label: 'self', kind: 'sync', direction: 'right'
-  }})
+  store.dispatch({
+    type: 'ADD_MESSAGE',
+    payload: {
+      fromId: id,
+      toId: id,
+      label: 'self',
+      kind: 'sync',
+      direction: 'right'
+    }
+  })
   assertEqual(store.state.messages.length, 1, 'self-message added with 1 actor')
   assertEqual(store.state.messages[0].fromId, id, 'fromId is the single actor')
-  assertEqual(store.state.messages[0].toId,   id, 'toId is also the single actor (self-message)')
+  assertEqual(store.state.messages[0].toId, id, 'toId is also the single actor (self-message)')
 })
 
 test('ADD_MESSAGE with actors — fromId/toId set explicitly', () => {
@@ -1405,11 +1491,18 @@ test('ADD_MESSAGE with actors — fromId/toId set explicitly', () => {
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B', type: 'actor-system', x: 200 } })
   const a = store.state.actors[0].id
   const b = store.state.actors[1].id
-  store.dispatch({ type: 'ADD_MESSAGE', payload: {
-    fromId: a, toId: b, label: 'call', kind: 'sync', direction: 'right'
-  }})
+  store.dispatch({
+    type: 'ADD_MESSAGE',
+    payload: {
+      fromId: a,
+      toId: b,
+      label: 'call',
+      kind: 'sync',
+      direction: 'right'
+    }
+  })
   assertEqual(store.state.messages[0].fromId, a, 'fromId set correctly')
-  assertEqual(store.state.messages[0].toId,   b, 'toId set correctly')
+  assertEqual(store.state.messages[0].toId, b, 'toId set correctly')
 })
 
 test('uiState has no pendingActorId field', () => {
@@ -1418,7 +1511,7 @@ test('uiState has no pendingActorId field', () => {
   const fs = require('fs')
   const html = fs.readFileSync('./sequence-builder.html', 'utf8')
   assert(!html.includes('pendingActorId: null'), 'pendingActorId removed from uiState')
-  assert(!html.includes("uiState.pendingActorId"), 'no pendingActorId references in UI code')
+  assert(!html.includes('uiState.pendingActorId'), 'no pendingActorId references in UI code')
 })
 
 test('isPending not referenced in renderActor', () => {
@@ -1429,15 +1522,17 @@ test('isPending not referenced in renderActor', () => {
   const end = html.indexOf('function renderMessage(', start)
   const renderActorBody = html.slice(start, end)
   assert(!renderActorBody.includes('isPending'), 'isPending not used in renderActor')
-  assert(!renderActorBody.includes('pending-actor'), 'pending-actor class not applied in renderActor')
+  assert(
+    !renderActorBody.includes('pending-actor'),
+    'pending-actor class not applied in renderActor'
+  )
 })
-
 
 test('no actor guard on message add — any element can be added anytime', () => {
   const fs = require('fs')
   const html = fs.readFileSync('./sequence-builder.html', 'utf8')
   // No precondition guard on msg paths (proto2prod UI rule)
-  assert(!html.includes("state.actors.length < 1"), 'no 1-actor guard in msg add paths')
+  assert(!html.includes('state.actors.length < 1'), 'no 1-actor guard in msg add paths')
   // Check that no guard blocks msg add (the one remaining actors.length < 2 is in API analysis text, not a guard)
   const msgGuard = /if\s*\(state\.actors\.length\s*<\s*2\)\s*\{[^}]*toast[^}]*return/
   assert(!msgGuard.test(html), 'no 2-actor guard blocking msg add')
@@ -1462,14 +1557,20 @@ test('self-message renders correctly (isSelf path)', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-person', x: 40 } })
   const id = store.state.actors[0].id
-  store.dispatch({ type: 'ADD_MESSAGE', payload: {
-    fromId: id, toId: id, label: 'ping', kind: 'sync', direction: 'right'
-  }})
+  store.dispatch({
+    type: 'ADD_MESSAGE',
+    payload: {
+      fromId: id,
+      toId: id,
+      label: 'ping',
+      kind: 'sync',
+      direction: 'right'
+    }
+  })
   const msg = store.state.messages[0]
   assert(msg.fromId === msg.toId, 'self-message: fromId equals toId')
   assert(msg.label === 'ping', 'label preserved')
 })
-
 
 test('MOVE_NOTE only dispatched when position changes', () => {
   const store = createStore()
@@ -1486,7 +1587,10 @@ test('MOVE_NOTE only dispatched when position changes', () => {
 
 test('MOVE_FRAGMENT only dispatched when position changes', () => {
   const store = createStore()
-  store.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 60, y: 200, w: 200, h: 100, kind: 'frag-alt', cond: 'test' } })
+  store.dispatch({
+    type: 'ADD_FRAGMENT',
+    payload: { x: 60, y: 200, w: 200, h: 100, kind: 'frag-alt', cond: 'test' }
+  })
   const frag = store.state.fragments[0]
   const moved = Math.round(frag.x) !== Math.round(60) || Math.round(frag.y) !== Math.round(200)
   assert(!moved, 'zero-movement fragment: moved=false, no dispatch needed')
@@ -1510,17 +1614,23 @@ test('note click after deselect — setSelected receives correct note', () => {
   const s = createStore()
 
   test('ADD_MESSAGE with no actors stores fromId as null not undefined', () => {
-    s.dispatch({ type: 'ADD_MESSAGE', payload: { label: 'orphan', kind: 'sync', direction: 'right' } })
+    s.dispatch({
+      type: 'ADD_MESSAGE',
+      payload: { label: 'orphan', kind: 'sync', direction: 'right' }
+    })
     const m = s.state.messages[0]
     assert(m.fromId === null, 'fromId should be null, got: ' + m.fromId)
-    assert(m.toId   === null, 'toId should be null, got: '   + m.toId)
+    assert(m.toId === null, 'toId should be null, got: ' + m.toId)
   })
 
   test('ADD_MESSAGE with explicit null fromId/toId stores null', () => {
-    s.dispatch({ type: 'ADD_MESSAGE', payload: { label: 'explicit-null', fromId: null, toId: null } })
+    s.dispatch({
+      type: 'ADD_MESSAGE',
+      payload: { label: 'explicit-null', fromId: null, toId: null }
+    })
     const m = s.state.messages[1]
     assert(m.fromId === null, 'fromId should be null')
-    assert(m.toId   === null, 'toId should be null')
+    assert(m.toId === null, 'toId should be null')
   })
 
   test('ADD_MESSAGE with actor ids wires correctly', () => {
@@ -1530,7 +1640,7 @@ test('note click after deselect — setSelected receives correct note', () => {
     s.dispatch({ type: 'ADD_MESSAGE', payload: { label: 'wired', fromId: aA.id, toId: aB.id } })
     const m = s.state.messages[2]
     assert(m.fromId === aA.id, 'fromId should be aA.id')
-    assert(m.toId   === aB.id, 'toId should be aB.id')
+    assert(m.toId === aB.id, 'toId should be aB.id')
   })
 
   test('UPDATE_MESSAGE can wire a previously null message', () => {
@@ -1539,7 +1649,7 @@ test('note click after deselect — setSelected receives correct note', () => {
     s.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: orphan.id, fromId: aA.id, toId: aB.id } })
     const m = s.state.messages.find(msg => msg.id === orphan.id)
     assert(m.fromId === aA.id, 'fromId wired after UPDATE_MESSAGE')
-    assert(m.toId   === aB.id, 'toId wired after UPDATE_MESSAGE')
+    assert(m.toId === aB.id, 'toId wired after UPDATE_MESSAGE')
   })
 }
 
@@ -1560,6 +1670,7 @@ test('note click after deselect — setSelected receives correct note', () => {
 //  even though the DOM event wiring is not tested here.
 // ═══════════════════════════════════════════════════════
 
+setGroup("message label + inline edit")
 test('ADD_MESSAGE stores the provided label', () => {
   const s = freshStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
@@ -1622,7 +1733,9 @@ test('UPDATE_MESSAGE label update is undoable', () => {
   test('LOAD_DEMO fires diagram:loaded', () => {
     const s = createStore()
     let fired = false
-    s.on('diagram:loaded', () => { fired = true })
+    s.on('diagram:loaded', () => {
+      fired = true
+    })
     s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
     assert(fired, 'LOAD_DEMO must emit diagram:loaded')
   })
@@ -1630,7 +1743,9 @@ test('UPDATE_MESSAGE label update is undoable', () => {
   test('LOAD_DEMO event carries source demo', () => {
     const s = createStore()
     let src = 'none'
-    s.on('diagram:loaded', p => { src = p.source })
+    s.on('diagram:loaded', p => {
+      src = p.source
+    })
     s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
     assert(src === 'demo', 'expected demo, got: ' + src)
   })
@@ -1638,16 +1753,26 @@ test('UPDATE_MESSAGE label update is undoable', () => {
   test('LOAD_DIAGRAM fires diagram:loaded', () => {
     const s = createStore()
     let fired = false
-    s.on('diagram:loaded', () => { fired = true })
-    s.dispatch({ type: 'LOAD_DIAGRAM', payload: { actors: [], messages: [], notes: [], fragments: [], nextId: 1 } })
+    s.on('diagram:loaded', () => {
+      fired = true
+    })
+    s.dispatch({
+      type: 'LOAD_DIAGRAM',
+      payload: { actors: [], messages: [], notes: [], fragments: [], nextId: 1 }
+    })
     assert(fired, 'LOAD_DIAGRAM must emit diagram:loaded')
   })
 
   test('LOAD_DIAGRAM event source is import', () => {
     const s = createStore()
     let src = 'none'
-    s.on('diagram:loaded', p => { src = p.source })
-    s.dispatch({ type: 'LOAD_DIAGRAM', payload: { actors: [], messages: [], notes: [], fragments: [], nextId: 1 } })
+    s.on('diagram:loaded', p => {
+      src = p.source
+    })
+    s.dispatch({
+      type: 'LOAD_DIAGRAM',
+      payload: { actors: [], messages: [], notes: [], fragments: [], nextId: 1 }
+    })
     assert(src === 'import', 'expected import, got: ' + src)
   })
 
@@ -1691,7 +1816,10 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 {
   test('ADD_FRAGMENT stores x, y, w, h', () => {
     const s = freshStore()
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 40, y: 80, w: 200, h: 120, kind: 'frag-alt', cond: 'ok' } })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 40, y: 80, w: 200, h: 120, kind: 'frag-alt', cond: 'ok' }
+    })
     const f = s.state.fragments[0]
     assertEqual(f.x, 40, 'x must be stored')
     assertEqual(f.y, 80, 'y must be stored')
@@ -1701,7 +1829,10 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 
   test('ADD_FRAGMENT stores kind and cond', () => {
     const s = freshStore()
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 100, kind: 'frag-loop', cond: 'i < 10' } })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 0, y: 0, w: 100, h: 100, kind: 'frag-loop', cond: 'i < 10' }
+    })
     const f = s.state.fragments[0]
     assertEqual(f.kind, 'frag-loop', 'kind must be stored')
     assertEqual(f.cond, 'i < 10', 'cond must be stored')
@@ -1709,14 +1840,23 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 
   test('ADD_FRAGMENT assigns unique id', () => {
     const s = freshStore()
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 100, kind: 'frag-alt', cond: 'a' } })
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 100, kind: 'frag-opt', cond: 'b' } })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 0, y: 0, w: 100, h: 100, kind: 'frag-alt', cond: 'a' }
+    })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 0, y: 0, w: 100, h: 100, kind: 'frag-opt', cond: 'b' }
+    })
     assert(s.state.fragments[0].id !== s.state.fragments[1].id, 'ids must be unique')
   })
 
   test('RESIZE_FRAGMENT updates w and h', () => {
     const s = freshStore()
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 10, y: 10, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 10, y: 10, w: 100, h: 80, kind: 'frag-alt', cond: 'x' }
+    })
     const id = s.state.fragments[0].id
     s.dispatch({ type: 'RESIZE_FRAGMENT', payload: { id, w: 300, h: 200 } })
     const f = s.getFragmentById(id)
@@ -1726,7 +1866,10 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 
   test('RESIZE_FRAGMENT does not change x or y', () => {
     const s = freshStore()
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 50, y: 60, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 50, y: 60, w: 100, h: 80, kind: 'frag-alt', cond: 'x' }
+    })
     const id = s.state.fragments[0].id
     s.dispatch({ type: 'RESIZE_FRAGMENT', payload: { id, w: 300, h: 200 } })
     const f = s.getFragmentById(id)
@@ -1736,7 +1879,10 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 
   test('RESIZE_FRAGMENT is undoable', () => {
     const s = freshStore()
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' }
+    })
     const id = s.state.fragments[0].id
     s.dispatch({ type: 'RESIZE_FRAGMENT', payload: { id, w: 300, h: 200 } })
     assertEqual(s.getFragmentById(id).w, 300, 'w should be 300 after resize')
@@ -1747,7 +1893,10 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 
   test('RESIZE_FRAGMENT undo then redo restores resize', () => {
     const s = freshStore()
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' }
+    })
     const id = s.state.fragments[0].id
     s.dispatch({ type: 'RESIZE_FRAGMENT', payload: { id, w: 250, h: 150 } })
     s.dispatch({ type: 'UNDO' })
@@ -1758,7 +1907,10 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 
   test('UPDATE_FRAGMENT updates kind and cond', () => {
     const s = freshStore()
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'original' } })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'original' }
+    })
     const id = s.state.fragments[0].id
     s.dispatch({ type: 'UPDATE_FRAGMENT', payload: { id, kind: 'frag-loop', cond: 'updated' } })
     const f = s.getFragmentById(id)
@@ -1768,7 +1920,10 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 
   test('UPDATE_FRAGMENT does not change geometry', () => {
     const s = freshStore()
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 30, y: 40, w: 180, h: 90, kind: 'frag-alt', cond: 'x' } })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 30, y: 40, w: 180, h: 90, kind: 'frag-alt', cond: 'x' }
+    })
     const id = s.state.fragments[0].id
     s.dispatch({ type: 'UPDATE_FRAGMENT', payload: { id, kind: 'frag-opt', cond: 'new' } })
     const f = s.getFragmentById(id)
@@ -1780,8 +1935,14 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 
   test('multiple fragments retain independent geometry', () => {
     const s = freshStore()
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 10, y: 10, w: 100, h: 80, kind: 'frag-alt', cond: 'a' } })
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 200, y: 200, w: 300, h: 150, kind: 'frag-loop', cond: 'b' } })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 10, y: 10, w: 100, h: 80, kind: 'frag-alt', cond: 'a' }
+    })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 200, y: 200, w: 300, h: 150, kind: 'frag-loop', cond: 'b' }
+    })
     const [f1, f2] = s.state.fragments
     s.dispatch({ type: 'RESIZE_FRAGMENT', payload: { id: f1.id, w: 999, h: 999 } })
     assertEqual(s.getFragmentById(f2.id).w, 300, 'resizing f1 must not affect f2 w')
@@ -1790,22 +1951,33 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 
   test('getFragmentById returns null for unknown id', () => {
     const s = freshStore()
-    assert(s.getFragmentById('nonexistent') === null || s.getFragmentById('nonexistent') === undefined,
-      'getFragmentById must return null/undefined for unknown id')
+    assert(
+      s.getFragmentById('nonexistent') === null || s.getFragmentById('nonexistent') === undefined,
+      'getFragmentById must return null/undefined for unknown id'
+    )
   })
 
   test('DELETE_FRAGMENT removes fragment by id', () => {
     const s = freshStore()
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' }
+    })
     const id = s.state.fragments[0].id
     s.dispatch({ type: 'DELETE_FRAGMENT', payload: { id } })
     assert(s.state.fragments.length === 0, 'fragment must be removed')
-    assert(s.getFragmentById(id) === null || s.getFragmentById(id) === undefined, 'getFragmentById must return null after delete')
+    assert(
+      s.getFragmentById(id) === null || s.getFragmentById(id) === undefined,
+      'getFragmentById must return null after delete'
+    )
   })
 
   test('DELETE_FRAGMENT is undoable', () => {
     const s = freshStore()
-    s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
+    s.dispatch({
+      type: 'ADD_FRAGMENT',
+      payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' }
+    })
     const id = s.state.fragments[0].id
     s.dispatch({ type: 'DELETE_FRAGMENT', payload: { id } })
     s.dispatch({ type: 'UNDO' })
@@ -1821,440 +1993,572 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 //  dispatches, and assert that pan state does not leak into store.
 // ═══════════════════════════════════════════════════════
 
-
+setGroup("canvas pan + nudge")
 test('UPDATE_ACTOR x-nudge moves actor by delta', () => {
-  const s = freshStore();
-  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 100 } });
-  const id = s.state.actors[0].id;
-  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, x: 120 } });
-  assert(s.state.actors[0].x === 120, 'actor x updated to 120');
-});
+  const s = freshStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 100 } })
+  const id = s.state.actors[0].id
+  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, x: 120 } })
+  assert(s.state.actors[0].x === 120, 'actor x updated to 120')
+})
 
 test('UPDATE_ACTOR x-nudge is undoable', () => {
-  const s = freshStore();
-  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 100 } });
-  const id = s.state.actors[0].id;
-  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, x: 120 } });
-  s.dispatch({ type: 'UNDO' });
-  assert(s.state.actors[0].x === 100, 'UNDO restores actor x to 100');
-});
+  const s = freshStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 100 } })
+  const id = s.state.actors[0].id
+  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, x: 120 } })
+  s.dispatch({ type: 'UNDO' })
+  assert(s.state.actors[0].x === 100, 'UNDO restores actor x to 100')
+})
 
 test('MOVE_NOTE nudge moves note by delta', () => {
-  const s = freshStore();
-  s.dispatch({ type: 'ADD_NOTE', payload: { text: 'hi', x: 80, y: 200 } });
-  const id = s.state.notes[0].id;
-  s.dispatch({ type: 'MOVE_NOTE', payload: { id, x: 100, y: 220 } });
-  assert(s.state.notes[0].x === 100, 'note x updated');
-  assert(s.state.notes[0].y === 220, 'note y updated');
-});
+  const s = freshStore()
+  s.dispatch({ type: 'ADD_NOTE', payload: { text: 'hi', x: 80, y: 200 } })
+  const id = s.state.notes[0].id
+  s.dispatch({ type: 'MOVE_NOTE', payload: { id, x: 100, y: 220 } })
+  assert(s.state.notes[0].x === 100, 'note x updated')
+  assert(s.state.notes[0].y === 220, 'note y updated')
+})
 
 test('MOVE_NOTE nudge is undoable', () => {
-  const s = freshStore();
-  s.dispatch({ type: 'ADD_NOTE', payload: { text: 'hi', x: 80, y: 200 } });
-  const id = s.state.notes[0].id;
-  s.dispatch({ type: 'MOVE_NOTE', payload: { id, x: 100, y: 220 } });
-  s.dispatch({ type: 'UNDO' });
-  assert(s.state.notes[0].x === 80, 'UNDO restores note x');
-  assert(s.state.notes[0].y === 200, 'UNDO restores note y');
-});
+  const s = freshStore()
+  s.dispatch({ type: 'ADD_NOTE', payload: { text: 'hi', x: 80, y: 200 } })
+  const id = s.state.notes[0].id
+  s.dispatch({ type: 'MOVE_NOTE', payload: { id, x: 100, y: 220 } })
+  s.dispatch({ type: 'UNDO' })
+  assert(s.state.notes[0].x === 80, 'UNDO restores note x')
+  assert(s.state.notes[0].y === 200, 'UNDO restores note y')
+})
 
 test('MOVE_FRAGMENT nudge moves fragment by delta', () => {
-  const s = freshStore();
-  s.dispatch({ type: 'ADD_FRAGMENT', payload: { kind: 'frag-alt', cond: 'c', x: 60, y: 100, w: 200, h: 80 } });
-  const id = s.state.fragments[0].id;
-  s.dispatch({ type: 'MOVE_FRAGMENT', payload: { id, x: 80, y: 120 } });
-  assert(s.state.fragments[0].x === 80, 'fragment x updated');
-  assert(s.state.fragments[0].y === 120, 'fragment y updated');
-});
+  const s = freshStore()
+  s.dispatch({
+    type: 'ADD_FRAGMENT',
+    payload: { kind: 'frag-alt', cond: 'c', x: 60, y: 100, w: 200, h: 80 }
+  })
+  const id = s.state.fragments[0].id
+  s.dispatch({ type: 'MOVE_FRAGMENT', payload: { id, x: 80, y: 120 } })
+  assert(s.state.fragments[0].x === 80, 'fragment x updated')
+  assert(s.state.fragments[0].y === 120, 'fragment y updated')
+})
 
 test('MOVE_FRAGMENT nudge is undoable', () => {
-  const s = freshStore();
-  s.dispatch({ type: 'ADD_FRAGMENT', payload: { kind: 'frag-alt', cond: 'c', x: 60, y: 100, w: 200, h: 80 } });
-  const id = s.state.fragments[0].id;
-  s.dispatch({ type: 'MOVE_FRAGMENT', payload: { id, x: 80, y: 120 } });
-  s.dispatch({ type: 'UNDO' });
-  assert(s.state.fragments[0].x === 60, 'UNDO restores fragment x');
-  assert(s.state.fragments[0].y === 100, 'UNDO restores fragment y');
-});
+  const s = freshStore()
+  s.dispatch({
+    type: 'ADD_FRAGMENT',
+    payload: { kind: 'frag-alt', cond: 'c', x: 60, y: 100, w: 200, h: 80 }
+  })
+  const id = s.state.fragments[0].id
+  s.dispatch({ type: 'MOVE_FRAGMENT', payload: { id, x: 80, y: 120 } })
+  s.dispatch({ type: 'UNDO' })
+  assert(s.state.fragments[0].x === 60, 'UNDO restores fragment x')
+  assert(s.state.fragments[0].y === 100, 'UNDO restores fragment y')
+})
 
 test('pan state is not present on store.state', () => {
-  const s = freshStore();
-  assert(!('panX' in s.state), 'panX is not a store state field');
-  assert(!('panY' in s.state), 'panY is not a store state field');
-});
+  const s = freshStore()
+  assert(!('panX' in s.state), 'panX is not a store state field')
+  assert(!('panY' in s.state), 'panY is not a store state field')
+})
 
 test('actor x-nudge at left boundary (x:0) does not go negative', () => {
-  const s = freshStore();
-  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 5 } });
-  const id = s.state.actors[0].id;
+  const s = freshStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 5 } })
+  const id = s.state.actors[0].id
   // Simulate ArrowLeft nudge: Math.max(0, x - 10) = Math.max(0, -5) = 0
-  const nudged = Math.max(0, s.state.actors[0].x - 10);
-  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, x: nudged } });
-  assert(s.state.actors[0].x === 0, 'actor x clamped to 0 at left boundary');
-});
-
+  const nudged = Math.max(0, s.state.actors[0].x - 10)
+  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, x: nudged } })
+  assert(s.state.actors[0].x === 0, 'actor x clamped to 0 at left boundary')
+})
 
 // ── Suite 15 — Properties bag contracts ──────────────────────────────────────
 test('ADD_ACTOR initialises schema as empty array', () => {
-  const s = createStore();
-  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
-  const a = s.state.actors[0];
-  assert(Array.isArray(a.schema), 'schema is array');
-  assert(a.schema.length === 0, 'schema starts empty');
-});
+  const s = createStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+  const a = s.state.actors[0]
+  assert(Array.isArray(a.schema), 'schema is array')
+  assert(a.schema.length === 0, 'schema starts empty')
+})
 
 test('ADD_ACTOR initialises properties as empty object', () => {
-  const s = createStore();
-  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
-  const a = s.state.actors[0];
-  assert(typeof a.properties === 'object' && a.properties !== null, 'properties is object');
-  assert(Object.keys(a.properties).length === 0, 'properties starts empty');
-});
+  const s = createStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+  const a = s.state.actors[0]
+  assert(typeof a.properties === 'object' && a.properties !== null, 'properties is object')
+  assert(Object.keys(a.properties).length === 0, 'properties starts empty')
+})
 
 test('ADD_MESSAGE initialises schema and properties', () => {
-  const s = createStore();
-  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
-  const aid = s.state.actors[0].id;
-  s.dispatch({ type: 'ADD_MESSAGE', payload: { fromId: aid, toId: aid, label: 'msg' } });
-  const m = s.state.messages[0];
-  assert(Array.isArray(m.schema), 'message schema is array');
-  assert(typeof m.properties === 'object' && m.properties !== null, 'message properties is object');
-});
+  const s = createStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+  const aid = s.state.actors[0].id
+  s.dispatch({ type: 'ADD_MESSAGE', payload: { fromId: aid, toId: aid, label: 'msg' } })
+  const m = s.state.messages[0]
+  assert(Array.isArray(m.schema), 'message schema is array')
+  assert(typeof m.properties === 'object' && m.properties !== null, 'message properties is object')
+})
 
 test('UPDATE_ACTOR schema full-replace', () => {
-  const s = createStore();
-  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
-  const id = s.state.actors[0].id;
-  const schema = [{ key: 'apiKey', label: 'API Key', type: 'password' }];
-  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, schema } });
-  assert(s.state.actors[0].schema.length === 1, 'schema replaced with 1 field');
-  assert(s.state.actors[0].schema[0].key === 'apiKey', 'schema field key correct');
-});
+  const s = createStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+  const id = s.state.actors[0].id
+  const schema = [{ key: 'apiKey', label: 'API Key', type: 'password' }]
+  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, schema } })
+  assert(s.state.actors[0].schema.length === 1, 'schema replaced with 1 field')
+  assert(s.state.actors[0].schema[0].key === 'apiKey', 'schema field key correct')
+})
 
 test('UPDATE_ACTOR properties shallow-merge preserves untouched keys', () => {
-  const s = createStore();
-  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
-  const id = s.state.actors[0].id;
-  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, properties: { apiKey: 'secret', baseUrl: 'https://x' } } });
-  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, properties: { baseUrl: 'https://y' } } });
-  assert(s.state.actors[0].properties.apiKey === 'secret', 'untouched key preserved');
-  assert(s.state.actors[0].properties.baseUrl === 'https://y', 'updated key changed');
-});
+  const s = createStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+  const id = s.state.actors[0].id
+  s.dispatch({
+    type: 'UPDATE_ACTOR',
+    payload: { id, properties: { apiKey: 'secret', baseUrl: 'https://x' } }
+  })
+  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, properties: { baseUrl: 'https://y' } } })
+  assert(s.state.actors[0].properties.apiKey === 'secret', 'untouched key preserved')
+  assert(s.state.actors[0].properties.baseUrl === 'https://y', 'updated key changed')
+})
 
 test('UPDATE_MESSAGE schema and properties merge', () => {
-  const s = createStore();
-  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
-  const aid = s.state.actors[0].id;
-  s.dispatch({ type: 'ADD_MESSAGE', payload: { fromId: aid, toId: aid } });
-  const mid = s.state.messages[0].id;
-  const schema = [{ key: 'env', label: 'Environment', type: 'select', options: ['prod', 'staging'] }];
-  s.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: mid, schema, properties: { env: 'prod' } } });
-  assert(s.state.messages[0].schema[0].key === 'env', 'message schema key correct');
-  assert(s.state.messages[0].properties.env === 'prod', 'message property stored');
-});
+  const s = createStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+  const aid = s.state.actors[0].id
+  s.dispatch({ type: 'ADD_MESSAGE', payload: { fromId: aid, toId: aid } })
+  const mid = s.state.messages[0].id
+  const schema = [
+    { key: 'env', label: 'Environment', type: 'select', options: ['prod', 'staging'] }
+  ]
+  s.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: mid, schema, properties: { env: 'prod' } } })
+  assert(s.state.messages[0].schema[0].key === 'env', 'message schema key correct')
+  assert(s.state.messages[0].properties.env === 'prod', 'message property stored')
+})
 
 test('UPDATE_ACTOR schema patch is undoable', () => {
-  const s = createStore();
-  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
-  const id = s.state.actors[0].id;
-  s.dispatch({ type: 'UPDATE_ACTOR', payload: { id, schema: [{ key: 'k', label: 'K', type: 'text' }] } });
-  assert(s.state.actors[0].schema.length === 1, 'schema set');
-  s.dispatch({ type: 'UNDO' });
-  assert(s.state.actors[0].schema.length === 0, 'schema undone');
-});
-
+  const s = createStore()
+  s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+  const id = s.state.actors[0].id
+  s.dispatch({
+    type: 'UPDATE_ACTOR',
+    payload: { id, schema: [{ key: 'k', label: 'K', type: 'text' }] }
+  })
+  assert(s.state.actors[0].schema.length === 1, 'schema set')
+  s.dispatch({ type: 'UNDO' })
+  assert(s.state.actors[0].schema.length === 0, 'schema undone')
+})
 
 // ── Suite 16 — Regex contract tests ──────────────────────────────────────────
 // Rule: every regex in the codebase that transforms data must have a test here.
 // New regex = new test. No exceptions.
 
 test('@import strip — basic case', () => {
-  const input = "@import url('https://fonts.example.com/font.css');\n:root { --bg: #000; }";
-  const result = input.replace(/@import\s[^)]*\)[^;]*;/g, '');
-  assert(!result.includes('@import'), 'import stripped');
-  assert(result.includes(':root'), 'rest preserved');
-});
+  const input = "@import url('https://fonts.example.com/font.css');\n:root { --bg: #000; }"
+  const result = input.replace(/@import\s[^)]*\)[^;]*;/g, '')
+  assert(!result.includes('@import'), 'import stripped')
+  assert(result.includes(':root'), 'rest preserved')
+})
 
 test('@import strip — semicolons inside url() are not early-terminated', () => {
-  const input = "@import url('https://fonts.googleapis.com/css2?family=Mono:wght@300;400;700&display=swap');\nbody{}";
-  const result = input.replace(/@import\s[^)]*\)[^;]*;/g, '');
-  assert(!result.includes('@import'), 'import stripped');
-  assert(!result.includes('fonts.googleapis.com'), 'url removed');
-  assert(!result.includes('300;400'), 'no url fragment leaked');
-  assert(result.trim().startsWith('body'), 'subsequent rules preserved');
-});
+  const input =
+    "@import url('https://fonts.googleapis.com/css2?family=Mono:wght@300;400;700&display=swap');\nbody{}"
+  const result = input.replace(/@import\s[^)]*\)[^;]*;/g, '')
+  assert(!result.includes('@import'), 'import stripped')
+  assert(!result.includes('fonts.googleapis.com'), 'url removed')
+  assert(!result.includes('300;400'), 'no url fragment leaked')
+  assert(result.trim().startsWith('body'), 'subsequent rules preserved')
+})
 
 test('@import strip — multiple imports all removed', () => {
-  const input = "@import url('https://a.com/a.css');\n@import url('https://b.com/b.css');\np{}";
-  const result = input.replace(/@import\s[^)]*\)[^;]*;/g, '');
-  assert(!result.includes('@import'), 'both imports stripped');
-  assert(result.includes('p{}'), 'selector preserved');
-});
+  const input = "@import url('https://a.com/a.css');\n@import url('https://b.com/b.css');\np{}"
+  const result = input.replace(/@import\s[^)]*\)[^;]*;/g, '')
+  assert(!result.includes('@import'), 'both imports stripped')
+  assert(result.includes('p{}'), 'selector preserved')
+})
 
 test('version extraction regex — standard format', () => {
-  const input = "Version: 0.9.91\nsome other text";
-  const m = input.match(/Version:\s*([\d.]+)/);
-  assert(m && m[1] === '0.9.91', 'version extracted correctly');
-});
+  const input = 'Version: 0.9.91\nsome other text'
+  const m = input.match(/Version:\s*([\d.]+)/)
+  assert(m && m[1] === '0.9.91', 'version extracted correctly')
+})
 
 test('version extraction regex — no false match on other numbers', () => {
-  const input = "port: 3799\nVersion: 1.2.3\nlength: 500";
-  const m = input.match(/Version:\s*([\d.]+)/);
-  assert(m && m[1] === '1.2.3', 'only Version: prefix matches');
-});
+  const input = 'port: 3799\nVersion: 1.2.3\nlength: 500'
+  const m = input.match(/Version:\s*([\d.]+)/)
+  assert(m && m[1] === '1.2.3', 'only Version: prefix matches')
+})
 
 test('suite header regex — standard format', () => {
-  const input = "// Suite 9 \u2014 UI geometry contracts & proto2prod guard rails";
-  const m = [...input.matchAll(/Suite (\d+) \u2014 ([^\n'"`\u2500]+)/g)];
-  assert(m.length === 1, 'one match');
-  assert(m[0][1] === '9', 'suite number correct');
-  assert(m[0][2].trim() === 'UI geometry contracts & proto2prod guard rails', 'name correct');
-});
+  const input = '// Suite 9 \u2014 UI geometry contracts & proto2prod guard rails'
+  const m = [...input.matchAll(/Suite (\d+) \u2014 ([^\n'"`\u2500]+)/g)]
+  assert(m.length === 1, 'one match')
+  assert(m[0][1] === '9', 'suite number correct')
+  assert(m[0][2].trim() === 'UI geometry contracts & proto2prod guard rails', 'name correct')
+})
 
 test('suite header regex — separator chars trimmed', () => {
-  const input = "// Suite 10 \u2014 ADD_MESSAGE null contract \u2500\u2500\u2500\u2500";
-  const m = [...input.matchAll(/Suite (\d+) \u2014 ([^\n'"`\u2500]+)/g)];
-  assert(m.length === 1, 'one match');
-  assert(m[0][2].trim() === 'ADD_MESSAGE null contract', 'separator chars not included in name');
-});
+  const input = '// Suite 10 \u2014 ADD_MESSAGE null contract \u2500\u2500\u2500\u2500'
+  const m = [...input.matchAll(/Suite (\d+) \u2014 ([^\n'"`\u2500]+)/g)]
+  assert(m.length === 1, 'one match')
+  assert(m[0][2].trim() === 'ADD_MESSAGE null contract', 'separator chars not included in name')
+})
 
 test('nextMessageKind cycles completely without leaking', () => {
-  let nextMessageKind;
-  try { ;({ nextMessageKind } = require('./sequence-builder.store.js')); } catch(e) { assert(false, 'nextMessageKind not exported'); }
-  const cycle = ['sync','async','return'];
-  const map = { sync: 'async', async: 'return', return: 'sync' };
-  cycle.forEach(k => assert(Object.keys(map).includes(map[k]) || map[k] === 'sync', 'all outputs are valid kinds'));
-  assert(map['unknown_kind'] === undefined, 'unknown input returns undefined from map');
-  assert(nextMessageKind('unknown') === 'sync', 'helper returns safe default for unknown');
-});
+  let nextMessageKind
+  try {
+    ;({ nextMessageKind } = require('./sequence-builder.store.js'))
+  } catch (e) {
+    assert(false, 'nextMessageKind not exported')
+  }
+  const cycle = ['sync', 'async', 'return']
+  const map = { sync: 'async', async: 'return', return: 'sync' }
+  cycle.forEach(k =>
+    assert(Object.keys(map).includes(map[k]) || map[k] === 'sync', 'all outputs are valid kinds')
+  )
+  assert(map['unknown_kind'] === undefined, 'unknown input returns undefined from map')
+  assert(nextMessageKind('unknown') === 'sync', 'helper returns safe default for unknown')
+})
 
 test('nextMessageDirection cycles completely without leaking', () => {
-  let nextMessageDirection;
-  try { ;({ nextMessageDirection } = require('./sequence-builder.store.js')); } catch(e) { assert(false, 'nextMessageDirection not exported'); }
-  const map = { right: 'left', left: 'both', both: 'right' };
-  Object.entries(map).forEach(([k, v]) => assert(Object.keys(map).includes(v), k + ' output is valid direction'));
-  assert(nextMessageDirection('unknown') === 'right', 'helper returns safe default for unknown');
-});
-
+  let nextMessageDirection
+  try {
+    ;({ nextMessageDirection } = require('./sequence-builder.store.js'))
+  } catch (e) {
+    assert(false, 'nextMessageDirection not exported')
+  }
+  const map = { right: 'left', left: 'both', both: 'right' }
+  Object.entries(map).forEach(([k, v]) =>
+    assert(Object.keys(map).includes(v), k + ' output is valid direction')
+  )
+  assert(nextMessageDirection('unknown') === 'right', 'helper returns safe default for unknown')
+})
 
 test('btn-export-png has exactly one click binding (no double-download)', () => {
   // Regression: duplicate onclick= + addEventListener caused two downloads per click.
   // This test pins that only addEventListener wiring exists — no onclick= assignment.
-  const html = require('fs').readFileSync(require('path').join(__dirname, 'sequence-builder.html'), 'utf8');
-  const onclickCount = (html.match(/getElementById\('btn-export-png'\)\.onclick/g) || []).length;
-  assert(onclickCount === 0, 'btn-export-png must not use .onclick assignment — use addEventListener only. Found: ' + onclickCount);
-});
-
-
+  const html = require('fs').readFileSync(
+    require('path').join(__dirname, 'sequence-builder.html'),
+    'utf8'
+  )
+  const onclickCount = (html.match(/getElementById\('btn-export-png'\)\.onclick/g) || []).length
+  assert(
+    onclickCount === 0,
+    'btn-export-png must not use .onclick assignment — use addEventListener only. Found: ' +
+      onclickCount
+  )
+})
 
 //  RESULTS
 // ═══════════════════════════════════════════════════════
 // ── ULID ID contract ─────────────────────────────────────
 console.log('\nULID ID contract')
-test("ADD_ACTOR id has actor_ prefix + 26-char ULID", function() {
-  ;(function(freshStore, assert) {
-  const store = freshStore()
-  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
-  const id = store.state.actors[0].id
-  const RE = /^[0-9A-Z]{26}$/
-  assert(id.startsWith('actor_'), 'expected actor_ prefix, got: ' + id)
-  assert(RE.test(id.slice(6)), 'expected 26-char ULID suffix, got: ' + id.slice(6))
-})(freshStore, assert)
+setGroup('ULID ID contract')
+test('ADD_ACTOR id has actor_ prefix + 26-char ULID', function () {
+  ;(function (freshStore, assert) {
+    const store = freshStore()
+    store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+    const id = store.state.actors[0].id
+    const RE = /^[0-9A-Z]{26}$/
+    assert(id.startsWith('actor_'), 'expected actor_ prefix, got: ' + id)
+    assert(RE.test(id.slice(6)), 'expected 26-char ULID suffix, got: ' + id.slice(6))
+  })(freshStore, assert)
 })
 
-test("ADD_MESSAGE id has msg_ prefix + 26-char ULID", function() {
-  ;(function(freshStore, assert) {
-  const store = freshStore()
-  store.dispatch({ type: 'ADD_MESSAGE', payload: { label: 'M' } })
-  const id = store.state.messages[0].id
-  const RE = /^[0-9A-Z]{26}$/
-  assert(id.startsWith('msg_'), 'expected msg_ prefix, got: ' + id)
-  assert(RE.test(id.slice(4)), 'expected 26-char ULID suffix, got: ' + id.slice(4))
-})(freshStore, assert)
+test('ADD_MESSAGE id has msg_ prefix + 26-char ULID', function () {
+  ;(function (freshStore, assert) {
+    const store = freshStore()
+    store.dispatch({ type: 'ADD_MESSAGE', payload: { label: 'M' } })
+    const id = store.state.messages[0].id
+    const RE = /^[0-9A-Z]{26}$/
+    assert(id.startsWith('msg_'), 'expected msg_ prefix, got: ' + id)
+    assert(RE.test(id.slice(4)), 'expected 26-char ULID suffix, got: ' + id.slice(4))
+  })(freshStore, assert)
 })
 
-test("ADD_NOTE id has note_ prefix + 26-char ULID", function() {
-  ;(function(freshStore, assert) {
-  const store = freshStore()
-  store.dispatch({ type: 'ADD_NOTE', payload: {} })
-  const id = store.state.notes[0].id
-  const RE = /^[0-9A-Z]{26}$/
-  assert(id.startsWith('note_'), 'expected note_ prefix, got: ' + id)
-  assert(RE.test(id.slice(5)), 'expected 26-char ULID suffix, got: ' + id.slice(5))
-})(freshStore, assert)
+test('ADD_NOTE id has note_ prefix + 26-char ULID', function () {
+  ;(function (freshStore, assert) {
+    const store = freshStore()
+    store.dispatch({ type: 'ADD_NOTE', payload: {} })
+    const id = store.state.notes[0].id
+    const RE = /^[0-9A-Z]{26}$/
+    assert(id.startsWith('note_'), 'expected note_ prefix, got: ' + id)
+    assert(RE.test(id.slice(5)), 'expected 26-char ULID suffix, got: ' + id.slice(5))
+  })(freshStore, assert)
 })
 
-test("ADD_FRAGMENT id has frag_ prefix + 26-char ULID", function() {
-  ;(function(freshStore, assert) {
-  const store = freshStore()
-  store.dispatch({ type: 'ADD_FRAGMENT', payload: {} })
-  const id = store.state.fragments[0].id
-  const RE = /^[0-9A-Z]{26}$/
-  assert(id.startsWith('frag_'), 'expected frag_ prefix, got: ' + id)
-  assert(RE.test(id.slice(5)), 'expected 26-char ULID suffix, got: ' + id.slice(5))
-})(freshStore, assert)
+test('ADD_FRAGMENT id has frag_ prefix + 26-char ULID', function () {
+  ;(function (freshStore, assert) {
+    const store = freshStore()
+    store.dispatch({ type: 'ADD_FRAGMENT', payload: {} })
+    const id = store.state.fragments[0].id
+    const RE = /^[0-9A-Z]{26}$/
+    assert(id.startsWith('frag_'), 'expected frag_ prefix, got: ' + id)
+    assert(RE.test(id.slice(5)), 'expected 26-char ULID suffix, got: ' + id.slice(5))
+  })(freshStore, assert)
 })
 
-test("LOAD_DEMO actor ids are 26-char ULIDs", function() {
-  ;(function(freshStore, assert) {
-  const store = freshStore()
-  const RE = /^[0-9A-Z]{26}$/
-  store.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' } })
-  for (const actor of store.state.actors) {
-    assert(RE.test(actor.id), 'demo actor id should be ULID, got: ' + actor.id)
-  }
-})(freshStore, assert)
+test('LOAD_DEMO actor ids are 26-char ULIDs', function () {
+  ;(function (freshStore, assert) {
+    const store = freshStore()
+    const RE = /^[0-9A-Z]{26}$/
+    store.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' } })
+    for (const actor of store.state.actors) {
+      assert(RE.test(actor.id), 'demo actor id should be ULID, got: ' + actor.id)
+    }
+  })(freshStore, assert)
 })
 
-test("dispatch stamps meta.affectedId from payload.id", function() {
-  ;(function(freshStore, assert) {
-  const store = freshStore()
-  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
-  const aid = store.state.actors[0].id
-  store.dispatch({ type: 'UPDATE_ACTOR', payload: { id: aid, label: 'B' } })
-  const entry = store.log.find(function(e) { return e.type === 'UPDATE_ACTOR' })
-  assert(entry.meta.affectedId === aid, 'affectedId should equal actor id')
-})(freshStore, assert)
+test('dispatch stamps meta.affectedId from payload.id', function () {
+  ;(function (freshStore, assert) {
+    const store = freshStore()
+    store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+    const aid = store.state.actors[0].id
+    store.dispatch({ type: 'UPDATE_ACTOR', payload: { id: aid, label: 'B' } })
+    const entry = store.log.find(function (e) {
+      return e.type === 'UPDATE_ACTOR'
+    })
+    assert(entry.meta.affectedId === aid, 'affectedId should equal actor id')
+  })(freshStore, assert)
 })
 
-test("two ADD_ACTOR calls produce distinct ULIDs", function() {
-  ;(function(freshStore, assert) {
-  const store = freshStore()
-  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
-  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B' } })
-  const id1 = store.state.actors[0].id
-  const id2 = store.state.actors[1].id
-  assert(id1 !== id2, 'two actors must have distinct ids')
-})(freshStore, assert)
+test('two ADD_ACTOR calls produce distinct ULIDs', function () {
+  ;(function (freshStore, assert) {
+    const store = freshStore()
+    store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+    store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B' } })
+    const id1 = store.state.actors[0].id
+    const id2 = store.state.actors[1].id
+    assert(id1 !== id2, 'two actors must have distinct ids')
+  })(freshStore, assert)
 })
 
-test("state has no nextId field", function() {
-  ;(function(freshStore, assert) {
-  const store = freshStore()
-  assert(!('nextId' in store.state), 'state.nextId should not exist after ULID migration')
-})(freshStore, assert)
+test('state has no nextId field', function () {
+  ;(function (freshStore, assert) {
+    const store = freshStore()
+    assert(!('nextId' in store.state), 'state.nextId should not exist after ULID migration')
+  })(freshStore, assert)
 })
 
 // ── ActorElement contract ───────────────────────────────
 console.log('\nActorElement contract')
-test("ActorElement.getBounds() correct box for x=40", function() {
-  ;(function(freshStore, assert) {
-  const { ActorElement, _AE_ACTOR_W, _AE_ACTOR_H } = require('./src/elements/ActorElement.js')
-  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
-  const b = el.getBounds()
-  assert(b.x === 40, 'x should be 40'); assert(b.y === 8, 'y should be 8')
-  assert(b.w === _AE_ACTOR_W, 'w'); assert(b.h === _AE_ACTOR_H, 'h')
-})(freshStore, assert)
+setGroup('ActorElement contract')
+test('ActorElement.getBounds() correct box for x=40', function () {
+  ;(function (freshStore, assert) {
+    const { ActorElement, _AE_ACTOR_W, _AE_ACTOR_H } = require('./src/elements/ActorElement.js')
+    const el = new ActorElement({
+      id: 'actor_T',
+      x: 40,
+      label: 'A',
+      type: 'actor-system',
+      schema: [],
+      properties: {}
+    })
+    const b = el.getBounds()
+    assert(b.x === 40, 'x should be 40')
+    assert(b.y === 8, 'y should be 8')
+    assert(b.w === _AE_ACTOR_W, 'w')
+    assert(b.h === _AE_ACTOR_H, 'h')
+  })(freshStore, assert)
 })
 
-test("ActorElement.getBounds() x tracks data.x", function() {
-  ;(function(freshStore, assert) {
-  const { ActorElement } = require('./src/elements/ActorElement.js')
-  const el = new ActorElement({ id: 'actor_T', x: 210, label: 'B', type: 'actor-system', schema: [], properties: {} })
-  assert(el.getBounds().x === 210, 'x should mirror data.x')
-})(freshStore, assert)
+test('ActorElement.getBounds() x tracks data.x', function () {
+  ;(function (freshStore, assert) {
+    const { ActorElement } = require('./src/elements/ActorElement.js')
+    const el = new ActorElement({
+      id: 'actor_T',
+      x: 210,
+      label: 'B',
+      type: 'actor-system',
+      schema: [],
+      properties: {}
+    })
+    assert(el.getBounds().x === 210, 'x should mirror data.x')
+  })(freshStore, assert)
 })
 
-test("ActorElement.hitTest() true for point inside", function() {
-  ;(function(freshStore, assert) {
-  const { ActorElement } = require('./src/elements/ActorElement.js')
-  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
-  assert(el.hitTest(95, 20) === true, 'centre should hit')
-})(freshStore, assert)
+test('ActorElement.hitTest() true for point inside', function () {
+  ;(function (freshStore, assert) {
+    const { ActorElement } = require('./src/elements/ActorElement.js')
+    const el = new ActorElement({
+      id: 'actor_T',
+      x: 40,
+      label: 'A',
+      type: 'actor-system',
+      schema: [],
+      properties: {}
+    })
+    assert(el.hitTest(95, 20) === true, 'centre should hit')
+  })(freshStore, assert)
 })
 
-test("ActorElement.hitTest() false for point outside", function() {
-  ;(function(freshStore, assert) {
-  const { ActorElement } = require('./src/elements/ActorElement.js')
-  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
-  assert(el.hitTest(200, 20) === false, 'far right should miss')
-  assert(el.hitTest(95, 100) === false, 'below should miss')
-})(freshStore, assert)
+test('ActorElement.hitTest() false for point outside', function () {
+  ;(function (freshStore, assert) {
+    const { ActorElement } = require('./src/elements/ActorElement.js')
+    const el = new ActorElement({
+      id: 'actor_T',
+      x: 40,
+      label: 'A',
+      type: 'actor-system',
+      schema: [],
+      properties: {}
+    })
+    assert(el.hitTest(200, 20) === false, 'far right should miss')
+    assert(el.hitTest(95, 100) === false, 'below should miss')
+  })(freshStore, assert)
 })
 
-test("ActorElement.hitTest() left edge inclusive", function() {
-  ;(function(freshStore, assert) {
-  const { ActorElement } = require('./src/elements/ActorElement.js')
-  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
-  assert(el.hitTest(40, 20) === true, 'left edge x=40 should hit')
-})(freshStore, assert)
+test('ActorElement.hitTest() left edge inclusive', function () {
+  ;(function (freshStore, assert) {
+    const { ActorElement } = require('./src/elements/ActorElement.js')
+    const el = new ActorElement({
+      id: 'actor_T',
+      x: 40,
+      label: 'A',
+      type: 'actor-system',
+      schema: [],
+      properties: {}
+    })
+    assert(el.hitTest(40, 20) === true, 'left edge x=40 should hit')
+  })(freshStore, assert)
 })
 
-test("ActorElement.hitTest() right edge inclusive", function() {
-  ;(function(freshStore, assert) {
-  const { ActorElement, _AE_ACTOR_W } = require('./src/elements/ActorElement.js')
-  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
-  assert(el.hitTest(40 + _AE_ACTOR_W, 20) === true, 'right edge should hit')
-})(freshStore, assert)
+test('ActorElement.hitTest() right edge inclusive', function () {
+  ;(function (freshStore, assert) {
+    const { ActorElement, _AE_ACTOR_W } = require('./src/elements/ActorElement.js')
+    const el = new ActorElement({
+      id: 'actor_T',
+      x: 40,
+      label: 'A',
+      type: 'actor-system',
+      schema: [],
+      properties: {}
+    })
+    assert(el.hitTest(40 + _AE_ACTOR_W, 20) === true, 'right edge should hit')
+  })(freshStore, assert)
 })
 
-test("ActorElement.getPropertiesSchema() has 3 fields", function() {
-  ;(function(freshStore, assert) {
-  const { ActorElement } = require('./src/elements/ActorElement.js')
-  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
-  const s = el.getPropertiesSchema()
-  assert(Array.isArray(s) && s.length === 3, 'schema should have 3 fields')
-  assert(s[0].key === 'label' && s[1].key === 'type' && s[2].key === 'emoji', 'field keys')
-})(freshStore, assert)
+test('ActorElement.getPropertiesSchema() has 3 fields', function () {
+  ;(function (freshStore, assert) {
+    const { ActorElement } = require('./src/elements/ActorElement.js')
+    const el = new ActorElement({
+      id: 'actor_T',
+      x: 40,
+      label: 'A',
+      type: 'actor-system',
+      schema: [],
+      properties: {}
+    })
+    const s = el.getPropertiesSchema()
+    assert(Array.isArray(s) && s.length === 3, 'schema should have 3 fields')
+    assert(s[0].key === 'label' && s[1].key === 'type' && s[2].key === 'emoji', 'field keys')
+  })(freshStore, assert)
 })
 
-test("ActorElement.getPropertiesSchema() type has 4 options", function() {
-  ;(function(freshStore, assert) {
-  const { ActorElement } = require('./src/elements/ActorElement.js')
-  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
-  const tf = el.getPropertiesSchema().find(function(f) { return f.key === 'type' })
-  assert(tf.type === 'select' && tf.options.length === 4, '4 select options')
-})(freshStore, assert)
+test('ActorElement.getPropertiesSchema() type has 4 options', function () {
+  ;(function (freshStore, assert) {
+    const { ActorElement } = require('./src/elements/ActorElement.js')
+    const el = new ActorElement({
+      id: 'actor_T',
+      x: 40,
+      label: 'A',
+      type: 'actor-system',
+      schema: [],
+      properties: {}
+    })
+    const tf = el.getPropertiesSchema().find(function (f) {
+      return f.key === 'type'
+    })
+    assert(tf.type === 'select' && tf.options.length === 4, '4 select options')
+  })(freshStore, assert)
 })
 
-test("ActorElement.id getter returns data.id", function() {
-  ;(function(freshStore, assert) {
-  const { ActorElement } = require('./src/elements/ActorElement.js')
-  const el = new ActorElement({ id: 'actor_X', x: 0, label: 'X', type: 'actor-system', schema: [], properties: {} })
-  assert(el.id === 'actor_X', 'id getter should return data.id')
-})(freshStore, assert)
+test('ActorElement.id getter returns data.id', function () {
+  ;(function (freshStore, assert) {
+    const { ActorElement } = require('./src/elements/ActorElement.js')
+    const el = new ActorElement({
+      id: 'actor_X',
+      x: 0,
+      label: 'X',
+      type: 'actor-system',
+      schema: [],
+      properties: {}
+    })
+    assert(el.id === 'actor_X', 'id getter should return data.id')
+  })(freshStore, assert)
 })
 
-test("ActorElement.render() throws (not yet wired)", function() {
-  ;(function(freshStore, assert) {
-  const { ActorElement } = require('./src/elements/ActorElement.js')
-  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
-  let threw = false; try { el.render(null, null) } catch(e) { threw = true }
-  assert(threw, 'render() should throw until canvas dispatcher is wired')
-})(freshStore, assert)
+test('ActorElement.render() throws (not yet wired)', function () {
+  ;(function (freshStore, assert) {
+    const { ActorElement } = require('./src/elements/ActorElement.js')
+    const el = new ActorElement({
+      id: 'actor_T',
+      x: 40,
+      label: 'A',
+      type: 'actor-system',
+      schema: [],
+      properties: {}
+    })
+    let threw = false
+    try {
+      el.render(null, null)
+    } catch (e) {
+      threw = true
+    }
+    assert(threw, 'render() should throw until canvas dispatcher is wired')
+  })(freshStore, assert)
 })
 
-test("ElementFactory.create() returns ActorElement for actor record", function() {
-  ;(function(freshStore, assert) {
-  const { ActorElement } = require('./src/elements/ActorElement.js')
-  const { ElementFactory } = require('./src/elements/ElementFactory.js')
-  const el = ElementFactory.create({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
-  assert(el instanceof ActorElement, 'factory should return ActorElement')
-})(freshStore, assert)
+test('ElementFactory.create() returns ActorElement for actor record', function () {
+  ;(function (freshStore, assert) {
+    const { ActorElement } = require('./src/elements/ActorElement.js')
+    const { ElementFactory } = require('./src/elements/ElementFactory.js')
+    const el = ElementFactory.create({
+      id: 'actor_T',
+      x: 40,
+      label: 'A',
+      type: 'actor-system',
+      schema: [],
+      properties: {}
+    })
+    assert(el instanceof ActorElement, 'factory should return ActorElement')
+  })(freshStore, assert)
 })
 
-test("ElementFactory.create() throws for record without id", function() {
-  ;(function(freshStore, assert) {
-  const { ElementFactory } = require('./src/elements/ElementFactory.js')
-  let threw = false; try { ElementFactory.create({ label: 'no id' }) } catch(e) { threw = true }
-  assert(threw, 'factory should throw for record without id')
-})(freshStore, assert)
+test('ElementFactory.create() throws for record without id', function () {
+  ;(function (freshStore, assert) {
+    const { ElementFactory } = require('./src/elements/ElementFactory.js')
+    let threw = false
+    try {
+      ElementFactory.create({ label: 'no id' })
+    } catch (e) {
+      threw = true
+    }
+    assert(threw, 'factory should throw for record without id')
+  })(freshStore, assert)
 })
 
 // ── Execute ───────────────────────────────────────────────────────────────
 ;(function runAll() {
-  var passed = 0, failed = 0
-  var SEP = '─'.repeat(50)
+  var groups = [], groupMap = {}
   for (var i = 0; i < _tests.length; i++) {
-    var tt = _tests[i]
-    try { tt.fn(); console.log('  ✓  ' + tt.desc); passed++ }
-    catch(e) { console.log('  ✗  ' + tt.desc); console.log('       ' + e.message); failed++ }
+    var tt = _tests[i], g = tt.group || "Tests"
+    if (!groupMap[g]) { groupMap[g] = []; groups.push(g) }
+    groupMap[g].push(tt)
+  }
+  var passed = 0, failed = 0
+  for (var gi = 0; gi < groups.length; gi++) {
+    var gn = groups[gi], gt = groupMap[gn]
+    console.log("\n" + gn)
+    for (var ti = 0; ti < gt.length; ti++) {
+      var tt = gt[ti]
+      try { tt.fn(); console.log("  ✓  " + tt.desc); passed++ }
+      catch(e) { console.log("  ✗  " + tt.desc); console.log("       " + e.message); failed++ }
+    }
   }
   var total = passed + failed
-  console.log('\n' + SEP)
-  console.log('  ' + passed + ' passed  |  ' + failed + ' failed  |  ' + total + ' total')
-  console.log(SEP + '\n')
-  if (failed > 0) { console.log('  Gate failed.'); process.exit(1) }
-  console.log('  All tests pass. Gate green.')
-  process.exit(0)
+  console.log("\n" + "──────────────────────────────────────────────────")
+  console.log("  " + passed + " passed  |  " + failed + " failed  |  " + total + " total")
+  console.log("──────────────────────────────────────────────────" + "\n")
+  if (failed > 0) { console.log("  Gate failed."); process.exit(1) }
+  console.log("  All tests pass. Gate green."); process.exit(0)
 })()

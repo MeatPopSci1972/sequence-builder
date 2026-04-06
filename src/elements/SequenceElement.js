@@ -28,20 +28,24 @@ class SequenceElement {
    */
   constructor(data) {
     if (new.target === SequenceElement) {
-      throw new Error('SequenceElement is abstract — use ElementFactory.create()');
+      throw new Error('SequenceElement is abstract — use ElementFactory.create()')
     }
-    this._data = data;
+    this._data = data
   }
 
   /** @returns {string} the element's ULID-format id */
-  get id() { return this._data.id; }
+  get id() {
+    return this._data.id
+  }
 
   /**
    * Returns the bounding box in SVG coordinate space.
    * @abstract
    * @returns {{ x: number, y: number, w: number, h: number }}
    */
-  getBounds() { throw new Error(this.constructor.name + '.getBounds() not implemented'); }
+  getBounds() {
+    throw new Error(this.constructor.name + '.getBounds() not implemented')
+  }
 
   /**
    * Returns true if the given SVG point is inside this element's hit area.
@@ -50,14 +54,18 @@ class SequenceElement {
    * @param {number} y
    * @returns {boolean}
    */
-  hitTest(x, y) { throw new Error(this.constructor.name + '.hitTest() not implemented'); }
+  hitTest(x, y) {
+    throw new Error(this.constructor.name + '.hitTest() not implemented')
+  }
 
   /**
    * Returns the properties schema for the Properties panel.
    * @abstract
    * @returns {Array<{ key: string, label: string, type: string, options?: string[] }>}
    */
-  getPropertiesSchema() { throw new Error(this.constructor.name + '.getPropertiesSchema() not implemented'); }
+  getPropertiesSchema() {
+    throw new Error(this.constructor.name + '.getPropertiesSchema() not implemented')
+  }
 
   /**
    * Renders this element into the given SVG layer.
@@ -66,7 +74,9 @@ class SequenceElement {
    * @param {SVGGElement} layer — target SVG layer element
    * @param {object} ctx — InteractionContext
    */
-  render(layer, ctx) { throw new Error(this.constructor.name + '.render() not implemented'); }
+  render(layer, ctx) {
+    throw new Error(this.constructor.name + '.render() not implemented')
+  }
 
   /**
    * Renders the selection overlay into the interaction layer.
@@ -74,40 +84,52 @@ class SequenceElement {
    * @param {SVGGElement} interactionLayer
    * @param {object} ctx — InteractionContext
    */
-  renderSelected(interactionLayer, ctx) { /* default: no-op — override for selection chrome */ }
+  renderSelected(interactionLayer, ctx) {
+    /* default: no-op — override for selection chrome */
+  }
 
   /**
    * Called when the user begins dragging this element.
    * @param {MouseEvent} e
    * @param {object} ctx — InteractionContext
    */
-  onDragStart(e, ctx) { /* default: no-op */ }
+  onDragStart(e, ctx) {
+    /* default: no-op */
+  }
 
   /**
    * Called on each mousemove during a drag.
    * @param {MouseEvent} e
    * @param {object} ctx — InteractionContext
    */
-  onDragMove(e, ctx) { /* default: no-op */ }
+  onDragMove(e, ctx) {
+    /* default: no-op */
+  }
 
   /**
    * Called when the drag ends (mouseup).
    * @param {MouseEvent} e
    * @param {object} ctx — InteractionContext
    */
-  onDragEnd(e, ctx) { /* default: no-op */ }
+  onDragEnd(e, ctx) {
+    /* default: no-op */
+  }
 
   /**
    * Called when this element becomes selected.
    * @param {object} ctx — InteractionContext
    */
-  onSelect(ctx) { /* default: no-op */ }
+  onSelect(ctx) {
+    /* default: no-op */
+  }
 
   /**
    * Called when this element is deselected.
    * @param {object} ctx — InteractionContext
    */
-  onDeselect(ctx) { /* default: no-op */ }
+  onDeselect(ctx) {
+    /* default: no-op */
+  }
 }
 
-if (typeof module !== 'undefined') module.exports = { SequenceElement };
+if (typeof module !== 'undefined') module.exports = { SequenceElement }

@@ -37,9 +37,9 @@
 'use strict'
 
 // ── Constants ────────────────────────────────────────────
-const ACTOR_W     = 110   // matches HTML app constant
-const ACTOR_GAP   = 60    // gap between actors
-const UNDO_LIMIT  = 50    // max snapshot stack depth
+const ACTOR_W = 110 // matches HTML app constant
+const ACTOR_GAP = 60 // gap between actors
+const UNDO_LIMIT = 50 // max snapshot stack depth
 
 // ── ULID ──────────────────────────────────────────────────────────────────────
 // Zero-dependency, time-sortable, 26-char unique ID.
@@ -63,10 +63,18 @@ function ulid() {
 }
 
 // Typed ID generators — prefix makes element type readable in logs and history
-function actorId()    { return 'actor_'  + ulid() }
-function messageId()  { return 'msg_'    + ulid() }
-function noteId()     { return 'note_'   + ulid() }
-function fragmentId() { return 'frag_'   + ulid() }
+function actorId() {
+  return 'actor_' + ulid()
+}
+function messageId() {
+  return 'msg_' + ulid()
+}
+function noteId() {
+  return 'note_' + ulid()
+}
+function fragmentId() {
+  return 'frag_' + ulid()
+}
 
 // ── Pure helpers (exported, no store dependency) ─────────
 
@@ -94,14 +102,13 @@ function nextMessageDirection(dir) {
  * This is what the test harness calls per test.
  */
 function createStore() {
-
   // ── Internal state ──────────────────────────────────────
   // Diagram data — the narrow record. Serializable, persistable.
   const state = {
-    actors:    [],
-    messages:  [],
-    notes:     [],
-    fragments: [],
+    actors: [],
+    messages: [],
+    notes: [],
+    fragments: []
   }
 
   // Full action log — every dispatched action, in order.
@@ -123,7 +130,6 @@ function createStore() {
 
   // ── Private utilities ───────────────────────────────────
 
-
   /**
    * Returns the x position for the next actor.
    * First actor lands at x:40. Each subsequent actor is placed
@@ -137,19 +143,21 @@ function createStore() {
 
   /** Deep-clones diagram data only — not log, not snapshots. */
   function snapshot() {
-    return JSON.parse(JSON.stringify({
-      actors:    state.actors,
-      messages:  state.messages,
-      notes:     state.notes,
-      fragments: state.fragments,
-    }))
+    return JSON.parse(
+      JSON.stringify({
+        actors: state.actors,
+        messages: state.messages,
+        notes: state.notes,
+        fragments: state.fragments
+      })
+    )
   }
 
   /** Restores state from a snapshot object. Mutates state in place. */
   function restoreSnapshot(snap) {
-    state.actors    = snap.actors
-    state.messages  = snap.messages
-    state.notes     = snap.notes
+    state.actors = snap.actors
+    state.messages = snap.messages
+    state.notes = snap.notes
     state.fragments = snap.fragments
   }
 
@@ -162,7 +170,7 @@ function createStore() {
   function pushSnapshot() {
     _snapshots.push(snapshot())
     if (_snapshots.length > UNDO_LIMIT) _snapshots.shift()
-    _redoStack.length = 0  // new branch — forward history is gone
+    _redoStack.length = 0 // new branch — forward history is gone
   }
 
   // ── Event emitter ───────────────────────────────────────
@@ -193,26 +201,26 @@ function createStore() {
   // Handlers never touch uiState, never call render().
 
   const handlers = {
-
     // ── Actors ──────────────────────────────────────────
 
     ADD_ACTOR({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
       const actor = {
-        id:    actorId(),
-        x:     payload.x ?? getNextActorX(),
+        id: actorId(),
+        x: payload.x ?? getNextActorX(),
         label: (() => {
-        const base = payload.label || 'Actor';
-        const taken = new Set(state.actors.map(a => a.label));
-        if (!taken.has(base)) return base;
-        let n = 2;
-        while (taken.has(base + '_' + n)) n++;
-        return base + '_' + n;
-      })(),
+          const base = payload.label || 'Actor'
+          const taken = new Set(state.actors.map(a => a.label))
+          if (!taken.has(base)) return base
+          let n = 2
+          while (taken.has(base + '_' + n)) n++
+          return base + '_' + n
+        })(),
         type: payload.type || 'actor-system',
-      ...(payload.emoji !== undefined ? { emoji: payload.emoji } : {}),
-      schema: Array.isArray(payload.schema) ? payload.schema : [],
-      properties: (payload.properties && typeof payload.properties === 'object') ? payload.properties : {},
+        ...(payload.emoji !== undefined ? { emoji: payload.emoji } : {}),
+        schema: Array.isArray(payload.schema) ? payload.schema : [],
+        properties:
+          payload.properties && typeof payload.properties === 'object' ? payload.properties : {}
       }
       state.actors.push(actor)
       emit('actor:added', actor)
@@ -243,7 +251,7 @@ function createStore() {
       if (!actor) return
       // Partial patch — only provided fields are updated
       if (payload.label !== undefined) actor.label = payload.label
-      if (payload.type  !== undefined) actor.type  = payload.type
+      if (payload.type !== undefined) actor.type = payload.type
       if (payload.emoji !== undefined) actor.emoji = payload.emoji
       if (payload.x !== undefined) actor.x = payload.x
       if (Array.isArray(payload.schema)) actor.schema = payload.schema
@@ -261,7 +269,7 @@ function createStore() {
         .filter(m => m.fromId === id || m.toId === id)
         .map(m => m.id)
       // Cascade: remove actor and all its messages
-      state.actors   = getActorsExcept(id)
+      state.actors = getActorsExcept(id)
       state.messages = state.messages.filter(m => m.fromId !== id && m.toId !== id)
       emit('actor:deleted', id)
       if (orphanedIds.length) emit('messages:orphaned', orphanedIds)
@@ -272,20 +280,21 @@ function createStore() {
     ADD_MESSAGE({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
       const message = {
-        id:        messageId(),
-        fromId:    payload.fromId ?? null,
-        toId:      payload.toId   ?? null,
-        label:     payload.label     || 'message',
-        kind:      payload.kind      || 'sync',
+        id: messageId(),
+        fromId: payload.fromId ?? null,
+        toId: payload.toId ?? null,
+        label: payload.label || 'message',
+        kind: payload.kind || 'sync',
         direction: payload.direction || 'right',
-        y:         0,  // render pipeline assigns real y
+        y: 0, // render pipeline assigns real y
         // Network fields — only stored if provided
-        ...(payload.protocol  ? { protocol:  payload.protocol  } : {}),
-        ...(payload.port      ? { port:      payload.port      } : {}),
-        ...(payload.auth      ? { auth:      payload.auth      } : {}),
+        ...(payload.protocol ? { protocol: payload.protocol } : {}),
+        ...(payload.port ? { port: payload.port } : {}),
+        ...(payload.auth ? { auth: payload.auth } : {}),
         ...(payload.dataClass ? { dataClass: payload.dataClass } : {}),
-      schema: Array.isArray(payload.schema) ? payload.schema : [],
-      properties: (payload.properties && typeof payload.properties === 'object') ? payload.properties : {},
+        schema: Array.isArray(payload.schema) ? payload.schema : [],
+        properties:
+          payload.properties && typeof payload.properties === 'object' ? payload.properties : {}
       }
       state.messages.push(message)
       emit('message:added', message)
@@ -304,8 +313,17 @@ function createStore() {
       const message = getMessageById(payload.id)
       if (!message) return
       // Partial patch — only provided fields are updated
-      const fields = ['label', 'fromId', 'toId', 'kind', 'direction',
-                      'protocol', 'port', 'auth', 'dataClass']
+      const fields = [
+        'label',
+        'fromId',
+        'toId',
+        'kind',
+        'direction',
+        'protocol',
+        'port',
+        'auth',
+        'dataClass'
+      ]
       for (const field of fields) {
         if (payload[field] !== undefined) message[field] = payload[field]
       }
@@ -327,10 +345,10 @@ function createStore() {
     ADD_NOTE({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
       const note = {
-        id:   noteId(),
-        x:     payload.x ?? 60,
-        y:     payload.y ?? 200,
-        text: payload.text || 'note',
+        id: noteId(),
+        x: payload.x ?? 60,
+        y: payload.y ?? 200,
+        text: payload.text || 'note'
       }
       state.notes.push(note)
       emit('note:added', note)
@@ -364,13 +382,13 @@ function createStore() {
     ADD_FRAGMENT({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
       const fragment = {
-        id:   fragmentId(),
-        x:     payload.x ?? 60,
-        y:     payload.y ?? 200,
-        w:    payload.w    ?? 200,
-        h:    payload.h    ?? 100,
+        id: fragmentId(),
+        x: payload.x ?? 60,
+        y: payload.y ?? 200,
+        w: payload.w ?? 200,
+        h: payload.h ?? 100,
         kind: payload.kind || 'frag-alt',
-        cond: payload.cond || 'condition',
+        cond: payload.cond || 'condition'
       }
       state.fragments.push(fragment)
       emit('fragment:added', fragment)
@@ -437,9 +455,9 @@ function createStore() {
 
     CLEAR_DIAGRAM({ meta }) {
       if (meta.undoable) pushSnapshot()
-      state.actors    = []
-      state.messages  = []
-      state.notes     = []
+      state.actors = []
+      state.messages = []
+      state.notes = []
       state.fragments = []
       emit('diagram:cleared')
     },
@@ -451,9 +469,9 @@ function createStore() {
       // The store strips _source before it reaches state; it is only forwarded in the event.
       _snapshots.length = 0
       _redoStack.length = 0
-      state.actors    = payload.actors    || []
-      state.messages  = payload.messages  || []
-      state.notes     = payload.notes     || []
+      state.actors = payload.actors || []
+      state.messages = payload.messages || []
+      state.notes = payload.notes || []
       state.fragments = payload.fragments || []
       emit('diagram:loaded', { ...snapshot(), source: payload._source || 'import' })
     },
@@ -469,75 +487,264 @@ function createStore() {
           id: 'auth-flow',
           label: 'Auth Flow',
           build(tid) {
-            const user  = { id: tid(), x: 40,  label: 'User',         type: 'actor-person' }
-            const api   = { id: tid(), x: 210, label: 'API Gateway',   type: 'actor-system' }
-            const auth  = { id: tid(), x: 380, label: 'Auth Service',  type: 'actor-system' }
-            const db    = { id: tid(), x: 550, label: 'Database',      type: 'actor-db'     }
+            const user = { id: tid(), x: 40, label: 'User', type: 'actor-person' }
+            const api = { id: tid(), x: 210, label: 'API Gateway', type: 'actor-system' }
+            const auth = { id: tid(), x: 380, label: 'Auth Service', type: 'actor-system' }
+            const db = { id: tid(), x: 550, label: 'Database', type: 'actor-db' }
             return {
               actors: [user, api, auth, db],
               messages: [
-                { id: tid(), fromId: user.id, toId: api.id,  label: 'POST /login',        kind: 'sync',   direction: 'right', y: 0 },
-                { id: tid(), fromId: api.id,  toId: auth.id, label: 'validateCredentials', kind: 'sync',   direction: 'right', y: 0 },
-                { id: tid(), fromId: auth.id, toId: db.id,   label: 'SELECT user WHERE…',  kind: 'sync',   direction: 'right', y: 0 },
-                { id: tid(), fromId: db.id,   toId: auth.id, label: 'user record',          kind: 'return', direction: 'right', y: 0 },
-                { id: tid(), fromId: auth.id, toId: api.id,  label: 'JWT token',            kind: 'return', direction: 'right', y: 0 },
-                { id: tid(), fromId: api.id,  toId: user.id, label: '200 OK + token',       kind: 'return', direction: 'right', y: 0 },
+                {
+                  id: tid(),
+                  fromId: user.id,
+                  toId: api.id,
+                  label: 'POST /login',
+                  kind: 'sync',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: api.id,
+                  toId: auth.id,
+                  label: 'validateCredentials',
+                  kind: 'sync',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: auth.id,
+                  toId: db.id,
+                  label: 'SELECT user WHERE…',
+                  kind: 'sync',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: db.id,
+                  toId: auth.id,
+                  label: 'user record',
+                  kind: 'return',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: auth.id,
+                  toId: api.id,
+                  label: 'JWT token',
+                  kind: 'return',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: api.id,
+                  toId: user.id,
+                  label: '200 OK + token',
+                  kind: 'return',
+                  direction: 'right',
+                  y: 0
+                }
               ],
-              fragments: [{ id: tid(), x: 160, y: 170, w: 340, h: 175, kind: 'frag-alt', cond: 'valid credentials' }],
-              notes:     [{ id: tid(), x: 20,  y: 0,   text: 'Auth flow' }],
+              fragments: [
+                {
+                  id: tid(),
+                  x: 160,
+                  y: 170,
+                  w: 340,
+                  h: 175,
+                  kind: 'frag-alt',
+                  cond: 'valid credentials'
+                }
+              ],
+              notes: [{ id: tid(), x: 20, y: 0, text: 'Auth flow' }]
             }
-          },
+          }
         },
         // ── Demo 1: SCADA Control Flow ────────────────────────────────────
         {
           id: 'scada-control',
           label: 'SCADA: Control Flow',
           build(tid) {
-            const hmi  = { id: tid(), x: 40,  label: 'HMI',          type: 'actor-person' }
-            const plc  = { id: tid(), x: 210, label: 'PLC',           type: 'actor-system' }
-            const rtu  = { id: tid(), x: 380, label: 'RTU',           type: 'actor-system' }
-            const hist = { id: tid(), x: 550, label: 'Historian',     type: 'actor-db'     }
+            const hmi = { id: tid(), x: 40, label: 'HMI', type: 'actor-person' }
+            const plc = { id: tid(), x: 210, label: 'PLC', type: 'actor-system' }
+            const rtu = { id: tid(), x: 380, label: 'RTU', type: 'actor-system' }
+            const hist = { id: tid(), x: 550, label: 'Historian', type: 'actor-db' }
             return {
               actors: [hmi, plc, rtu, hist],
               messages: [
-                { id: tid(), fromId: hmi.id,  toId: plc.id,  label: 'Poll cycle (1 s)',      kind: 'sync',   direction: 'right', y: 0 },
-                { id: tid(), fromId: plc.id,  toId: rtu.id,  label: 'Read registers',        kind: 'sync',   direction: 'right', y: 0 },
-                { id: tid(), fromId: rtu.id,  toId: plc.id,  label: 'Field telemetry',       kind: 'return', direction: 'right', y: 0 },
-                { id: tid(), fromId: plc.id,  toId: rtu.id,  label: 'Setpoint command',      kind: 'sync',   direction: 'right', y: 0 },
-                { id: tid(), fromId: rtu.id,  toId: plc.id,  label: 'Acknowledge',           kind: 'return', direction: 'right', y: 0 },
-                { id: tid(), fromId: plc.id,  toId: hist.id, label: 'Log values',            kind: 'async',  direction: 'right', y: 0 },
-                { id: tid(), fromId: plc.id,  toId: hmi.id,  label: 'Status update',         kind: 'return', direction: 'right', y: 0 },
+                {
+                  id: tid(),
+                  fromId: hmi.id,
+                  toId: plc.id,
+                  label: 'Poll cycle (1 s)',
+                  kind: 'sync',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: plc.id,
+                  toId: rtu.id,
+                  label: 'Read registers',
+                  kind: 'sync',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: rtu.id,
+                  toId: plc.id,
+                  label: 'Field telemetry',
+                  kind: 'return',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: plc.id,
+                  toId: rtu.id,
+                  label: 'Setpoint command',
+                  kind: 'sync',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: rtu.id,
+                  toId: plc.id,
+                  label: 'Acknowledge',
+                  kind: 'return',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: plc.id,
+                  toId: hist.id,
+                  label: 'Log values',
+                  kind: 'async',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: plc.id,
+                  toId: hmi.id,
+                  label: 'Status update',
+                  kind: 'return',
+                  direction: 'right',
+                  y: 0
+                }
               ],
-              fragments: [{ id: tid(), x: 160, y: 185, w: 340, h: 140, kind: 'frag-loop', cond: 'scan active' }],
-              notes:     [{ id: tid(), x: 20,  y: 0,   text: 'SCADA control loop' }],
+              fragments: [
+                {
+                  id: tid(),
+                  x: 160,
+                  y: 185,
+                  w: 340,
+                  h: 140,
+                  kind: 'frag-loop',
+                  cond: 'scan active'
+                }
+              ],
+              notes: [{ id: tid(), x: 20, y: 0, text: 'SCADA control loop' }]
             }
-          },
+          }
         },
         // ── Demo 2: CyberSecurity Zone Analysis ───────────────────────────
         {
           id: 'cybersec-zones',
           label: 'CyberSecurity: Zone Analysis',
           build(tid) {
-            const corp  = { id: tid(), x: 40,  label: 'Corporate LAN', type: 'actor-system' }
-            const fw    = { id: tid(), x: 200, label: 'Firewall',      type: 'actor-system' }
-            const jump  = { id: tid(), x: 360, label: 'Jump Server',   type: 'actor-system' }
-            const ot    = { id: tid(), x: 520, label: 'OT Network',    type: 'actor-system' }
-            const hist  = { id: tid(), x: 680, label: 'Historian',     type: 'actor-db'     }
+            const corp = { id: tid(), x: 40, label: 'Corporate LAN', type: 'actor-system' }
+            const fw = { id: tid(), x: 200, label: 'Firewall', type: 'actor-system' }
+            const jump = { id: tid(), x: 360, label: 'Jump Server', type: 'actor-system' }
+            const ot = { id: tid(), x: 520, label: 'OT Network', type: 'actor-system' }
+            const hist = { id: tid(), x: 680, label: 'Historian', type: 'actor-db' }
             return {
               actors: [corp, fw, jump, ot, hist],
               messages: [
-                { id: tid(), fromId: corp.id, toId: fw.id,   label: 'Remote access request', kind: 'sync',   direction: 'right', y: 0 },
-                { id: tid(), fromId: fw.id,   toId: jump.id, label: 'Allow (port 3389)',      kind: 'sync',   direction: 'right', y: 0 },
-                { id: tid(), fromId: jump.id, toId: ot.id,   label: 'Authenticated session',  kind: 'sync',   direction: 'right', y: 0 },
-                { id: tid(), fromId: ot.id,   toId: hist.id, label: 'Process data write',     kind: 'async',  direction: 'right', y: 0 },
-                { id: tid(), fromId: hist.id, toId: corp.id, label: 'Replication (no DPI)',   kind: 'async',  direction: 'right', y: 0 },
-                { id: tid(), fromId: ot.id,   toId: fw.id,   label: 'Audit log egress',       kind: 'async',  direction: 'right', y: 0 },
+                {
+                  id: tid(),
+                  fromId: corp.id,
+                  toId: fw.id,
+                  label: 'Remote access request',
+                  kind: 'sync',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: fw.id,
+                  toId: jump.id,
+                  label: 'Allow (port 3389)',
+                  kind: 'sync',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: jump.id,
+                  toId: ot.id,
+                  label: 'Authenticated session',
+                  kind: 'sync',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: ot.id,
+                  toId: hist.id,
+                  label: 'Process data write',
+                  kind: 'async',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: hist.id,
+                  toId: corp.id,
+                  label: 'Replication (no DPI)',
+                  kind: 'async',
+                  direction: 'right',
+                  y: 0
+                },
+                {
+                  id: tid(),
+                  fromId: ot.id,
+                  toId: fw.id,
+                  label: 'Audit log egress',
+                  kind: 'async',
+                  direction: 'right',
+                  y: 0
+                }
               ],
-              fragments: [{ id: tid(), x: 330, y: 80, w: 390, h: 230, kind: 'frag-alt', cond: 'Purdue L3 / L2 boundary' }],
-              notes:     [{ id: tid(), x: 20, y: 0, text: 'Unmonitored replication path — no DPI at historian egress' }],
+              fragments: [
+                {
+                  id: tid(),
+                  x: 330,
+                  y: 80,
+                  w: 390,
+                  h: 230,
+                  kind: 'frag-alt',
+                  cond: 'Purdue L3 / L2 boundary'
+                }
+              ],
+              notes: [
+                {
+                  id: tid(),
+                  x: 20,
+                  y: 0,
+                  text: 'Unmonitored replication path — no DPI at historian egress'
+                }
+              ]
             }
-          },
-        },
+          }
+        }
       ]
       // <<STORE_DEMOS_END>>
 
@@ -549,18 +756,23 @@ function createStore() {
       const tid = () => ulid()
 
       const built = demo.build(tid)
-      state.actors    = built.actors
-      state.messages  = built.messages
+      state.actors = built.actors
+      state.messages = built.messages
       state.fragments = built.fragments || []
-      state.notes     = built.notes     || []
+      state.notes = built.notes || []
 
       // Expose demo list for canary + dropdown rendering
       if (typeof window !== 'undefined') {
         window.SF_DEMOS = DEMOS.map(d => ({ id: d.id, label: d.label }))
       }
 
-      emit('diagram:loaded', { ...snapshot(), source: 'demo', demoId: demo.id, demoLabel: demo.label })
-    },
+      emit('diagram:loaded', {
+        ...snapshot(),
+        source: 'demo',
+        demoId: demo.id,
+        demoLabel: demo.label
+      })
+    }
   }
 
   // ── dispatch ─────────────────────────────────────────────
@@ -580,12 +792,12 @@ function createStore() {
 
     // Stamp meta — callers provide undoable: false to opt out of undo
     const meta = {
-      undoable:   rawMeta.undoable !== false, // default true
-      timestamp:  Date.now(),
+      undoable: rawMeta.undoable !== false, // default true
+      timestamp: Date.now(),
       // affectedId — the element ULID this action targets, for readable history
       // Extracted from payload.id when present; undefined for bulk/session actions
       affectedId: payload.id || undefined,
-      ...rawMeta,
+      ...rawMeta
     }
 
     // UNDO and REDO are never logged — they operate on the log itself
@@ -602,7 +814,7 @@ function createStore() {
 
     try {
       handler({ type, payload, meta })
-    } catch(err) {
+    } catch (err) {
       // Roll back the log entry — a failed handler must not leave a phantom entry.
       // The snapshot (if any) is still on the stack; undo remains consistent.
       if (!skipLog) log.pop()
@@ -614,31 +826,57 @@ function createStore() {
   // Expose demo list at startup — dropdown populates before first LOAD_DEMO
   if (typeof window !== 'undefined') {
     window.SF_DEMOS = [
-      { id: 'auth-flow',    label: 'Auth Flow' },
+      { id: 'auth-flow', label: 'Auth Flow' },
       { id: 'scada-control', label: 'SCADA: Control Flow' },
-      { id: 'cybersec-zones', label: 'CyberSecurity: Zone Analysis' },
+      { id: 'cybersec-zones', label: 'CyberSecurity: Zone Analysis' }
     ]
   }
-  function getActorById(id)       { return state.actors.find(a => a.id === id) }
-  function getMessageById(id)     { return state.messages.find(m => m.id === id) }
-  function getNoteById(id)        { return state.notes.find(n => n.id === id) }
-  function getFragmentById(id)    { return state.fragments.find(f => f.id === id) }
-  function getActorsExcept(id)    { return state.actors.filter(a => a.id !== id) }
-  function getMessagesExcept(id)  { return state.messages.filter(m => m.id !== id) }
-  function getNotesExcept(id)     { return state.notes.filter(n => n.id !== id) }
-  function getFragmentsExcept(id) { return state.fragments.filter(f => f.id !== id) }
+  function getActorById(id) {
+    return state.actors.find(a => a.id === id)
+  }
+  function getMessageById(id) {
+    return state.messages.find(m => m.id === id)
+  }
+  function getNoteById(id) {
+    return state.notes.find(n => n.id === id)
+  }
+  function getFragmentById(id) {
+    return state.fragments.find(f => f.id === id)
+  }
+  function getActorsExcept(id) {
+    return state.actors.filter(a => a.id !== id)
+  }
+  function getMessagesExcept(id) {
+    return state.messages.filter(m => m.id !== id)
+  }
+  function getNotesExcept(id) {
+    return state.notes.filter(n => n.id !== id)
+  }
+  function getFragmentsExcept(id) {
+    return state.fragments.filter(f => f.id !== id)
+  }
   return {
-    state,   // live reference — mutations are visible immediately
-    log,     // full action log — live reference
+    state, // live reference — mutations are visible immediately
+    log, // full action log — live reference
     dispatch,
     on,
     off,
-    get canUndo() { return _snapshots.length > 0 },  // true when undo stack is non-empty
-    get canRedo()  { return _redoStack.length  > 0 },  // true when redo stack is non-empty
-    getActorById, getMessageById, getNoteById, getFragmentById,
-    getActorsExcept, getMessagesExcept, getNotesExcept, getFragmentsExcept,
-    getNextActorX,
- }
+    get canUndo() {
+      return _snapshots.length > 0
+    }, // true when undo stack is non-empty
+    get canRedo() {
+      return _redoStack.length > 0
+    }, // true when redo stack is non-empty
+    getActorById,
+    getMessageById,
+    getNoteById,
+    getFragmentById,
+    getActorsExcept,
+    getMessagesExcept,
+    getNotesExcept,
+    getFragmentsExcept,
+    getNextActorX
+  }
 }
 
 // ── CommonJS export ──────────────────────────────────────
@@ -648,5 +886,5 @@ function createStore() {
 module.exports = {
   createStore,
   nextMessageKind,
-  nextMessageDirection,
+  nextMessageDirection
 }
