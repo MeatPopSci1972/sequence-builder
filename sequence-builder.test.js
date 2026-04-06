@@ -1312,6 +1312,7 @@ test('e2e: full lifecycle — demo → modify → export → clear → import �
 // ═══════════════════════════════════════════════════════
 // UI geometry contracts & proto2prod guard rails
 
+setGroup('bounding boxes + selection')
 test('actor hit area covers the actor head box', () => {
   // Simulate the actor box calculation from _positionEditBtn
   const ACTOR_W = 110
@@ -2072,6 +2073,7 @@ test('actors cannot be nudged past the left boundary', () => {
 })
 
 // ── Suite 15 — Properties bag contracts ──────────────────────────────────────
+setGroup('schema + properties')
 test('a new actor starts with an empty schema', () => {
   const s = createStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
@@ -2176,6 +2178,7 @@ test('@import strip — multiple imports all removed', () => {
   assert(result.includes('p{}'), 'selector preserved')
 })
 
+setGroup('regex contracts')
 test('version string extraction matches the standard format', () => {
   const input = 'Version: 0.9.91\nsome other text'
   const m = input.match(/Version:\s*([\d.]+)/)

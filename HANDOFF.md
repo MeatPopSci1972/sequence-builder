@@ -3,7 +3,7 @@
 
 ## FIRST ACTIONS (do these before anything else)
 1. GET http://localhost:3799/status — confirm version, clean=true
-2. GET http://localhost:3799/test — confirm gate is green (137/137)
+2. GET http://localhost:3799/test — confirm gate is green (156/156)
 3. GET http://localhost:3799/test-render — confirm render gate green (15/15)
 4. Read this file fully, paying close attention to ## BACKLOG
 
@@ -282,7 +282,7 @@ These standards define what each document type must contain, what format to use,
 FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW · READ CONSOLE PATTERN · STORE ARCHITECTURE · SECURITY NOTE · HOT RELOAD · LOG UI · TOUR SYSTEM · DEV LOOP WISDOM · VERSION · DEMOS · BACKLOG · REPO · (recovery note)
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
-- `## FIRST ACTIONS` — gate counts must match `GET /test` (137/137) and `GET /test-render` (15/15)
+- `## FIRST ACTIONS` — gate counts must match `GET /test` (156/156) and `GET /test-render` (15/15)
 - `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.94)
 - `## VERSION — Bump pattern:` — must be `html.split('0.9.94').join('0.9.95')`
 - `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.94)
