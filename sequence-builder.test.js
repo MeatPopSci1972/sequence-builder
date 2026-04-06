@@ -120,7 +120,6 @@ function assertDeepEqual(actual, expected, message) {
 //
 //  Forces: dispatch(), store.state.actors, uid(), getNextActorX()
 // ═══════════════════════════════════════════════════════
-console.log('\nSuite 1 — ADD_ACTOR')
 
 test('dispatching ADD_ACTOR appends one actor to state.actors', () => {
   const store = freshStore()
@@ -247,7 +246,6 @@ test('ADD_ACTOR third duplicate gets _3 suffix', () => {
 //  Forces: cascade delete logic — orphaned messages removed
 //  This is the most important invariant in the store.
 // ═══════════════════════════════════════════════════════
-console.log('\nSuite 2 — DELETE_ACTOR cascade')
 
 test('dispatching DELETE_ACTOR removes the actor', () => {
   const store = freshStore()
@@ -332,7 +330,6 @@ test('dispatching DELETE_ACTOR leaves unrelated messages intact', () => {
 //  Forces: partial update logic — untouched fields preserved
 //  Critical: UPDATE_MESSAGE must not clobber fields not in payload
 // ═══════════════════════════════════════════════════════
-console.log('\nSuite 3 — UPDATE_MESSAGE partial patch')
 
 test('dispatching UPDATE_MESSAGE changes only the provided fields', () => {
   const store = freshStore()
@@ -423,7 +420,6 @@ test('nextMessageDirection helper cycles right → left → both → right', () 
 //  Forces: action log structure, meta stamping, undo scanner filter
 //  Validates: mid-drag actions are logged but invisible to undo
 // ═══════════════════════════════════════════════════════
-console.log('\nSuite 4 — meta.undoable = false')
 
 test('every dispatched action appears in the action log', () => {
   const store = freshStore()
@@ -489,7 +485,6 @@ test('dispatch stamps meta.timestamp on every action', () => {
 //  Forces: undo stack logic, state restoration, undo scanner
 //  The most complex suite — builds on all prior suites passing
 // ═══════════════════════════════════════════════════════
-console.log('\nSuite 5 — UNDO')
 
 test('dispatching UNDO after ADD_ACTOR removes the actor', () => {
   const store = freshStore()
@@ -583,7 +578,6 @@ test('multiple UNDO steps walk back through history correctly', () => {
 //  redo-is-undoable, canRedo getter, empty-stack safety
 //  Depends on Suite 5 (UNDO) passing.
 // ═══════════════════════════════════════════════════════
-console.log('\nSuite 6 — REDO')
 
 test('dispatching REDO after UNDO restores the undone state', () => {
   const store = freshStore()
@@ -809,7 +803,6 @@ function _parseUML(text) {
   return { actors: actorOrder.map(function(l) { return { label: l }; }), messages: messages, warnings: warnings };
 }
 
-console.log('\nSuite 7 — _parseUML')
 
 test('PlantUML: parses participant declarations and arrows', () => {
     const result = _parseUML(`
@@ -957,7 +950,6 @@ test('valid input with "as" aliases and labelless arrows produces no warnings', 
 //  The PlantUML serializer is inlined (mirrors HTML adapter).
 // ═══════════════════════════════════════════════════════
 
-console.log('\nSuite 8 — End-to-end scenario')
 
 // ── Inline PlantUML serializer (mirrors PlantUMLAdapter in HTML) ─────────────
 function serializePlantUML(actors, messages, notes, fragments) {
@@ -1567,7 +1559,6 @@ test('note click after deselect — setSelected receives correct note', () => {
 //  These tests catch regressions in the dblclick-to-edit feature
 //  even though the DOM event wiring is not tested here.
 // ═══════════════════════════════════════════════════════
-console.log('\nSuite 11 — Message label contract & inline edit')
 
 test('ADD_MESSAGE stores the provided label', () => {
   const s = freshStore()
@@ -1830,7 +1821,6 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 //  dispatches, and assert that pan state does not leak into store.
 // ═══════════════════════════════════════════════════════
 
-console.log('\nSuite 14 — Canvas pan & arrow-key nudge contracts');
 
 test('UPDATE_ACTOR x-nudge moves actor by delta', () => {
   const s = freshStore();
@@ -2060,6 +2050,7 @@ test('btn-export-png has exactly one click binding (no double-download)', () => 
 //  RESULTS
 // ═══════════════════════════════════════════════════════
 // ── ULID ID contract ─────────────────────────────────────
+console.log('\nULID ID contract')
 test("ADD_ACTOR id has actor_ prefix + 26-char ULID", function() {
   ;(function(freshStore, assert) {
   const store = freshStore()
@@ -2145,6 +2136,7 @@ test("state has no nextId field", function() {
 })
 
 // ── ActorElement contract ───────────────────────────────
+console.log('\nActorElement contract')
 test("ActorElement.getBounds() correct box for x=40", function() {
   ;(function(freshStore, assert) {
   const { ActorElement, _AE_ACTOR_W, _AE_ACTOR_H } = require('./src/elements/ActorElement.js')
