@@ -266,7 +266,7 @@ test('third duplicate continues the sequence: Actor_2 becomes Actor_3', () => {
 // ═══════════════════════════════════════════════════════
 
 setGroup("DELETE_ACTOR cascade")
-test('dispatching DELETE_ACTOR removes the actor', () => {
+test('deleting an actor removes it from the diagram', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -277,7 +277,7 @@ test('dispatching DELETE_ACTOR removes the actor', () => {
   assertEqual(store.state.actors.length, 0, 'actor should be removed')
 })
 
-test('dispatching DELETE_ACTOR removes messages where actor is fromId', () => {
+test('deleting an actor removes its outgoing messages', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -300,7 +300,7 @@ test('dispatching DELETE_ACTOR removes messages where actor is fromId', () => {
   )
 })
 
-test('dispatching DELETE_ACTOR removes messages where actor is toId', () => {
+test('deleting an actor removes its incoming messages', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -321,7 +321,7 @@ test('dispatching DELETE_ACTOR removes messages where actor is toId', () => {
   )
 })
 
-test('dispatching DELETE_ACTOR leaves unrelated messages intact', () => {
+test('deleting an actor does not affect unrelated messages', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -353,7 +353,7 @@ test('dispatching DELETE_ACTOR leaves unrelated messages intact', () => {
 // ═══════════════════════════════════════════════════════
 
 setGroup("UPDATE_MESSAGE")
-test('dispatching UPDATE_MESSAGE changes only the provided fields', () => {
+test('updating a message patches only the specified fields', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -381,7 +381,7 @@ test('dispatching UPDATE_MESSAGE changes only the provided fields', () => {
   assertEqual(m.toId, b.id, 'toId should be untouched')
 })
 
-test('dispatching UPDATE_MESSAGE with network fields stores them correctly', () => {
+test('network fields (protocol, port, auth) are stored on the message', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -407,7 +407,7 @@ test('dispatching UPDATE_MESSAGE with network fields stores them correctly', () 
   assertEqual(m.dataClass, 'PII', 'dataClass should be stored')
 })
 
-test('nextMessageKind helper cycles sync → async → return → sync', () => {
+test('message kind cycles: sync → async → return → sync', () => {
   // Pure helper — no store needed, importable separately
   let nextMessageKind
   try {
@@ -422,7 +422,7 @@ test('nextMessageKind helper cycles sync → async → return → sync', () => {
   assertEqual(nextMessageKind('bogus'), 'sync', 'unknown → sync (safe default)')
 })
 
-test('nextMessageDirection helper cycles right → left → both → right', () => {
+test('message direction cycles: right → left → both → right', () => {
   let nextMessageDirection
   try {
     ;({ nextMessageDirection } = require('./sequence-builder.store.js'))
@@ -444,7 +444,7 @@ test('nextMessageDirection helper cycles right → left → both → right', () 
 // ═══════════════════════════════════════════════════════
 
 setGroup("meta.undoable")
-test('every dispatched action appears in the action log', () => {
+test('every action is recorded in the log', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -453,7 +453,7 @@ test('every dispatched action appears in the action log', () => {
   assertEqual(store.log.length, 2, 'both actions should be in the log')
 })
 
-test('actions default to undoable: true when meta is not provided', () => {
+test('actions are undoable by default', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -462,7 +462,7 @@ test('actions default to undoable: true when meta is not provided', () => {
   assert(entry.meta.undoable !== false, 'action without meta should be undoable')
 })
 
-test('actions with meta.undoable: false appear in log but not in undo history', () => {
+test('non-undoable actions are logged but cannot be undone', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -490,7 +490,7 @@ test('actions with meta.undoable: false appear in log but not in undo history', 
   assertEqual(undoable.length, 2, 'only 2 undoable entries should exist')
 })
 
-test('dispatch stamps meta.timestamp on every action', () => {
+test('every action is stamped with a timestamp', () => {
   const store = freshStore()
   const before = Date.now()
 
@@ -510,7 +510,7 @@ test('dispatch stamps meta.timestamp on every action', () => {
 // ═══════════════════════════════════════════════════════
 
 setGroup("UNDO")
-test('dispatching UNDO after ADD_ACTOR removes the actor', () => {
+test('undo reverses the last mutation', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -521,7 +521,7 @@ test('dispatching UNDO after ADD_ACTOR removes the actor', () => {
   assertEqual(store.state.actors.length, 0, 'actor should be removed after undo')
 })
 
-test('dispatching UNDO restores state before a DELETE_ACTOR', () => {
+test('undo can restore a deleted actor', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -549,7 +549,7 @@ test('dispatching UNDO restores state before a DELETE_ACTOR', () => {
   assertEqual(store.state.messages.length, 1, 'cascaded message restored')
 })
 
-test('dispatching UNDO skips non-undoable actions', () => {
+test('undo skips actions marked non-undoable', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -565,7 +565,7 @@ test('dispatching UNDO skips non-undoable actions', () => {
   assertEqual(store.state.actors.length, 0, 'undo should skip non-undoable moves and remove actor')
 })
 
-test('dispatching UNDO when log is empty does not throw', () => {
+test('undo is a no-op when there is nothing to undo', () => {
   const store = freshStore()
 
   // Should be a no-op, not an exception
@@ -580,7 +580,7 @@ test('dispatching UNDO when log is empty does not throw', () => {
   assertEqual(store.state.actors.length, 0, 'state should remain empty')
 })
 
-test('multiple UNDO steps walk back through history correctly', () => {
+test('multiple undo steps walk back through history in order', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -608,7 +608,7 @@ test('multiple UNDO steps walk back through history correctly', () => {
 // ═══════════════════════════════════════════════════════
 
 setGroup("REDO")
-test('dispatching REDO after UNDO restores the undone state', () => {
+test('redo restores the state that was undone', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -622,7 +622,7 @@ test('dispatching REDO after UNDO restores the undone state', () => {
   assertEqual(store.state.actors[0].id, id, 'restored actor has same id')
 })
 
-test('dispatching REDO when stack is empty does not throw', () => {
+test('redo is a no-op when there is nothing to redo', () => {
   const store = freshStore()
 
   let threw = false
@@ -636,7 +636,7 @@ test('dispatching REDO when stack is empty does not throw', () => {
   assertEqual(store.state.actors.length, 0, 'state should remain empty')
 })
 
-test('new mutation after UNDO clears the redo stack (branching history)', () => {
+test('a new mutation after undo clears the redo stack', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -656,7 +656,7 @@ test('new mutation after UNDO clears the redo stack (branching history)', () => 
   assertEqual(store.state.actors[1].label, 'C', 'second actor is C not B')
 })
 
-test('UNDO after REDO works — redo step is itself undoable', () => {
+test('a redo step can itself be undone', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -670,7 +670,7 @@ test('UNDO after REDO works — redo step is itself undoable', () => {
   assertEqual(store.state.actors.length, 0, 'undo after redo removes the actor again')
 })
 
-test('canRedo getter reflects redo stack depth', () => {
+test('canRedo is true only when redo history exists', () => {
   const store = freshStore()
 
   assert(!store.canRedo, 'canRedo is false on fresh store')
@@ -685,7 +685,7 @@ test('canRedo getter reflects redo stack depth', () => {
   assert(!store.canRedo, 'canRedo is false after redo exhausts stack')
 })
 
-test('multiple REDO steps walk forward through history correctly', () => {
+test('multiple redo steps walk forward through history in order', () => {
   const store = freshStore()
 
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-system' } })
@@ -707,7 +707,7 @@ test('multiple REDO steps walk forward through history correctly', () => {
   assertEqual(store.state.actors.length, 3, 'after 3 redos: 3 actors')
 })
 
-test('state:restored event carries direction field', () => {
+test('state:restored event reports whether it was an undo or redo', () => {
   const store = freshStore()
   let lastRestoreDir = null
 
@@ -853,7 +853,7 @@ function _parseUML(text) {
 }
 
 setGroup("_parseUML")
-test('PlantUML: parses participant declarations and arrows', () => {
+test('PlantUML participant declarations are parsed into actors', () => {
   const result = _parseUML(`
 @startuml
 participant Alice
@@ -872,7 +872,7 @@ Bob --> Alice : Hi back
   assertEqual(result.messages[1].kind, 'async', 'dashed arrow is async')
 })
 
-test('PlantUML: alias resolution maps arrows through declared alias', () => {
+test('PlantUML aliases are resolved when wiring messages', () => {
   const result = _parseUML(`
 @startuml
 participant "Order Service" as OS
@@ -886,7 +886,7 @@ PS -->> OS : Receipt
   assertEqual(result.messages[1].kind, 'return', 'double-dashed double-arrow is return')
 })
 
-test('PlantUML: undeclared actors in arrows are auto-created', () => {
+test('undeclared PlantUML actors are created automatically', () => {
   const result = _parseUML(`@startuml
 A -> B : go
 B -> C : forward
@@ -894,7 +894,7 @@ B -> C : forward
   assertEqual(result.actors.length, 3, 'three actors auto-created from arrows')
 })
 
-test('Mermaid: parses sequenceDiagram with participant and arrows', () => {
+test('Mermaid sequenceDiagram participants are parsed into actors', () => {
   const result = _parseUML(`
 sequenceDiagram
   participant Alice
@@ -908,7 +908,7 @@ sequenceDiagram
   assertEqual(result.messages[0].label, 'Request', 'message label parsed')
 })
 
-test('Mermaid: participant with alias resolves correctly', () => {
+test('Mermaid aliases are resolved when wiring messages', () => {
   const result = _parseUML(`
 sequenceDiagram
   participant Alice as A
@@ -919,7 +919,7 @@ sequenceDiagram
   assertEqual(result.messages[0].from, 'Alice', 'from uses resolved label')
 })
 
-test('throws on empty input', () => {
+test('empty input throws a clear error', () => {
   let threw = false
   try {
     _parseUML('')
@@ -929,7 +929,7 @@ test('throws on empty input', () => {
   assertEqual(threw, true, 'empty string throws')
 })
 
-test('throws on unrecognised format', () => {
+test('unrecognised format throws a clear error', () => {
   let threw = false
   try {
     _parseUML('some random text with no arrows')
@@ -939,7 +939,7 @@ test('throws on unrecognised format', () => {
   assertEqual(threw, true, 'unrecognised format throws')
 })
 
-test('basic @startuml block with -> and <- and <-> parses correctly', () => {
+test('basic PlantUML arrow syntax is parsed correctly', () => {
   const result = _parseUML(`
 @startuml
 participant Alice
@@ -1312,7 +1312,7 @@ test('e2e: full lifecycle — demo → modify → export → clear → import �
 // ═══════════════════════════════════════════════════════
 // UI geometry contracts & proto2prod guard rails
 
-test('actor bounding box is right-edge, top of actor', () => {
+test('actor hit area covers the actor head box', () => {
   // Simulate the actor box calculation from _positionEditBtn
   const ACTOR_W = 110
   const actor = { id: 'a1', x: 40 }
@@ -1323,7 +1323,7 @@ test('actor bounding box is right-edge, top of actor', () => {
   assertEqual(btnY, 4, 'actor edit btn y = 4px (above top edge)')
 })
 
-test('message box anchors to toA side (right arrow)', () => {
+test('right-direction message hit area anchors to the receiving actor', () => {
   const ACTOR_W = 110
   const fromA = { id: 'a1', x: 40 }
   const toA = { id: 'a2', x: 210 }
@@ -1339,7 +1339,7 @@ test('message box anchors to toA side (right arrow)', () => {
   assertEqual(btnY, 94, 'right-arrow edit btn y above arrow line')
 })
 
-test('message box anchors to toA side (left arrow)', () => {
+test('left-direction message hit area anchors to the receiving actor', () => {
   const ACTOR_W = 110
   const fromA = { id: 'a2', x: 210 }
   const toA = { id: 'a1', x: 40 }
@@ -1352,7 +1352,7 @@ test('message box anchors to toA side (left arrow)', () => {
   assertEqual(btnX, 125, 'left-arrow edit btn x anchors to left toA side')
 })
 
-test('message box midpoint for bidirectional arrow', () => {
+test('bidirectional message hit area is centred between actors', () => {
   const ACTOR_W = 110
   const fromA = { id: 'a1', x: 40 }
   const toA = { id: 'a2', x: 210 }
@@ -1365,7 +1365,7 @@ test('message box midpoint for bidirectional arrow', () => {
   assertEqual(btnX, 210, 'bidirectional edit btn x at midpoint + 30')
 })
 
-test('note bounding box right-edge at x + 120', () => {
+test('note hit area extends 120px from its x position', () => {
   const note = { id: 'n1', x: 20, y: 122 }
   const box = { x: note.x, y: (note.y || 0) - 18, w: 120, h: 36 }
   const btnX = box.x + box.w
@@ -1374,7 +1374,7 @@ test('note bounding box right-edge at x + 120', () => {
   assertEqual(btnY, 104, 'note edit btn y above note top')
 })
 
-test('fragment bounding box top-right corner', () => {
+test('fragment hit area covers its full extent', () => {
   const frag = { id: 'f1', x: 60, y: 200, w: 200, h: 100 }
   const box = { x: frag.x, y: frag.y, w: frag.w, h: frag.h }
   const btnX = box.x + box.w
@@ -1383,7 +1383,7 @@ test('fragment bounding box top-right corner', () => {
   assertEqual(btnY, 200, 'fragment edit btn y = frag.y (top edge)')
 })
 
-test('edit btn hidden when nothing selected', () => {
+test('edit button is hidden when nothing is selected', () => {
   // _positionEditBtn returns early and would remove visible class
   // We test the guard condition: !s || s._preview
   const noSelection = null
@@ -1392,7 +1392,7 @@ test('edit btn hidden when nothing selected', () => {
   assert(preview._preview, 'preview object triggers hide')
 })
 
-test(':added store events set uiState.selected before render', () => {
+test('element:added events update selection before rendering', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Test', type: 'actor-system', x: 40 } })
   const actor = store.state.actors[0]
@@ -1403,7 +1403,7 @@ test(':added store events set uiState.selected before render', () => {
   assertEqual(actor.label, 'Test', 'actor label matches payload')
 })
 
-test('selected state persists after deselect-then-reselect cycle', () => {
+test('reselecting an element restores its selected state', () => {
   // Simulates: add actor → click canvas (deselect) → click actor again
   // _positionEditBtn must find the actor in state after re-selection
   const store = createStore()
@@ -1425,7 +1425,7 @@ test('selected state persists after deselect-then-reselect cycle', () => {
   assertEqual(found.x, 40, 'actor x is correct for bbox calculation')
 })
 
-test('_renderEditBtn box defined for all element types when selected', () => {
+test('edit button position is defined for every selectable element type', () => {
   const ACTOR_W = 110,
     ACTOR_H = 42
   const actorCenterX = a => a.x + ACTOR_W / 2
@@ -1459,14 +1459,14 @@ test('_renderEditBtn box defined for all element types when selected', () => {
   }
 })
 
-test('ADD_ACTOR succeeds with no prior actors (no 2-actor guard)', () => {
+test('actors can be added to an empty diagram', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Solo', type: 'actor-person', x: 40 } })
   assertEqual(store.state.actors.length, 1, 'actor added without precondition')
   assertEqual(store.state.actors[0].label, 'Solo', 'actor label correct')
 })
 
-test('ADD_MESSAGE with 1 actor uses self-message (fromId === toId)', () => {
+test('a message on a single actor becomes a self-message', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Solo', type: 'actor-person', x: 40 } })
   const id = store.state.actors[0].id
@@ -1485,7 +1485,7 @@ test('ADD_MESSAGE with 1 actor uses self-message (fromId === toId)', () => {
   assertEqual(store.state.messages[0].toId, id, 'toId is also the single actor (self-message)')
 })
 
-test('ADD_MESSAGE with actors — fromId/toId set explicitly', () => {
+test('message endpoints can be set explicitly', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-person', x: 40 } })
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B', type: 'actor-system', x: 200 } })
@@ -1505,7 +1505,7 @@ test('ADD_MESSAGE with actors — fromId/toId set explicitly', () => {
   assertEqual(store.state.messages[0].toId, b, 'toId set correctly')
 })
 
-test('uiState has no pendingActorId field', () => {
+test('placement mode has been removed — no pendingActorId in state', () => {
   // Verify the arm-and-fire mechanic is fully removed from uiState initializer
   // We check the store script for the removed field
   const fs = require('fs')
@@ -1514,7 +1514,7 @@ test('uiState has no pendingActorId field', () => {
   assert(!html.includes('uiState.pendingActorId'), 'no pendingActorId references in UI code')
 })
 
-test('isPending not referenced in renderActor', () => {
+test('renderActor does not reference the removed isPending flag', () => {
   const fs = require('fs')
   const html = fs.readFileSync('./sequence-builder.html', 'utf8')
   // Extract renderActor function body
@@ -1528,7 +1528,7 @@ test('isPending not referenced in renderActor', () => {
   )
 })
 
-test('no actor guard on message add — any element can be added anytime', () => {
+test('messages can be added at any time without preconditions', () => {
   const fs = require('fs')
   const html = fs.readFileSync('./sequence-builder.html', 'utf8')
   // No precondition guard on msg paths (proto2prod UI rule)
@@ -1538,7 +1538,7 @@ test('no actor guard on message add — any element can be added anytime', () =>
   assert(!msgGuard.test(html), 'no 2-actor guard blocking msg add')
 })
 
-test('UI guard — notes and fragments have no actor guard', () => {
+test('notes and fragments have no actor precondition guard', () => {
   const fs = require('fs')
   const html = fs.readFileSync('./sequence-builder.html', 'utf8')
   // Find ADD_NOTE dispatch — should not be preceded by actors.length check
@@ -1553,7 +1553,7 @@ test('UI guard — notes and fragments have no actor guard', () => {
   assert(!fragPre.includes('actors.length'), 'no actor guard before ADD_FRAGMENT')
 })
 
-test('self-message renders correctly (isSelf path)', () => {
+test('a self-message renders as a loop on its own lifeline', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-person', x: 40 } })
   const id = store.state.actors[0].id
@@ -1572,7 +1572,7 @@ test('self-message renders correctly (isSelf path)', () => {
   assert(msg.label === 'ping', 'label preserved')
 })
 
-test('MOVE_NOTE only dispatched when position changes', () => {
+test('moving a note only dispatches when the position actually changes', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_NOTE', payload: { x: 60, y: 200, text: 'test' } })
   const note = store.state.notes[0]
@@ -1585,7 +1585,7 @@ test('MOVE_NOTE only dispatched when position changes', () => {
   assert(movedReal, 'moved note: moved=true, dispatch should fire')
 })
 
-test('MOVE_FRAGMENT only dispatched when position changes', () => {
+test('moving a fragment only dispatches when the position actually changes', () => {
   const store = createStore()
   store.dispatch({
     type: 'ADD_FRAGMENT',
@@ -1596,7 +1596,7 @@ test('MOVE_FRAGMENT only dispatched when position changes', () => {
   assert(!moved, 'zero-movement fragment: moved=false, no dispatch needed')
 })
 
-test('note click after deselect — setSelected receives correct note', () => {
+test('clicking a note after deselecting selects the correct note', () => {
   // Simulates canvas click handler path for notes
   const store = createStore()
   store.dispatch({ type: 'ADD_NOTE', payload: { x: 60, y: 200, text: 'my note' } })
@@ -1671,7 +1671,7 @@ test('note click after deselect — setSelected receives correct note', () => {
 // ═══════════════════════════════════════════════════════
 
 setGroup("message label + inline edit")
-test('ADD_MESSAGE stores the provided label', () => {
+test('a message stores its label', () => {
   const s = freshStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B' } })
@@ -1687,7 +1687,7 @@ test('ADD_MESSAGE default label is "message" when omitted', () => {
   assert(lbl === 'message', 'default label should be "message", got: ' + JSON.stringify(lbl))
 })
 
-test('UPDATE_MESSAGE label patch updates only the label', () => {
+test('updating a message label does not affect other fields', () => {
   const s = freshStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B' } })
@@ -1700,7 +1700,7 @@ test('UPDATE_MESSAGE label patch updates only the label', () => {
   assert(s.state.messages[0].toId === a2.id, 'toId must be unchanged')
 })
 
-test('UPDATE_MESSAGE label to empty string is valid', () => {
+test('a message label can be set to empty string', () => {
   const s = freshStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B' } })
@@ -1711,7 +1711,7 @@ test('UPDATE_MESSAGE label to empty string is valid', () => {
   assert(s.state.messages[0].label === '', 'label should be empty string')
 })
 
-test('UPDATE_MESSAGE label update is undoable', () => {
+test('message label changes are undoable', () => {
   const s = freshStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'X' } })
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Y' } })
@@ -1994,7 +1994,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 // ═══════════════════════════════════════════════════════
 
 setGroup("canvas pan + nudge")
-test('UPDATE_ACTOR x-nudge moves actor by delta', () => {
+test('nudging an actor moves it by the specified delta', () => {
   const s = freshStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 100 } })
   const id = s.state.actors[0].id
@@ -2002,7 +2002,7 @@ test('UPDATE_ACTOR x-nudge moves actor by delta', () => {
   assert(s.state.actors[0].x === 120, 'actor x updated to 120')
 })
 
-test('UPDATE_ACTOR x-nudge is undoable', () => {
+test('actor nudge is undoable', () => {
   const s = freshStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 100 } })
   const id = s.state.actors[0].id
@@ -2011,7 +2011,7 @@ test('UPDATE_ACTOR x-nudge is undoable', () => {
   assert(s.state.actors[0].x === 100, 'UNDO restores actor x to 100')
 })
 
-test('MOVE_NOTE nudge moves note by delta', () => {
+test('nudging a note moves it by the specified delta', () => {
   const s = freshStore()
   s.dispatch({ type: 'ADD_NOTE', payload: { text: 'hi', x: 80, y: 200 } })
   const id = s.state.notes[0].id
@@ -2020,7 +2020,7 @@ test('MOVE_NOTE nudge moves note by delta', () => {
   assert(s.state.notes[0].y === 220, 'note y updated')
 })
 
-test('MOVE_NOTE nudge is undoable', () => {
+test('note nudge is undoable', () => {
   const s = freshStore()
   s.dispatch({ type: 'ADD_NOTE', payload: { text: 'hi', x: 80, y: 200 } })
   const id = s.state.notes[0].id
@@ -2030,7 +2030,7 @@ test('MOVE_NOTE nudge is undoable', () => {
   assert(s.state.notes[0].y === 200, 'UNDO restores note y')
 })
 
-test('MOVE_FRAGMENT nudge moves fragment by delta', () => {
+test('nudging a fragment moves it by the specified delta', () => {
   const s = freshStore()
   s.dispatch({
     type: 'ADD_FRAGMENT',
@@ -2042,7 +2042,7 @@ test('MOVE_FRAGMENT nudge moves fragment by delta', () => {
   assert(s.state.fragments[0].y === 120, 'fragment y updated')
 })
 
-test('MOVE_FRAGMENT nudge is undoable', () => {
+test('fragment nudge is undoable', () => {
   const s = freshStore()
   s.dispatch({
     type: 'ADD_FRAGMENT',
@@ -2055,13 +2055,13 @@ test('MOVE_FRAGMENT nudge is undoable', () => {
   assert(s.state.fragments[0].y === 100, 'UNDO restores fragment y')
 })
 
-test('pan state is not present on store.state', () => {
+test('pan state is owned by the UI layer, not the store', () => {
   const s = freshStore()
   assert(!('panX' in s.state), 'panX is not a store state field')
   assert(!('panY' in s.state), 'panY is not a store state field')
 })
 
-test('actor x-nudge at left boundary (x:0) does not go negative', () => {
+test('actors cannot be nudged past the left boundary', () => {
   const s = freshStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 5 } })
   const id = s.state.actors[0].id
@@ -2072,7 +2072,7 @@ test('actor x-nudge at left boundary (x:0) does not go negative', () => {
 })
 
 // ── Suite 15 — Properties bag contracts ──────────────────────────────────────
-test('ADD_ACTOR initialises schema as empty array', () => {
+test('a new actor starts with an empty schema', () => {
   const s = createStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
   const a = s.state.actors[0]
@@ -2080,7 +2080,7 @@ test('ADD_ACTOR initialises schema as empty array', () => {
   assert(a.schema.length === 0, 'schema starts empty')
 })
 
-test('ADD_ACTOR initialises properties as empty object', () => {
+test('a new actor starts with an empty properties bag', () => {
   const s = createStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
   const a = s.state.actors[0]
@@ -2088,7 +2088,7 @@ test('ADD_ACTOR initialises properties as empty object', () => {
   assert(Object.keys(a.properties).length === 0, 'properties starts empty')
 })
 
-test('ADD_MESSAGE initialises schema and properties', () => {
+test('a new message starts with empty schema and properties', () => {
   const s = createStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
   const aid = s.state.actors[0].id
@@ -2098,7 +2098,7 @@ test('ADD_MESSAGE initialises schema and properties', () => {
   assert(typeof m.properties === 'object' && m.properties !== null, 'message properties is object')
 })
 
-test('UPDATE_ACTOR schema full-replace', () => {
+test('actor schema can be fully replaced', () => {
   const s = createStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
   const id = s.state.actors[0].id
@@ -2108,7 +2108,7 @@ test('UPDATE_ACTOR schema full-replace', () => {
   assert(s.state.actors[0].schema[0].key === 'apiKey', 'schema field key correct')
 })
 
-test('UPDATE_ACTOR properties shallow-merge preserves untouched keys', () => {
+test('actor property updates shallow-merge, preserving untouched keys', () => {
   const s = createStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
   const id = s.state.actors[0].id
@@ -2121,7 +2121,7 @@ test('UPDATE_ACTOR properties shallow-merge preserves untouched keys', () => {
   assert(s.state.actors[0].properties.baseUrl === 'https://y', 'updated key changed')
 })
 
-test('UPDATE_MESSAGE schema and properties merge', () => {
+test('message schema and property updates merge correctly', () => {
   const s = createStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
   const aid = s.state.actors[0].id
@@ -2135,7 +2135,7 @@ test('UPDATE_MESSAGE schema and properties merge', () => {
   assert(s.state.messages[0].properties.env === 'prod', 'message property stored')
 })
 
-test('UPDATE_ACTOR schema patch is undoable', () => {
+test('actor schema changes are undoable', () => {
   const s = createStore()
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
   const id = s.state.actors[0].id
@@ -2176,19 +2176,19 @@ test('@import strip — multiple imports all removed', () => {
   assert(result.includes('p{}'), 'selector preserved')
 })
 
-test('version extraction regex — standard format', () => {
+test('version string extraction matches the standard format', () => {
   const input = 'Version: 0.9.91\nsome other text'
   const m = input.match(/Version:\s*([\d.]+)/)
   assert(m && m[1] === '0.9.91', 'version extracted correctly')
 })
 
-test('version extraction regex — no false match on other numbers', () => {
+test('version extraction does not match arbitrary numbers', () => {
   const input = 'port: 3799\nVersion: 1.2.3\nlength: 500'
   const m = input.match(/Version:\s*([\d.]+)/)
   assert(m && m[1] === '1.2.3', 'only Version: prefix matches')
 })
 
-test('suite header regex — standard format', () => {
+test('suite header extraction matches the standard format', () => {
   const input = '// Suite 9 \u2014 UI geometry contracts & proto2prod guard rails'
   const m = [...input.matchAll(/Suite (\d+) \u2014 ([^\n'"`\u2500]+)/g)]
   assert(m.length === 1, 'one match')
@@ -2196,14 +2196,14 @@ test('suite header regex — standard format', () => {
   assert(m[0][2].trim() === 'UI geometry contracts & proto2prod guard rails', 'name correct')
 })
 
-test('suite header regex — separator chars trimmed', () => {
+test('suite header extraction trims separator characters', () => {
   const input = '// Suite 10 \u2014 ADD_MESSAGE null contract \u2500\u2500\u2500\u2500'
   const m = [...input.matchAll(/Suite (\d+) \u2014 ([^\n'"`\u2500]+)/g)]
   assert(m.length === 1, 'one match')
   assert(m[0][2].trim() === 'ADD_MESSAGE null contract', 'separator chars not included in name')
 })
 
-test('nextMessageKind cycles completely without leaking', () => {
+test('message kind cycle is closed — no state leaks between calls', () => {
   let nextMessageKind
   try {
     ;({ nextMessageKind } = require('./sequence-builder.store.js'))
@@ -2219,7 +2219,7 @@ test('nextMessageKind cycles completely without leaking', () => {
   assert(nextMessageKind('unknown') === 'sync', 'helper returns safe default for unknown')
 })
 
-test('nextMessageDirection cycles completely without leaking', () => {
+test('message direction cycle is closed — no state leaks between calls', () => {
   let nextMessageDirection
   try {
     ;({ nextMessageDirection } = require('./sequence-builder.store.js'))
@@ -2233,7 +2233,7 @@ test('nextMessageDirection cycles completely without leaking', () => {
   assert(nextMessageDirection('unknown') === 'right', 'helper returns safe default for unknown')
 })
 
-test('btn-export-png has exactly one click binding (no double-download)', () => {
+test('export button has exactly one click handler', () => {
   // Regression: duplicate onclick= + addEventListener caused two downloads per click.
   // This test pins that only addEventListener wiring exists — no onclick= assignment.
   const html = require('fs').readFileSync(
@@ -2251,7 +2251,6 @@ test('btn-export-png has exactly one click binding (no double-download)', () => 
 //  RESULTS
 // ═══════════════════════════════════════════════════════
 // ── ULID ID contract ─────────────────────────────────────
-console.log('\nULID ID contract')
 setGroup('ULID ID contract')
 test('ADD_ACTOR id has actor_ prefix + 26-char ULID', function () {
   ;(function (freshStore, assert) {
@@ -2340,7 +2339,6 @@ test('state has no nextId field', function () {
 })
 
 // ── ActorElement contract ───────────────────────────────
-console.log('\nActorElement contract')
 setGroup('ActorElement contract')
 test('ActorElement.getBounds() correct box for x=40', function () {
   ;(function (freshStore, assert) {
