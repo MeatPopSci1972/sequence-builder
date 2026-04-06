@@ -177,6 +177,43 @@ if (fs.existsSync(THEMES_SRC)) {
   warn('themes.json not found — themes not injected')
 }
 
+// ── Inject elements (src/elements/*.js) ────────────────────────────────────
+// Concatenates all element source files between @@ELEMENTS-START / @@ELEMENTS-END.
+// SequenceElement.js is always injected first (base class), then others alphabetically.
+const ELEMENTS_DIR   = path.join(ROOT, 'src', 'elements')
+const ELEMENTS_START = '// @@ELEMENTS-START'
+const ELEMENTS_END   = '// @@ELEMENTS-END'
+
+const NL = String.fromCharCode(10)
+if (fs.existsSync(ELEMENTS_DIR)) {
+  let elementFiles = fs.readdirSync(ELEMENTS_DIR).filter(f => f.endsWith('.js')).sort()
+  // SequenceElement must be first — base class must be defined before subclasses
+  const seIdx = elementFiles.indexOf('SequenceElement.js')
+  if (seIdx > 0) { elementFiles.splice(seIdx, 1); elementFiles.unshift('SequenceElement.js') }
+
+  const elementBodies = elementFiles.map(f => {
+    let src = fs.readFileSync(path.join(ELEMENTS_DIR, f), 'utf8')
+    const exportMarker = "if (typeof module !== 'undefined')"
+    const exportIdx = src.lastIndexOf(exportMarker)
+    if (exportIdx !== -1) src = src.slice(0, exportIdx).trimEnd() + NL
+    return '// ── ' + f + ' ──' + NL + src.trimEnd()
+  }).join(NL + NL)
+
+  const eStart = htmlFinal.indexOf(ELEMENTS_START)
+  const eEnd   = htmlFinal.indexOf(ELEMENTS_END)
+
+  if (eStart !== -1 && eEnd !== -1 && eStart < eEnd) {
+    const eBefore = htmlFinal.slice(0, eStart + ELEMENTS_START.length)
+    const eAfter  = htmlFinal.slice(eEnd)
+    htmlFinal = eBefore + NL + elementBodies + NL + eAfter
+    console.log('  element files injected : ' + elementFiles.join(', '))
+  } else {
+    warn('@@ELEMENTS-START / @@ELEMENTS-END sentinels not found — elements not injected')
+  }
+} else {
+  warn('src/elements/ directory not found — elements not injected')
+}
+
 // ── Write ────────────────────────────────────────────────────
 fs.writeFileSync(HTML_SRC, htmlFinal, 'utf8')
 

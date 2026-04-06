@@ -1414,6 +1414,223 @@ let DEBUG_VERBOSE = false;
 //  DIAGRAMSTORE  (inline — matches sequence-builder.store.js)
 //  Pure logic, zero DOM touches. See store module for full docs.
 // ═══════════════════════════════════════════════════════
+// @@ELEMENTS-START
+// ── SequenceElement.js ──
+// SequenceForge — SequenceElement.js
+// Base contract for all diagram elements.
+// Audience: Human + fresh AI instance
+//
+// Every element type (Actor, Message, Note, Fragment) implements this contract.
+// The canvas calls these methods — elements never call each other.
+// The store is injected via InteractionContext, never captured in the constructor.
+//
+// ENCAPSULATION RULES (enforced by Suite 18 tests):
+//   - Elements never call render() themselves
+//   - Elements never reference other elements
+//   - store is accessed only through ctx.store (injected at drag/select time)
+//   - Constructor receives only the store data record
+//
+// InteractionContext shape (passed to drag/select methods):
+//   ctx.store     — live store reference (dispatch, getActorById, etc.)
+//   ctx.svgEl     — svgEl() factory function
+//   ctx.uiState   — current uiState snapshot
+//   ctx.render    — canvas render() function
+
+/**
+ * SequenceElement — base interface.
+ * Subclasses must override all methods marked @abstract.
+ */
+class SequenceElement {
+  /**
+   * @param {object} data — the store record (actor, message, note, or fragment)
+   */
+  constructor(data) {
+    if (new.target === SequenceElement) {
+      throw new Error('SequenceElement is abstract — use ElementFactory.create()');
+    }
+    this._data = data;
+  }
+
+  /** @returns {string} the element's ULID-format id */
+  get id() { return this._data.id; }
+
+  /**
+   * Returns the bounding box in SVG coordinate space.
+   * @abstract
+   * @returns {{ x: number, y: number, w: number, h: number }}
+   */
+  getBounds() { throw new Error(this.constructor.name + '.getBounds() not implemented'); }
+
+  /**
+   * Returns true if the given SVG point is inside this element's hit area.
+   * @abstract
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean}
+   */
+  hitTest(x, y) { throw new Error(this.constructor.name + '.hitTest() not implemented'); }
+
+  /**
+   * Returns the properties schema for the Properties panel.
+   * @abstract
+   * @returns {Array<{ key: string, label: string, type: string, options?: string[] }>}
+   */
+  getPropertiesSchema() { throw new Error(this.constructor.name + '.getPropertiesSchema() not implemented'); }
+
+  /**
+   * Renders this element into the given SVG layer.
+   * Called by the canvas on every render pass — never call this yourself.
+   * @abstract
+   * @param {SVGGElement} layer — target SVG layer element
+   * @param {object} ctx — InteractionContext
+   */
+  render(layer, ctx) { throw new Error(this.constructor.name + '.render() not implemented'); }
+
+  /**
+   * Renders the selection overlay into the interaction layer.
+   * Only called when this element is selected.
+   * @param {SVGGElement} interactionLayer
+   * @param {object} ctx — InteractionContext
+   */
+  renderSelected(interactionLayer, ctx) { /* default: no-op — override for selection chrome */ }
+
+  /**
+   * Called when the user begins dragging this element.
+   * @param {MouseEvent} e
+   * @param {object} ctx — InteractionContext
+   */
+  onDragStart(e, ctx) { /* default: no-op */ }
+
+  /**
+   * Called on each mousemove during a drag.
+   * @param {MouseEvent} e
+   * @param {object} ctx — InteractionContext
+   */
+  onDragMove(e, ctx) { /* default: no-op */ }
+
+  /**
+   * Called when the drag ends (mouseup).
+   * @param {MouseEvent} e
+   * @param {object} ctx — InteractionContext
+   */
+  onDragEnd(e, ctx) { /* default: no-op */ }
+
+  /**
+   * Called when this element becomes selected.
+   * @param {object} ctx — InteractionContext
+   */
+  onSelect(ctx) { /* default: no-op */ }
+
+  /**
+   * Called when this element is deselected.
+   * @param {object} ctx — InteractionContext
+   */
+  onDeselect(ctx) { /* default: no-op */ }
+}
+
+// ── ActorElement.js ──
+// SequenceForge — ActorElement.js
+// Implements SequenceElement for actor (participant) records.
+// Audience: Human + fresh AI instance
+//
+// Store record shape:
+//   { id, x, label, type, emoji?, schema, properties }
+//
+// Geometry constants mirror the HTML app (injected at build time as STORE_ prefixed).
+// ActorElement uses its own local constants to remain testable in Node without the app.
+
+const _AE_ACTOR_W = 110;
+const _AE_ACTOR_H = 42; // matches ACTOR_H in the HTML app
+
+class ActorElement /* extends SequenceElement */ {
+  constructor(data) {
+    // Note: extends SequenceElement omitted here — SequenceElement is defined
+    // in a separate file loaded before this one at build time.
+    // In tests, ActorElement is required standalone, so we skip the super() call.
+    this._data = data;
+  }
+
+  get id() { return this._data.id; }
+
+  /**
+   * Bounding box: top-left corner of the actor head box in SVG space.
+   * x = data.x, y = 8 (fixed top margin), w = ACTOR_W, h = ACTOR_H
+   * @returns {{ x, y, w, h }}
+   */
+  getBounds() {
+    return { x: this._data.x, y: 8, w: _AE_ACTOR_W, h: _AE_ACTOR_H };
+  }
+
+  /**
+   * Hit test against the actor head bounding box.
+   * @param {number} px
+   * @param {number} py
+   * @returns {boolean}
+   */
+  hitTest(px, py) {
+    const { x, y, w, h } = this.getBounds();
+    return px >= x && px <= x + w && py >= y && py <= y + h;
+  }
+
+  /**
+   * Properties schema for the Properties panel.
+   * @returns {Array}
+   */
+  getPropertiesSchema() {
+    return [
+      { key: 'label', label: 'Label',    type: 'text' },
+      { key: 'type',  label: 'Type',     type: 'select',
+        options: ['actor-person', 'actor-system', 'actor-db', 'actor-queue'] },
+      { key: 'emoji', label: 'Emoji',    type: 'text' },
+    ];
+  }
+
+  // render(), renderSelected(), onDragStart/Move/End, onSelect, onDeselect
+  // will be implemented in a future session when the canvas dispatcher is wired.
+  render(layer, ctx)             { throw new Error('ActorElement.render() not yet wired'); }
+  renderSelected(il, ctx)        { /* stub */ }
+  onDragStart(e, ctx)            { /* stub */ }
+  onDragMove(e, ctx)             { /* stub */ }
+  onDragEnd(e, ctx)              { /* stub */ }
+  onSelect(ctx)                  { /* stub */ }
+  onDeselect(ctx)                { /* stub */ }
+}
+
+// ── ElementFactory.js ──
+// SequenceForge — ElementFactory.js
+// Factory that maps store data records to SequenceElement instances.
+// Audience: Human + fresh AI instance
+//
+// Usage:
+//   const el = ElementFactory.create(storeRecord);
+//   el.render(layer, ctx);
+//
+// The factory inspects the record shape to determine element type.
+// Type detection order: fragment > message > note > actor (by unique fields).
+//
+// ZERO side effects — create() is a pure mapping function.
+
+class ElementFactory {
+  /**
+   * Creates a SequenceElement instance from a store data record.
+   * @param {object} data — actor, message, note, or fragment store record
+   * @returns {SequenceElement}
+   */
+  static create(data) {
+    if (!data || !data.id) throw new Error('ElementFactory.create: data must have an id');
+    // In Node (tests), classes from sibling files are not in scope — require them locally.
+    // In the browser bundle, build.js injects all files into shared scope — typeof checks prevent double-require.
+    const _ActorElement = (typeof ActorElement !== 'undefined') ? ActorElement : require('./ActorElement.js').ActorElement;
+    // Type detection by unique field signature
+    if ('w' in data && 'h' in data && 'kind' in data) return new FragmentElement(data);
+    if ('fromId' in data && 'toId' in data)           return new MessageElement(data);
+    if ('text' in data && !('label' in data))          return new NoteElement(data);
+    if ('label' in data && 'type' in data)             return new _ActorElement(data);
+    throw new Error('ElementFactory.create: unrecognised record shape for id=' + data.id);
+  }
+}
+// @@ELEMENTS-END
+
 // @@STORE-START
 // ═══════════════════════════════════════════════════════
 //  SequenceForge — DiagramStore
@@ -1428,7 +1645,7 @@ let DEBUG_VERBOSE = false;
 //    nextMessageDirection()— pure helper, no store dependency
 //
 //  Store instance shape:
-//    store.state          — { actors, messages, notes, fragments, nextId }
+// store.state          — { actors, messages, notes, fragments }
 //    store.log            — full action log, every dispatched action
 //    store.dispatch(action) — synchronous, stamps meta, mutates, emits
 //    store.on(event, cb)  — subscribe to store events
@@ -1457,6 +1674,33 @@ let DEBUG_VERBOSE = false;
 const STORE_ACTOR_W     = 110   // matches HTML app constant
 const STORE_ACTOR_GAP   = 60    // gap between actors
 const STORE_UNDO_LIMIT  = 50    // max snapshot stack depth
+
+// ── ULID ──────────────────────────────────────────────────────────────────────
+// Zero-dependency, time-sortable, 26-char unique ID.
+// Alphabet: Crockford Base32 (no I, L, O, U — avoids visual ambiguity).
+// Format: 10 timestamp chars + 16 random chars = 26 chars total.
+// Compatible with Node 14+ and all modern browsers.
+const ULID_CHARS = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+function ulid() {
+  const t = Date.now()
+  let ts = ''
+  let tmp = t
+  for (let i = 9; i >= 0; i--) {
+    ts = ULID_CHARS[tmp % 32] + ts
+    tmp = Math.floor(tmp / 32)
+  }
+  let rand = ''
+  for (let i = 0; i < 16; i++) {
+    rand += ULID_CHARS[Math.floor(Math.random() * 32)]
+  }
+  return ts + rand
+}
+
+// Typed ID generators — prefix makes element type readable in logs and history
+function actorId()    { return 'actor_'  + ulid() }
+function messageId()  { return 'msg_'    + ulid() }
+function noteId()     { return 'note_'   + ulid() }
+function fragmentId() { return 'frag_'   + ulid() }
 
 // ── Pure helpers (exported, no store dependency) ─────────
 
@@ -1492,7 +1736,6 @@ function createStore() {
     messages:  [],
     notes:     [],
     fragments: [],
-    nextId:    1,
   }
 
   // Full action log — every dispatched action, in order.
@@ -1514,10 +1757,6 @@ function createStore() {
 
   // ── Private utilities ───────────────────────────────────
 
-  /** Monotonic id generator. Produces 'e1', 'e2', etc. */
-  function uid() {
-    return 'e' + (state.nextId++)
-  }
 
   /**
    * Returns the x position for the next actor.
@@ -1537,7 +1776,6 @@ function createStore() {
       messages:  state.messages,
       notes:     state.notes,
       fragments: state.fragments,
-      nextId:    state.nextId,
     }))
   }
 
@@ -1547,7 +1785,6 @@ function createStore() {
     state.messages  = snap.messages
     state.notes     = snap.notes
     state.fragments = snap.fragments
-    state.nextId    = snap.nextId
   }
 
   /**
@@ -1596,7 +1833,7 @@ function createStore() {
     ADD_ACTOR({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
       const actor = {
-        id:    uid(),
+        id:    actorId(),
         x:     payload.x ?? getNextActorX(),
         label: (() => {
         const base = payload.label || 'Actor';
@@ -1669,7 +1906,7 @@ function createStore() {
     ADD_MESSAGE({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
       const message = {
-        id:        uid(),
+        id:        messageId(),
         fromId:    payload.fromId ?? null,
         toId:      payload.toId   ?? null,
         label:     payload.label     || 'message',
@@ -1724,9 +1961,9 @@ function createStore() {
     ADD_NOTE({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
       const note = {
-        id:   uid(),
-        x:    payload.x    ?? 60,
-        y:    payload.y    ?? 200,
+        id:   noteId(),
+        x:     payload.x ?? 60,
+        y:     payload.y ?? 200,
         text: payload.text || 'note',
       }
       state.notes.push(note)
@@ -1761,9 +1998,9 @@ function createStore() {
     ADD_FRAGMENT({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
       const fragment = {
-        id:   uid(),
-        x:    payload.x    ?? 60,
-        y:    payload.y    ?? 200,
+        id:   fragmentId(),
+        x:     payload.x ?? 60,
+        y:     payload.y ?? 200,
         w:    payload.w    ?? 200,
         h:    payload.h    ?? 100,
         kind: payload.kind || 'frag-alt',
@@ -1838,7 +2075,6 @@ function createStore() {
       state.messages  = []
       state.notes     = []
       state.fragments = []
-      state.nextId    = 1
       emit('diagram:cleared')
     },
 
@@ -1853,7 +2089,6 @@ function createStore() {
       state.messages  = payload.messages  || []
       state.notes     = payload.notes     || []
       state.fragments = payload.fragments || []
-      state.nextId    = payload.nextId    || 1
       emit('diagram:loaded', { ...snapshot(), source: payload._source || 'import' })
     },
 
@@ -1944,15 +2179,14 @@ function createStore() {
       _redoStack.length = 0
 
       const demo = DEMOS.find(d => d.id === id) || DEMOS[0]
-      let tempId = state.nextId
-      const tid = () => 'e' + (tempId++)
+      // tid uses raw ulid() — demos predate typed generators, build() is type-agnostic
+      const tid = () => ulid()
 
       const built = demo.build(tid)
       state.actors    = built.actors
       state.messages  = built.messages
       state.fragments = built.fragments || []
       state.notes     = built.notes     || []
-      state.nextId    = tempId
 
       // Expose demo list for canary + dropdown rendering
       if (typeof window !== 'undefined') {
@@ -1980,8 +2214,11 @@ function createStore() {
 
     // Stamp meta — callers provide undoable: false to opt out of undo
     const meta = {
-      undoable:  rawMeta.undoable !== false,  // default true
-      timestamp: Date.now(),
+      undoable:   rawMeta.undoable !== false, // default true
+      timestamp:  Date.now(),
+      // affectedId — the element ULID this action targets, for readable history
+      // Extracted from payload.id when present; undefined for bulk/session actions
+      affectedId: payload.id || undefined,
       ...rawMeta,
     }
 

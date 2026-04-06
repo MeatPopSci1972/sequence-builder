@@ -11,7 +11,7 @@
 //    nextMessageDirection()— pure helper, no store dependency
 //
 //  Store instance shape:
-//    store.state          — { actors, messages, notes, fragments, nextId }
+// store.state          — { actors, messages, notes, fragments }
 //    store.log            — full action log, every dispatched action
 //    store.dispatch(action) — synchronous, stamps meta, mutates, emits
 //    store.on(event, cb)  — subscribe to store events
@@ -40,6 +40,33 @@
 const ACTOR_W     = 110   // matches HTML app constant
 const ACTOR_GAP   = 60    // gap between actors
 const UNDO_LIMIT  = 50    // max snapshot stack depth
+
+// ── ULID ──────────────────────────────────────────────────────────────────────
+// Zero-dependency, time-sortable, 26-char unique ID.
+// Alphabet: Crockford Base32 (no I, L, O, U — avoids visual ambiguity).
+// Format: 10 timestamp chars + 16 random chars = 26 chars total.
+// Compatible with Node 14+ and all modern browsers.
+const ULID_CHARS = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+function ulid() {
+  const t = Date.now()
+  let ts = ''
+  let tmp = t
+  for (let i = 9; i >= 0; i--) {
+    ts = ULID_CHARS[tmp % 32] + ts
+    tmp = Math.floor(tmp / 32)
+  }
+  let rand = ''
+  for (let i = 0; i < 16; i++) {
+    rand += ULID_CHARS[Math.floor(Math.random() * 32)]
+  }
+  return ts + rand
+}
+
+// Typed ID generators — prefix makes element type readable in logs and history
+function actorId()    { return 'actor_'  + ulid() }
+function messageId()  { return 'msg_'    + ulid() }
+function noteId()     { return 'note_'   + ulid() }
+function fragmentId() { return 'frag_'   + ulid() }
 
 // ── Pure helpers (exported, no store dependency) ─────────
 
@@ -75,7 +102,6 @@ function createStore() {
     messages:  [],
     notes:     [],
     fragments: [],
-    nextId:    1,
   }
 
   // Full action log — every dispatched action, in order.
@@ -97,10 +123,6 @@ function createStore() {
 
   // ── Private utilities ───────────────────────────────────
 
-  /** Monotonic id generator. Produces 'e1', 'e2', etc. */
-  function uid() {
-    return 'e' + (state.nextId++)
-  }
 
   /**
    * Returns the x position for the next actor.
@@ -120,7 +142,6 @@ function createStore() {
       messages:  state.messages,
       notes:     state.notes,
       fragments: state.fragments,
-      nextId:    state.nextId,
     }))
   }
 
@@ -130,7 +151,6 @@ function createStore() {
     state.messages  = snap.messages
     state.notes     = snap.notes
     state.fragments = snap.fragments
-    state.nextId    = snap.nextId
   }
 
   /**
@@ -179,7 +199,7 @@ function createStore() {
     ADD_ACTOR({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
       const actor = {
-        id:    uid(),
+        id:    actorId(),
         x:     payload.x ?? getNextActorX(),
         label: (() => {
         const base = payload.label || 'Actor';
@@ -252,7 +272,7 @@ function createStore() {
     ADD_MESSAGE({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
       const message = {
-        id:        uid(),
+        id:        messageId(),
         fromId:    payload.fromId ?? null,
         toId:      payload.toId   ?? null,
         label:     payload.label     || 'message',
@@ -307,9 +327,9 @@ function createStore() {
     ADD_NOTE({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
       const note = {
-        id:   uid(),
-        x:    payload.x    ?? 60,
-        y:    payload.y    ?? 200,
+        id:   noteId(),
+        x:     payload.x ?? 60,
+        y:     payload.y ?? 200,
         text: payload.text || 'note',
       }
       state.notes.push(note)
@@ -344,9 +364,9 @@ function createStore() {
     ADD_FRAGMENT({ payload, meta }) {
       if (meta.undoable) pushSnapshot()
       const fragment = {
-        id:   uid(),
-        x:    payload.x    ?? 60,
-        y:    payload.y    ?? 200,
+        id:   fragmentId(),
+        x:     payload.x ?? 60,
+        y:     payload.y ?? 200,
         w:    payload.w    ?? 200,
         h:    payload.h    ?? 100,
         kind: payload.kind || 'frag-alt',
@@ -421,7 +441,6 @@ function createStore() {
       state.messages  = []
       state.notes     = []
       state.fragments = []
-      state.nextId    = 1
       emit('diagram:cleared')
     },
 
@@ -436,7 +455,6 @@ function createStore() {
       state.messages  = payload.messages  || []
       state.notes     = payload.notes     || []
       state.fragments = payload.fragments || []
-      state.nextId    = payload.nextId    || 1
       emit('diagram:loaded', { ...snapshot(), source: payload._source || 'import' })
     },
 
@@ -527,15 +545,14 @@ function createStore() {
       _redoStack.length = 0
 
       const demo = DEMOS.find(d => d.id === id) || DEMOS[0]
-      let tempId = state.nextId
-      const tid = () => 'e' + (tempId++)
+      // tid uses raw ulid() — demos predate typed generators, build() is type-agnostic
+      const tid = () => ulid()
 
       const built = demo.build(tid)
       state.actors    = built.actors
       state.messages  = built.messages
       state.fragments = built.fragments || []
       state.notes     = built.notes     || []
-      state.nextId    = tempId
 
       // Expose demo list for canary + dropdown rendering
       if (typeof window !== 'undefined') {
@@ -563,8 +580,11 @@ function createStore() {
 
     // Stamp meta — callers provide undoable: false to opt out of undo
     const meta = {
-      undoable:  rawMeta.undoable !== false,  // default true
-      timestamp: Date.now(),
+      undoable:   rawMeta.undoable !== false, // default true
+      timestamp:  Date.now(),
+      // affectedId — the element ULID this action targets, for readable history
+      // Extracted from payload.id when present; undefined for bulk/session actions
+      affectedId: payload.id || undefined,
       ...rawMeta,
     }
 

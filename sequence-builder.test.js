@@ -1,3 +1,41 @@
+// SequenceForge — Store Contract Tests
+// Two-phase runner: test() registers, runAll() executes once at end.
+// Add new test() calls anywhere above runAll(). Count is always correct.
+'use strict'
+
+// ── Bootstrap: load the store ────────────────────────────────────────────
+let createStore, nextMessageKind, nextMessageDirection
+try {
+  const m = require('./sequence-builder.store.js')
+  createStore          = m.createStore
+  nextMessageKind      = m.nextMessageKind
+  nextMessageDirection = m.nextMessageDirection
+} catch(err) {
+  console.log('  sequence-builder.store.js not found or failed to load.')
+  console.log('  ' + err.message)
+  process.exit(1)
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function freshStore() { return createStore() }
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message || 'Assertion failed')
+}
+
+function assertEqual(actual, expected, message) {
+  if (actual !== expected)
+    throw new Error((message || 'Expected ' + JSON.stringify(expected) + ' got ' + JSON.stringify(actual)))
+}
+
+// ── Collector ─────────────────────────────────────────────────────────────
+const _tests = []
+function test(desc, fn) { _tests.push({ desc: desc, fn: fn }) }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  TESTS GO HERE
+// ════════════════════════════════════════════════════════════════════════════
+
 // ═══════════════════════════════════════════════════════
 //  SequenceForge — Store Contract Tests
 //  Version: 0.6.0-pre
@@ -56,22 +94,6 @@
 // ═══════════════════════════════════════════════════════
 
 // ── Minimal test harness (no deps) ──────────────────────
-let _passed = 0
-let _failed = 0
-let _total  = 0
-
-function test(description, fn) {
-  _total++
-  try {
-    fn()
-    console.log(`  ✓  ${description}`)
-    _passed++
-  } catch (err) {
-    console.log(`  ✗  ${description}`)
-    console.log(`       ${err.message}`)
-    _failed++
-  }
-}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || 'Assertion failed')
@@ -91,28 +113,6 @@ function assertDeepEqual(actual, expected, message) {
   if (a !== b) {
     throw new Error(message || `Expected ${b}, got ${a}`)
   }
-}
-
-// ── Import store ─────────────────────────────────────────
-// This import will fail until sequence-builder.store.js exists.
-// That is the point — tests define the contract first.
-let createStore
-try {
-  // Node-compatible import — store must export createStore as CommonJS
-  // or ESM depending on implementation choice.
-  // Recommended: module.exports = { createStore }
-  ;({ createStore } = require('./sequence-builder.store.js'))
-} catch (err) {
-  console.log('\n  FATAL: sequence-builder.store.js not found or failed to load.')
-  console.log(`  ${err.message}`)
-  console.log('\n  This is expected — tests are written before the implementation.')
-  console.log('  Implement the store, then run this file again.\n')
-  process.exit(1)
-}
-
-// Each test gets a fresh store instance — no shared state between tests
-function freshStore() {
-  return createStore()
 }
 
 // ═══════════════════════════════════════════════════════
@@ -143,14 +143,6 @@ test('dispatching ADD_ACTOR assigns a unique id', () => {
   assert(a.id !== b.id, `expected unique ids, got ${a.id} and ${b.id}`)
 })
 
-test('dispatching ADD_ACTOR increments nextId', () => {
-  const store = freshStore()
-  const before = store.state.nextId
-
-  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'X', type: 'actor-system' } })
-
-  assert(store.state.nextId > before, 'nextId should increment after ADD_ACTOR')
-})
 
 test('dispatching ADD_ACTOR places actors at non-overlapping x positions', () => {
   const store = freshStore()
@@ -1246,9 +1238,9 @@ test('e2e: full lifecycle — demo → modify → export → clear → import �
 //  Tests the bounding box logic for each element type.
 //  Runs in Node — simulates uiState and store, no DOM needed.
 // ═══════════════════════════════════════════════════════
-// Suite 9 — UI geometry contracts & proto2prod guard rails
+// UI geometry contracts & proto2prod guard rails
 
-test('Suite 9: actor bounding box is right-edge, top of actor', () => {
+test('actor bounding box is right-edge, top of actor', () => {
   // Simulate the actor box calculation from _positionEditBtn
   const ACTOR_W = 110
   const actor = { id: 'a1', x: 40 }
@@ -1259,7 +1251,7 @@ test('Suite 9: actor bounding box is right-edge, top of actor', () => {
   assertEqual(btnY, 4,   'actor edit btn y = 4px (above top edge)')
 })
 
-test('Suite 9: message box anchors to toA side (right arrow)', () => {
+test('message box anchors to toA side (right arrow)', () => {
   const ACTOR_W = 110
   const fromA = { id: 'a1', x: 40  }
   const toA   = { id: 'a2', x: 210 }
@@ -1275,7 +1267,7 @@ test('Suite 9: message box anchors to toA side (right arrow)', () => {
   assertEqual(btnY, 94,  'right-arrow edit btn y above arrow line')
 })
 
-test('Suite 9: message box anchors to toA side (left arrow)', () => {
+test('message box anchors to toA side (left arrow)', () => {
   const ACTOR_W = 110
   const fromA = { id: 'a2', x: 210 }
   const toA   = { id: 'a1', x: 40  }
@@ -1288,7 +1280,7 @@ test('Suite 9: message box anchors to toA side (left arrow)', () => {
   assertEqual(btnX, 125, 'left-arrow edit btn x anchors to left toA side')
 })
 
-test('Suite 9: message box midpoint for bidirectional arrow', () => {
+test('message box midpoint for bidirectional arrow', () => {
   const ACTOR_W = 110
   const fromA = { id: 'a1', x: 40  }
   const toA   = { id: 'a2', x: 210 }
@@ -1301,7 +1293,7 @@ test('Suite 9: message box midpoint for bidirectional arrow', () => {
   assertEqual(btnX, 210, 'bidirectional edit btn x at midpoint + 30')
 })
 
-test('Suite 9: note bounding box right-edge at x + 120', () => {
+test('note bounding box right-edge at x + 120', () => {
   const note = { id: 'n1', x: 20, y: 122 }
   const box  = { x: note.x, y: (note.y || 0) - 18, w: 120, h: 36 }
   const btnX = box.x + box.w
@@ -1310,7 +1302,7 @@ test('Suite 9: note bounding box right-edge at x + 120', () => {
   assertEqual(btnY, 104, 'note edit btn y above note top')
 })
 
-test('Suite 9: fragment bounding box top-right corner', () => {
+test('fragment bounding box top-right corner', () => {
   const frag = { id: 'f1', x: 60, y: 200, w: 200, h: 100 }
   const box  = { x: frag.x, y: frag.y, w: frag.w, h: frag.h }
   const btnX = box.x + box.w
@@ -1319,7 +1311,7 @@ test('Suite 9: fragment bounding box top-right corner', () => {
   assertEqual(btnY, 200, 'fragment edit btn y = frag.y (top edge)')
 })
 
-test('Suite 9: edit btn hidden when nothing selected', () => {
+test('edit btn hidden when nothing selected', () => {
   // _positionEditBtn returns early and would remove visible class
   // We test the guard condition: !s || s._preview
   const noSelection = null
@@ -1328,7 +1320,7 @@ test('Suite 9: edit btn hidden when nothing selected', () => {
   assert(preview._preview,  'preview object triggers hide')
 })
 
-test('Suite 9: :added store events set uiState.selected before render', () => {
+test(':added store events set uiState.selected before render', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Test', type: 'actor-system', x: 40 } })
   const actor = store.state.actors[0]
@@ -1340,7 +1332,7 @@ test('Suite 9: :added store events set uiState.selected before render', () => {
 })
 
 
-test('Suite 9: selected state persists after deselect-then-reselect cycle', () => {
+test('selected state persists after deselect-then-reselect cycle', () => {
   // Simulates: add actor → click canvas (deselect) → click actor again
   // _positionEditBtn must find the actor in state after re-selection
   const store = createStore()
@@ -1362,7 +1354,7 @@ test('Suite 9: selected state persists after deselect-then-reselect cycle', () =
   assertEqual(found.x, 40, 'actor x is correct for bbox calculation')
 })
 
-test('Suite 9: _renderEditBtn box defined for all element types when selected', () => {
+test('_renderEditBtn box defined for all element types when selected', () => {
   const ACTOR_W = 110, ACTOR_H = 42
   const actorCenterX = a => a.x + ACTOR_W / 2
 
@@ -1396,14 +1388,14 @@ test('Suite 9: _renderEditBtn box defined for all element types when selected', 
 })
 
 
-test('Suite 9: ADD_ACTOR succeeds with no prior actors (no 2-actor guard)', () => {
+test('ADD_ACTOR succeeds with no prior actors (no 2-actor guard)', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Solo', type: 'actor-person', x: 40 } })
   assertEqual(store.state.actors.length, 1, 'actor added without precondition')
   assertEqual(store.state.actors[0].label, 'Solo', 'actor label correct')
 })
 
-test('Suite 9: ADD_MESSAGE with 1 actor uses self-message (fromId === toId)', () => {
+test('ADD_MESSAGE with 1 actor uses self-message (fromId === toId)', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Solo', type: 'actor-person', x: 40 } })
   const id = store.state.actors[0].id
@@ -1415,7 +1407,7 @@ test('Suite 9: ADD_MESSAGE with 1 actor uses self-message (fromId === toId)', ()
   assertEqual(store.state.messages[0].toId,   id, 'toId is also the single actor (self-message)')
 })
 
-test('Suite 9: ADD_MESSAGE with actors — fromId/toId set explicitly', () => {
+test('ADD_MESSAGE with actors — fromId/toId set explicitly', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-person', x: 40 } })
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B', type: 'actor-system', x: 200 } })
@@ -1428,7 +1420,7 @@ test('Suite 9: ADD_MESSAGE with actors — fromId/toId set explicitly', () => {
   assertEqual(store.state.messages[0].toId,   b, 'toId set correctly')
 })
 
-test('Suite 9: uiState has no pendingActorId field', () => {
+test('uiState has no pendingActorId field', () => {
   // Verify the arm-and-fire mechanic is fully removed from uiState initializer
   // We check the store script for the removed field
   const fs = require('fs')
@@ -1437,7 +1429,7 @@ test('Suite 9: uiState has no pendingActorId field', () => {
   assert(!html.includes("uiState.pendingActorId"), 'no pendingActorId references in UI code')
 })
 
-test('Suite 9: isPending not referenced in renderActor', () => {
+test('isPending not referenced in renderActor', () => {
   const fs = require('fs')
   const html = fs.readFileSync('./sequence-builder.html', 'utf8')
   // Extract renderActor function body
@@ -1449,7 +1441,7 @@ test('Suite 9: isPending not referenced in renderActor', () => {
 })
 
 
-test('Suite 9: no actor guard on message add — any element can be added anytime', () => {
+test('no actor guard on message add — any element can be added anytime', () => {
   const fs = require('fs')
   const html = fs.readFileSync('./sequence-builder.html', 'utf8')
   // No precondition guard on msg paths (proto2prod UI rule)
@@ -1459,7 +1451,7 @@ test('Suite 9: no actor guard on message add — any element can be added anytim
   assert(!msgGuard.test(html), 'no 2-actor guard blocking msg add')
 })
 
-test('Suite 9: UI guard — notes and fragments have no actor guard', () => {
+test('UI guard — notes and fragments have no actor guard', () => {
   const fs = require('fs')
   const html = fs.readFileSync('./sequence-builder.html', 'utf8')
   // Find ADD_NOTE dispatch — should not be preceded by actors.length check
@@ -1474,7 +1466,7 @@ test('Suite 9: UI guard — notes and fragments have no actor guard', () => {
   assert(!fragPre.includes('actors.length'), 'no actor guard before ADD_FRAGMENT')
 })
 
-test('Suite 9: self-message renders correctly (isSelf path)', () => {
+test('self-message renders correctly (isSelf path)', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', type: 'actor-person', x: 40 } })
   const id = store.state.actors[0].id
@@ -1487,7 +1479,7 @@ test('Suite 9: self-message renders correctly (isSelf path)', () => {
 })
 
 
-test('Suite 9: MOVE_NOTE only dispatched when position changes', () => {
+test('MOVE_NOTE only dispatched when position changes', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_NOTE', payload: { x: 60, y: 200, text: 'test' } })
   const note = store.state.notes[0]
@@ -1500,7 +1492,7 @@ test('Suite 9: MOVE_NOTE only dispatched when position changes', () => {
   assert(movedReal, 'moved note: moved=true, dispatch should fire')
 })
 
-test('Suite 9: MOVE_FRAGMENT only dispatched when position changes', () => {
+test('MOVE_FRAGMENT only dispatched when position changes', () => {
   const store = createStore()
   store.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 60, y: 200, w: 200, h: 100, kind: 'frag-alt', cond: 'test' } })
   const frag = store.state.fragments[0]
@@ -1508,7 +1500,7 @@ test('Suite 9: MOVE_FRAGMENT only dispatched when position changes', () => {
   assert(!moved, 'zero-movement fragment: moved=false, no dispatch needed')
 })
 
-test('Suite 9: note click after deselect — setSelected receives correct note', () => {
+test('note click after deselect — setSelected receives correct note', () => {
   // Simulates canvas click handler path for notes
   const store = createStore()
   store.dispatch({ type: 'ADD_NOTE', payload: { x: 60, y: 200, text: 'my note' } })
@@ -1636,7 +1628,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
   // Pins the store-level contract that autoFitOnLoad depends on.
   // fitToZoom() is DOM-bound; those checks live in manual QA.
 
-  test('Suite 12: LOAD_DEMO fires diagram:loaded', () => {
+  test('LOAD_DEMO fires diagram:loaded', () => {
     const s = createStore()
     let fired = false
     s.on('diagram:loaded', () => { fired = true })
@@ -1644,7 +1636,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assert(fired, 'LOAD_DEMO must emit diagram:loaded')
   })
 
-  test('Suite 12: LOAD_DEMO event carries source demo', () => {
+  test('LOAD_DEMO event carries source demo', () => {
     const s = createStore()
     let src = 'none'
     s.on('diagram:loaded', p => { src = p.source })
@@ -1652,7 +1644,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assert(src === 'demo', 'expected demo, got: ' + src)
   })
 
-  test('Suite 12: LOAD_DIAGRAM fires diagram:loaded', () => {
+  test('LOAD_DIAGRAM fires diagram:loaded', () => {
     const s = createStore()
     let fired = false
     s.on('diagram:loaded', () => { fired = true })
@@ -1660,7 +1652,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assert(fired, 'LOAD_DIAGRAM must emit diagram:loaded')
   })
 
-  test('Suite 12: LOAD_DIAGRAM event source is import', () => {
+  test('LOAD_DIAGRAM event source is import', () => {
     const s = createStore()
     let src = 'none'
     s.on('diagram:loaded', p => { src = p.source })
@@ -1668,20 +1660,20 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assert(src === 'import', 'expected import, got: ' + src)
   })
 
-  test('Suite 12: LOAD_DEMO clears undo stack', () => {
+  test('LOAD_DEMO clears undo stack', () => {
     const s = createStore()
     s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'X' } })
     s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
     assert(!s.canUndo, 'LOAD_DEMO must clear undo stack')
   })
 
-  test('Suite 12: LOAD_DEMO populates actors', () => {
+  test('LOAD_DEMO populates actors', () => {
     const s = createStore()
     s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
     assert(s.state.actors.length > 0, 'LOAD_DEMO must populate actors')
   })
 
-  test('Suite 12: LOAD_DIAGRAM restores actor count from snapshot', () => {
+  test('LOAD_DIAGRAM restores actor count from snapshot', () => {
     const s = createStore()
     s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
     const snap = JSON.parse(JSON.stringify(s.state))
@@ -1704,9 +1696,9 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 //    - Geometry is preserved through UNDO/REDO cycle
 //    - Multiple fragments retain independent geometry
 // ═══════════════════════════════════════════════════════
-// Suite 13 — Fragment geometry contracts
+// Fragment geometry contracts
 {
-  test('Suite 13: ADD_FRAGMENT stores x, y, w, h', () => {
+  test('ADD_FRAGMENT stores x, y, w, h', () => {
     const s = freshStore()
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 40, y: 80, w: 200, h: 120, kind: 'frag-alt', cond: 'ok' } })
     const f = s.state.fragments[0]
@@ -1716,7 +1708,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assertEqual(f.h, 120, 'h must be stored')
   })
 
-  test('Suite 13: ADD_FRAGMENT stores kind and cond', () => {
+  test('ADD_FRAGMENT stores kind and cond', () => {
     const s = freshStore()
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 100, kind: 'frag-loop', cond: 'i < 10' } })
     const f = s.state.fragments[0]
@@ -1724,14 +1716,14 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assertEqual(f.cond, 'i < 10', 'cond must be stored')
   })
 
-  test('Suite 13: ADD_FRAGMENT assigns unique id', () => {
+  test('ADD_FRAGMENT assigns unique id', () => {
     const s = freshStore()
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 100, kind: 'frag-alt', cond: 'a' } })
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 100, kind: 'frag-opt', cond: 'b' } })
     assert(s.state.fragments[0].id !== s.state.fragments[1].id, 'ids must be unique')
   })
 
-  test('Suite 13: RESIZE_FRAGMENT updates w and h', () => {
+  test('RESIZE_FRAGMENT updates w and h', () => {
     const s = freshStore()
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 10, y: 10, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
     const id = s.state.fragments[0].id
@@ -1741,7 +1733,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assertEqual(f.h, 200, 'h must be updated by RESIZE_FRAGMENT')
   })
 
-  test('Suite 13: RESIZE_FRAGMENT does not change x or y', () => {
+  test('RESIZE_FRAGMENT does not change x or y', () => {
     const s = freshStore()
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 50, y: 60, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
     const id = s.state.fragments[0].id
@@ -1751,7 +1743,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assertEqual(f.y, 60, 'y must not change on resize')
   })
 
-  test('Suite 13: RESIZE_FRAGMENT is undoable', () => {
+  test('RESIZE_FRAGMENT is undoable', () => {
     const s = freshStore()
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
     const id = s.state.fragments[0].id
@@ -1762,7 +1754,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assertEqual(s.getFragmentById(id).h, 80, 'UNDO must restore original h')
   })
 
-  test('Suite 13: RESIZE_FRAGMENT undo then redo restores resize', () => {
+  test('RESIZE_FRAGMENT undo then redo restores resize', () => {
     const s = freshStore()
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
     const id = s.state.fragments[0].id
@@ -1773,7 +1765,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assertEqual(s.getFragmentById(id).h, 150, 'REDO must restore resized h')
   })
 
-  test('Suite 13: UPDATE_FRAGMENT updates kind and cond', () => {
+  test('UPDATE_FRAGMENT updates kind and cond', () => {
     const s = freshStore()
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'original' } })
     const id = s.state.fragments[0].id
@@ -1783,7 +1775,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assertEqual(f.cond, 'updated', 'cond must be updated')
   })
 
-  test('Suite 13: UPDATE_FRAGMENT does not change geometry', () => {
+  test('UPDATE_FRAGMENT does not change geometry', () => {
     const s = freshStore()
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 30, y: 40, w: 180, h: 90, kind: 'frag-alt', cond: 'x' } })
     const id = s.state.fragments[0].id
@@ -1795,7 +1787,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assertEqual(f.h, 90, 'h must not change on UPDATE_FRAGMENT')
   })
 
-  test('Suite 13: multiple fragments retain independent geometry', () => {
+  test('multiple fragments retain independent geometry', () => {
     const s = freshStore()
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 10, y: 10, w: 100, h: 80, kind: 'frag-alt', cond: 'a' } })
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 200, y: 200, w: 300, h: 150, kind: 'frag-loop', cond: 'b' } })
@@ -1805,13 +1797,13 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assertEqual(s.getFragmentById(f2.id).h, 150, 'resizing f1 must not affect f2 h')
   })
 
-  test('Suite 13: getFragmentById returns null for unknown id', () => {
+  test('getFragmentById returns null for unknown id', () => {
     const s = freshStore()
     assert(s.getFragmentById('nonexistent') === null || s.getFragmentById('nonexistent') === undefined,
       'getFragmentById must return null/undefined for unknown id')
   })
 
-  test('Suite 13: DELETE_FRAGMENT removes fragment by id', () => {
+  test('DELETE_FRAGMENT removes fragment by id', () => {
     const s = freshStore()
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
     const id = s.state.fragments[0].id
@@ -1820,7 +1812,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
     assert(s.getFragmentById(id) === null || s.getFragmentById(id) === undefined, 'getFragmentById must return null after delete')
   })
 
-  test('Suite 13: DELETE_FRAGMENT is undoable', () => {
+  test('DELETE_FRAGMENT is undoable', () => {
     const s = freshStore()
     s.dispatch({ type: 'ADD_FRAGMENT', payload: { x: 0, y: 0, w: 100, h: 80, kind: 'frag-alt', cond: 'x' } })
     const id = s.state.fragments[0].id
@@ -1840,7 +1832,7 @@ test('UPDATE_MESSAGE label update is undoable', () => {
 
 console.log('\nSuite 14 — Canvas pan & arrow-key nudge contracts');
 
-test('Suite 14: UPDATE_ACTOR x-nudge moves actor by delta', () => {
+test('UPDATE_ACTOR x-nudge moves actor by delta', () => {
   const s = freshStore();
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 100 } });
   const id = s.state.actors[0].id;
@@ -1848,7 +1840,7 @@ test('Suite 14: UPDATE_ACTOR x-nudge moves actor by delta', () => {
   assert(s.state.actors[0].x === 120, 'actor x updated to 120');
 });
 
-test('Suite 14: UPDATE_ACTOR x-nudge is undoable', () => {
+test('UPDATE_ACTOR x-nudge is undoable', () => {
   const s = freshStore();
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 100 } });
   const id = s.state.actors[0].id;
@@ -1857,7 +1849,7 @@ test('Suite 14: UPDATE_ACTOR x-nudge is undoable', () => {
   assert(s.state.actors[0].x === 100, 'UNDO restores actor x to 100');
 });
 
-test('Suite 14: MOVE_NOTE nudge moves note by delta', () => {
+test('MOVE_NOTE nudge moves note by delta', () => {
   const s = freshStore();
   s.dispatch({ type: 'ADD_NOTE', payload: { text: 'hi', x: 80, y: 200 } });
   const id = s.state.notes[0].id;
@@ -1866,7 +1858,7 @@ test('Suite 14: MOVE_NOTE nudge moves note by delta', () => {
   assert(s.state.notes[0].y === 220, 'note y updated');
 });
 
-test('Suite 14: MOVE_NOTE nudge is undoable', () => {
+test('MOVE_NOTE nudge is undoable', () => {
   const s = freshStore();
   s.dispatch({ type: 'ADD_NOTE', payload: { text: 'hi', x: 80, y: 200 } });
   const id = s.state.notes[0].id;
@@ -1876,7 +1868,7 @@ test('Suite 14: MOVE_NOTE nudge is undoable', () => {
   assert(s.state.notes[0].y === 200, 'UNDO restores note y');
 });
 
-test('Suite 14: MOVE_FRAGMENT nudge moves fragment by delta', () => {
+test('MOVE_FRAGMENT nudge moves fragment by delta', () => {
   const s = freshStore();
   s.dispatch({ type: 'ADD_FRAGMENT', payload: { kind: 'frag-alt', cond: 'c', x: 60, y: 100, w: 200, h: 80 } });
   const id = s.state.fragments[0].id;
@@ -1885,7 +1877,7 @@ test('Suite 14: MOVE_FRAGMENT nudge moves fragment by delta', () => {
   assert(s.state.fragments[0].y === 120, 'fragment y updated');
 });
 
-test('Suite 14: MOVE_FRAGMENT nudge is undoable', () => {
+test('MOVE_FRAGMENT nudge is undoable', () => {
   const s = freshStore();
   s.dispatch({ type: 'ADD_FRAGMENT', payload: { kind: 'frag-alt', cond: 'c', x: 60, y: 100, w: 200, h: 80 } });
   const id = s.state.fragments[0].id;
@@ -1895,13 +1887,13 @@ test('Suite 14: MOVE_FRAGMENT nudge is undoable', () => {
   assert(s.state.fragments[0].y === 100, 'UNDO restores fragment y');
 });
 
-test('Suite 14: pan state is not present on store.state', () => {
+test('pan state is not present on store.state', () => {
   const s = freshStore();
   assert(!('panX' in s.state), 'panX is not a store state field');
   assert(!('panY' in s.state), 'panY is not a store state field');
 });
 
-test('Suite 14: actor x-nudge at left boundary (x:0) does not go negative', () => {
+test('actor x-nudge at left boundary (x:0) does not go negative', () => {
   const s = freshStore();
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A', x: 5 } });
   const id = s.state.actors[0].id;
@@ -1913,7 +1905,7 @@ test('Suite 14: actor x-nudge at left boundary (x:0) does not go negative', () =
 
 
 // ── Suite 15 — Properties bag contracts ──────────────────────────────────────
-test('Suite 15: ADD_ACTOR initialises schema as empty array', () => {
+test('ADD_ACTOR initialises schema as empty array', () => {
   const s = createStore();
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
   const a = s.state.actors[0];
@@ -1921,7 +1913,7 @@ test('Suite 15: ADD_ACTOR initialises schema as empty array', () => {
   assert(a.schema.length === 0, 'schema starts empty');
 });
 
-test('Suite 15: ADD_ACTOR initialises properties as empty object', () => {
+test('ADD_ACTOR initialises properties as empty object', () => {
   const s = createStore();
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
   const a = s.state.actors[0];
@@ -1929,7 +1921,7 @@ test('Suite 15: ADD_ACTOR initialises properties as empty object', () => {
   assert(Object.keys(a.properties).length === 0, 'properties starts empty');
 });
 
-test('Suite 15: ADD_MESSAGE initialises schema and properties', () => {
+test('ADD_MESSAGE initialises schema and properties', () => {
   const s = createStore();
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
   const aid = s.state.actors[0].id;
@@ -1939,7 +1931,7 @@ test('Suite 15: ADD_MESSAGE initialises schema and properties', () => {
   assert(typeof m.properties === 'object' && m.properties !== null, 'message properties is object');
 });
 
-test('Suite 15: UPDATE_ACTOR schema full-replace', () => {
+test('UPDATE_ACTOR schema full-replace', () => {
   const s = createStore();
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
   const id = s.state.actors[0].id;
@@ -1949,7 +1941,7 @@ test('Suite 15: UPDATE_ACTOR schema full-replace', () => {
   assert(s.state.actors[0].schema[0].key === 'apiKey', 'schema field key correct');
 });
 
-test('Suite 15: UPDATE_ACTOR properties shallow-merge preserves untouched keys', () => {
+test('UPDATE_ACTOR properties shallow-merge preserves untouched keys', () => {
   const s = createStore();
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
   const id = s.state.actors[0].id;
@@ -1959,7 +1951,7 @@ test('Suite 15: UPDATE_ACTOR properties shallow-merge preserves untouched keys',
   assert(s.state.actors[0].properties.baseUrl === 'https://y', 'updated key changed');
 });
 
-test('Suite 15: UPDATE_MESSAGE schema and properties merge', () => {
+test('UPDATE_MESSAGE schema and properties merge', () => {
   const s = createStore();
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
   const aid = s.state.actors[0].id;
@@ -1971,7 +1963,7 @@ test('Suite 15: UPDATE_MESSAGE schema and properties merge', () => {
   assert(s.state.messages[0].properties.env === 'prod', 'message property stored');
 });
 
-test('Suite 15: UPDATE_ACTOR schema patch is undoable', () => {
+test('UPDATE_ACTOR schema patch is undoable', () => {
   const s = createStore();
   s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } });
   const id = s.state.actors[0].id;
@@ -1986,14 +1978,14 @@ test('Suite 15: UPDATE_ACTOR schema patch is undoable', () => {
 // Rule: every regex in the codebase that transforms data must have a test here.
 // New regex = new test. No exceptions.
 
-test('Suite 16: @import strip — basic case', () => {
+test('@import strip — basic case', () => {
   const input = "@import url('https://fonts.example.com/font.css');\n:root { --bg: #000; }";
   const result = input.replace(/@import\s[^)]*\)[^;]*;/g, '');
   assert(!result.includes('@import'), 'import stripped');
   assert(result.includes(':root'), 'rest preserved');
 });
 
-test('Suite 16: @import strip — semicolons inside url() are not early-terminated', () => {
+test('@import strip — semicolons inside url() are not early-terminated', () => {
   const input = "@import url('https://fonts.googleapis.com/css2?family=Mono:wght@300;400;700&display=swap');\nbody{}";
   const result = input.replace(/@import\s[^)]*\)[^;]*;/g, '');
   assert(!result.includes('@import'), 'import stripped');
@@ -2002,26 +1994,26 @@ test('Suite 16: @import strip — semicolons inside url() are not early-terminat
   assert(result.trim().startsWith('body'), 'subsequent rules preserved');
 });
 
-test('Suite 16: @import strip — multiple imports all removed', () => {
+test('@import strip — multiple imports all removed', () => {
   const input = "@import url('https://a.com/a.css');\n@import url('https://b.com/b.css');\np{}";
   const result = input.replace(/@import\s[^)]*\)[^;]*;/g, '');
   assert(!result.includes('@import'), 'both imports stripped');
   assert(result.includes('p{}'), 'selector preserved');
 });
 
-test('Suite 16: version extraction regex — standard format', () => {
+test('version extraction regex — standard format', () => {
   const input = "Version: 0.9.91\nsome other text";
   const m = input.match(/Version:\s*([\d.]+)/);
   assert(m && m[1] === '0.9.91', 'version extracted correctly');
 });
 
-test('Suite 16: version extraction regex — no false match on other numbers', () => {
+test('version extraction regex — no false match on other numbers', () => {
   const input = "port: 3799\nVersion: 1.2.3\nlength: 500";
   const m = input.match(/Version:\s*([\d.]+)/);
   assert(m && m[1] === '1.2.3', 'only Version: prefix matches');
 });
 
-test('Suite 16: suite header regex — standard format', () => {
+test('suite header regex — standard format', () => {
   const input = "// Suite 9 \u2014 UI geometry contracts & proto2prod guard rails";
   const m = [...input.matchAll(/Suite (\d+) \u2014 ([^\n'"`\u2500]+)/g)];
   assert(m.length === 1, 'one match');
@@ -2029,14 +2021,14 @@ test('Suite 16: suite header regex — standard format', () => {
   assert(m[0][2].trim() === 'UI geometry contracts & proto2prod guard rails', 'name correct');
 });
 
-test('Suite 16: suite header regex — separator chars trimmed', () => {
+test('suite header regex — separator chars trimmed', () => {
   const input = "// Suite 10 \u2014 ADD_MESSAGE null contract \u2500\u2500\u2500\u2500";
   const m = [...input.matchAll(/Suite (\d+) \u2014 ([^\n'"`\u2500]+)/g)];
   assert(m.length === 1, 'one match');
   assert(m[0][2].trim() === 'ADD_MESSAGE null contract', 'separator chars not included in name');
 });
 
-test('Suite 16: nextMessageKind cycles completely without leaking', () => {
+test('nextMessageKind cycles completely without leaking', () => {
   let nextMessageKind;
   try { ;({ nextMessageKind } = require('./sequence-builder.store.js')); } catch(e) { assert(false, 'nextMessageKind not exported'); }
   const cycle = ['sync','async','return'];
@@ -2046,7 +2038,7 @@ test('Suite 16: nextMessageKind cycles completely without leaking', () => {
   assert(nextMessageKind('unknown') === 'sync', 'helper returns safe default for unknown');
 });
 
-test('Suite 16: nextMessageDirection cycles completely without leaking', () => {
+test('nextMessageDirection cycles completely without leaking', () => {
   let nextMessageDirection;
   try { ;({ nextMessageDirection } = require('./sequence-builder.store.js')); } catch(e) { assert(false, 'nextMessageDirection not exported'); }
   const map = { right: 'left', left: 'both', both: 'right' };
@@ -2055,7 +2047,7 @@ test('Suite 16: nextMessageDirection cycles completely without leaking', () => {
 });
 
 
-test('Suite 16: btn-export-png has exactly one click binding (no double-download)', () => {
+test('btn-export-png has exactly one click binding (no double-download)', () => {
   // Regression: duplicate onclick= + addEventListener caused two downloads per click.
   // This test pins that only addEventListener wiring exists — no onclick= assignment.
   const html = require('fs').readFileSync(require('path').join(__dirname, 'sequence-builder.html'), 'utf8');
@@ -2067,16 +2059,210 @@ test('Suite 16: btn-export-png has exactly one click binding (no double-download
 
 //  RESULTS
 // ═══════════════════════════════════════════════════════
-console.log(`\n${'─'.repeat(50)}`)
-console.log(`  ${_passed} passed  |  ${_failed} failed  |  ${_total} total`)
-console.log(`${'─'.repeat(50)}\n`)
+// ── ULID ID contract ─────────────────────────────────────
+test("ADD_ACTOR id has actor_ prefix + 26-char ULID", function() {
+  ;(function(freshStore, assert) {
+  const store = freshStore()
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+  const id = store.state.actors[0].id
+  const RE = /^[0-9A-Z]{26}$/
+  assert(id.startsWith('actor_'), 'expected actor_ prefix, got: ' + id)
+  assert(RE.test(id.slice(6)), 'expected 26-char ULID suffix, got: ' + id.slice(6))
+})(freshStore, assert)
+})
 
-if (_failed > 0) {
-  console.log('  Exit criterion not met — implement sequence-builder.store.js')
-  console.log('  and run again until all tests pass.\n')
-  process.exit(1)
-} else {
-  console.log('  All tests pass. Phase 1 + Phase 2 entry criterion met.')
-  console.log('  Proceed to Phase 2 — wire HTML to the store.\n')
+test("ADD_MESSAGE id has msg_ prefix + 26-char ULID", function() {
+  ;(function(freshStore, assert) {
+  const store = freshStore()
+  store.dispatch({ type: 'ADD_MESSAGE', payload: { label: 'M' } })
+  const id = store.state.messages[0].id
+  const RE = /^[0-9A-Z]{26}$/
+  assert(id.startsWith('msg_'), 'expected msg_ prefix, got: ' + id)
+  assert(RE.test(id.slice(4)), 'expected 26-char ULID suffix, got: ' + id.slice(4))
+})(freshStore, assert)
+})
+
+test("ADD_NOTE id has note_ prefix + 26-char ULID", function() {
+  ;(function(freshStore, assert) {
+  const store = freshStore()
+  store.dispatch({ type: 'ADD_NOTE', payload: {} })
+  const id = store.state.notes[0].id
+  const RE = /^[0-9A-Z]{26}$/
+  assert(id.startsWith('note_'), 'expected note_ prefix, got: ' + id)
+  assert(RE.test(id.slice(5)), 'expected 26-char ULID suffix, got: ' + id.slice(5))
+})(freshStore, assert)
+})
+
+test("ADD_FRAGMENT id has frag_ prefix + 26-char ULID", function() {
+  ;(function(freshStore, assert) {
+  const store = freshStore()
+  store.dispatch({ type: 'ADD_FRAGMENT', payload: {} })
+  const id = store.state.fragments[0].id
+  const RE = /^[0-9A-Z]{26}$/
+  assert(id.startsWith('frag_'), 'expected frag_ prefix, got: ' + id)
+  assert(RE.test(id.slice(5)), 'expected 26-char ULID suffix, got: ' + id.slice(5))
+})(freshStore, assert)
+})
+
+test("LOAD_DEMO actor ids are 26-char ULIDs", function() {
+  ;(function(freshStore, assert) {
+  const store = freshStore()
+  const RE = /^[0-9A-Z]{26}$/
+  store.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' } })
+  for (const actor of store.state.actors) {
+    assert(RE.test(actor.id), 'demo actor id should be ULID, got: ' + actor.id)
+  }
+})(freshStore, assert)
+})
+
+test("dispatch stamps meta.affectedId from payload.id", function() {
+  ;(function(freshStore, assert) {
+  const store = freshStore()
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+  const aid = store.state.actors[0].id
+  store.dispatch({ type: 'UPDATE_ACTOR', payload: { id: aid, label: 'B' } })
+  const entry = store.log.find(function(e) { return e.type === 'UPDATE_ACTOR' })
+  assert(entry.meta.affectedId === aid, 'affectedId should equal actor id')
+})(freshStore, assert)
+})
+
+test("two ADD_ACTOR calls produce distinct ULIDs", function() {
+  ;(function(freshStore, assert) {
+  const store = freshStore()
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'A' } })
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'B' } })
+  const id1 = store.state.actors[0].id
+  const id2 = store.state.actors[1].id
+  assert(id1 !== id2, 'two actors must have distinct ids')
+})(freshStore, assert)
+})
+
+test("state has no nextId field", function() {
+  ;(function(freshStore, assert) {
+  const store = freshStore()
+  assert(!('nextId' in store.state), 'state.nextId should not exist after ULID migration')
+})(freshStore, assert)
+})
+
+// ── ActorElement contract ───────────────────────────────
+test("ActorElement.getBounds() correct box for x=40", function() {
+  ;(function(freshStore, assert) {
+  const { ActorElement, _AE_ACTOR_W, _AE_ACTOR_H } = require('./src/elements/ActorElement.js')
+  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
+  const b = el.getBounds()
+  assert(b.x === 40, 'x should be 40'); assert(b.y === 8, 'y should be 8')
+  assert(b.w === _AE_ACTOR_W, 'w'); assert(b.h === _AE_ACTOR_H, 'h')
+})(freshStore, assert)
+})
+
+test("ActorElement.getBounds() x tracks data.x", function() {
+  ;(function(freshStore, assert) {
+  const { ActorElement } = require('./src/elements/ActorElement.js')
+  const el = new ActorElement({ id: 'actor_T', x: 210, label: 'B', type: 'actor-system', schema: [], properties: {} })
+  assert(el.getBounds().x === 210, 'x should mirror data.x')
+})(freshStore, assert)
+})
+
+test("ActorElement.hitTest() true for point inside", function() {
+  ;(function(freshStore, assert) {
+  const { ActorElement } = require('./src/elements/ActorElement.js')
+  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
+  assert(el.hitTest(95, 20) === true, 'centre should hit')
+})(freshStore, assert)
+})
+
+test("ActorElement.hitTest() false for point outside", function() {
+  ;(function(freshStore, assert) {
+  const { ActorElement } = require('./src/elements/ActorElement.js')
+  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
+  assert(el.hitTest(200, 20) === false, 'far right should miss')
+  assert(el.hitTest(95, 100) === false, 'below should miss')
+})(freshStore, assert)
+})
+
+test("ActorElement.hitTest() left edge inclusive", function() {
+  ;(function(freshStore, assert) {
+  const { ActorElement } = require('./src/elements/ActorElement.js')
+  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
+  assert(el.hitTest(40, 20) === true, 'left edge x=40 should hit')
+})(freshStore, assert)
+})
+
+test("ActorElement.hitTest() right edge inclusive", function() {
+  ;(function(freshStore, assert) {
+  const { ActorElement, _AE_ACTOR_W } = require('./src/elements/ActorElement.js')
+  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
+  assert(el.hitTest(40 + _AE_ACTOR_W, 20) === true, 'right edge should hit')
+})(freshStore, assert)
+})
+
+test("ActorElement.getPropertiesSchema() has 3 fields", function() {
+  ;(function(freshStore, assert) {
+  const { ActorElement } = require('./src/elements/ActorElement.js')
+  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
+  const s = el.getPropertiesSchema()
+  assert(Array.isArray(s) && s.length === 3, 'schema should have 3 fields')
+  assert(s[0].key === 'label' && s[1].key === 'type' && s[2].key === 'emoji', 'field keys')
+})(freshStore, assert)
+})
+
+test("ActorElement.getPropertiesSchema() type has 4 options", function() {
+  ;(function(freshStore, assert) {
+  const { ActorElement } = require('./src/elements/ActorElement.js')
+  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
+  const tf = el.getPropertiesSchema().find(function(f) { return f.key === 'type' })
+  assert(tf.type === 'select' && tf.options.length === 4, '4 select options')
+})(freshStore, assert)
+})
+
+test("ActorElement.id getter returns data.id", function() {
+  ;(function(freshStore, assert) {
+  const { ActorElement } = require('./src/elements/ActorElement.js')
+  const el = new ActorElement({ id: 'actor_X', x: 0, label: 'X', type: 'actor-system', schema: [], properties: {} })
+  assert(el.id === 'actor_X', 'id getter should return data.id')
+})(freshStore, assert)
+})
+
+test("ActorElement.render() throws (not yet wired)", function() {
+  ;(function(freshStore, assert) {
+  const { ActorElement } = require('./src/elements/ActorElement.js')
+  const el = new ActorElement({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
+  let threw = false; try { el.render(null, null) } catch(e) { threw = true }
+  assert(threw, 'render() should throw until canvas dispatcher is wired')
+})(freshStore, assert)
+})
+
+test("ElementFactory.create() returns ActorElement for actor record", function() {
+  ;(function(freshStore, assert) {
+  const { ActorElement } = require('./src/elements/ActorElement.js')
+  const { ElementFactory } = require('./src/elements/ElementFactory.js')
+  const el = ElementFactory.create({ id: 'actor_T', x: 40, label: 'A', type: 'actor-system', schema: [], properties: {} })
+  assert(el instanceof ActorElement, 'factory should return ActorElement')
+})(freshStore, assert)
+})
+
+test("ElementFactory.create() throws for record without id", function() {
+  ;(function(freshStore, assert) {
+  const { ElementFactory } = require('./src/elements/ElementFactory.js')
+  let threw = false; try { ElementFactory.create({ label: 'no id' }) } catch(e) { threw = true }
+  assert(threw, 'factory should throw for record without id')
+})(freshStore, assert)
+})
+
+// ── Execute ───────────────────────────────────────────────────────────────
+;(function runAll() {
+  var passed = 0, failed = 0
+  var SEP = '─'.repeat(50)
+  for (var i = 0; i < _tests.length; i++) {
+    var tt = _tests[i]
+    try { tt.fn(); console.log('  ✓  ' + tt.desc); passed++ }
+    catch(e) { console.log('  ✗  ' + tt.desc); console.log('       ' + e.message); failed++ }
+  }
+  var total = passed + failed
+  console.log('\n' + SEP)
+  console.log('  ' + passed + ' passed  |  ' + failed + ' failed  |  ' + total + ' total')
+  console.log(SEP + '\n')
+  if (failed > 0) { console.log('  Gate failed.'); process.exit(1) }
+  console.log('  All tests pass. Gate green.')
   process.exit(0)
-}
+})()

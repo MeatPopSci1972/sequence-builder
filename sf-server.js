@@ -441,7 +441,7 @@ const server = http.createServer(function(req, res) {
           for (const uhLayer of uhLayers) {
             const actual = await uhPage.evaluate(function(id){var el=document.getElementById(id);return el?el.innerHTML:'';},uhLayer);
             const snapFile = path.join(uhSnapDir,uhDemo+'--'+uhLayer+'.html');
-            try { if (actual === fs.readFileSync(snapFile,'utf8')) uhPass++; else uhFail++; } catch(e){uhFail++;}
+            try {              if (normalizeIds(actual) === normalizeIds(fs.readFileSync(snapFile,'utf8'))) uhPass++; else uhFail++; } catch(e){uhFail++;}
           }
         }
         await uhBrowser.close();
@@ -484,6 +484,20 @@ const server = http.createServer(function(req, res) {
   });
   return;
 }
+// normalizeIds: strips ULID suffixes from SVG innerHTML before snapshot comparison.
+// ULIDs are non-deterministic per-run; structure is what matters, not identity.
+// Replaces actor_XXXX, msg_XXXX, note_XXXX, frag_XXXX with stable placeholders.
+function normalizeIds(html) {
+  return html
+    // prefixed typed IDs: actor_XXXX, msg_XXXX, note_XXXX, frag_XXXX
+    .replace(/actor_[0-9A-Z]{26}/g, 'actor_ID')
+    .replace(/msg_[0-9A-Z]{26}/g,   'msg_ID')
+    .replace(/note_[0-9A-Z]{26}/g,  'note_ID')
+    .replace(/frag_[0-9A-Z]{26}/g,  'frag_ID')
+    // bare ULIDs in data-id attributes (used by LOAD_DEMO tid())
+    .replace(/data-id="[0-9A-Z]{26}"/g, 'data-id="ULID"');
+}
+
 if (req.method === 'GET' && urlPath === '/test-render') {
     const t0 = Date.now();
     const update = urlObj.searchParams.get('update') === '1';
@@ -520,7 +534,7 @@ if (req.method === 'GET' && urlPath === '/test-render') {
                 return el ? el.innerHTML : '';
               }, layer);
               const snapFile = path.join(snapshotDir, demo + '--' + layer + '.html');
-              fs.writeFileSync(snapFile, html, 'utf8');
+              fs.writeFileSync(snapFile, normalizeIds(html), 'utf8');
               wrote++;
             }
           }
@@ -552,7 +566,7 @@ if (req.method === 'GET' && urlPath === '/test-render') {
                 demoResult.layers[layer] = {passed: false, error: 'no snapshot — run with ?update=1 first'};
                 demoResult.passed = false;
                 totalFailed++;
-              } else if (actual === snapshot) {
+              } else if (normalizeIds(actual) === normalizeIds(snapshot)) {
                 demoResult.layers[layer] = {passed: true, length: snapshot.length};
                 totalPassed++;
               } else {
@@ -591,6 +605,20 @@ if (req.method === 'GET' && urlPath === '/test-render') {
       if (err) { res.writeHead(404); res.end('Not found: '+urlPath); return; }
       res.writeHead(200,{'Content-Type':MIME[path.extname(fp)]||'application/octet-stream'});
       res.end(data);
+    }); return;
+  }
+  if (req.method === 'POST' && urlPath === '/exec-once') {
+    let b=''; req.on('data', d => b+=d);
+    req.on('end', () => {
+      let sc=''; try { sc = JSON.parse(b).script || ''; } catch(e) {}
+      if (!sc) { res.writeHead(400); res.end(JSON.stringify({ok:false,error:'missing script'})); return; }
+      execFile('node', [sc], {cwd:ROOT}, (err, stdout, stderr) => {
+        const ok = !err;
+        const out = (stdout || stderr || '').trim();
+        res.writeHead(ok ? 200 : 500, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify({ ok, output: out }));
+        addLog('POST /exec-once', ok ? out.slice(0,80) : 'FAIL: ' + out.slice(0,60));
+      });
     }); return;
   }
   res.writeHead(405); res.end('Method not allowed');
