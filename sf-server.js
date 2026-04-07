@@ -214,11 +214,52 @@ const server = http.createServer(function(req, res) {
       });
     }); return;
   }
+// ── Version helpers ────────────────────────────────────────────────────────
+function readVersionFromHTML() {
+  const html = fs.readFileSync(path.join(ROOT, 'sequence-builder.html'), 'utf8')
+  const m = html.match(/Version: (\d+\.\d+\.\d+)/)
+  return m ? m[1] : null
+}
+function writeVersionToHTML(newVer) {
+  const fp = path.join(ROOT, 'sequence-builder.html')
+  let html = fs.readFileSync(fp, 'utf8')
+  const oldVer = readVersionFromHTML()
+  if (!oldVer) throw new Error('version not found in HTML')
+  html = html.split('Version: ' + oldVer).join('Version: ' + newVer)
+  html = html.split('data-version="' + oldVer + '"').join('data-version="' + newVer + '"')
+  fs.writeFileSync(fp, html, 'utf8')
+  return oldVer
+}
+function bumpPatch(ver) {
+  const p = ver.split('.').map(Number); p[2]++; return p.join('.')
+}
+
+  if (req.method === 'POST' && urlPath === '/bump') {
+    let body = ''; req.on('data', d => body += d); req.on('end', function() {
+      const t0 = Date.now()
+      try {
+        const oldVer = readVersionFromHTML()
+        if (!oldVer) { res.writeHead(400); res.end(JSON.stringify({ok:false,error:'version not found'})); return }
+        let parsed = {}; try { parsed = JSON.parse(body || '{}') } catch(e) {}
+        const newVer = parsed.version || bumpPatch(oldVer)
+        writeVersionToHTML(newVer)
+        res.writeHead(200, {'Content-Type': 'application/json'})
+        res.end(JSON.stringify({ok:true, oldVersion:oldVer, newVersion:newVer, ms:Date.now()-t0}))
+        addLog('POST /bump', oldVer + ' -> ' + newVer)
+      } catch(e) { res.writeHead(500); res.end(JSON.stringify({ok:false,error:e.message})) }
+    }); return;
+  }
+
   if (req.method === 'POST' && urlPath === '/tag') {
     let body = ''; req.on('data',d=>body+=d); req.on('end',()=>{
       let tag='', msg='';
       try { const p=JSON.parse(body); tag=p.tag||''; msg=p.message||('Release '+tag); } catch(e){}
-      if (!tag) { res.writeHead(400); res.end(JSON.stringify({ok:false,error:'missing tag'})); return; }
+      if (!tag) {
+        const ver = readVersionFromHTML()
+        if (!ver) { res.writeHead(400); res.end(JSON.stringify({ok:false,error:'version not found in HTML'})); return; }
+        tag = 'v' + ver
+        if (!msg) msg = 'Release ' + tag
+      }
       const t0 = Date.now(); const {exec} = require('child_process');
       exec('git tag -a '+JSON.stringify(tag)+' -m '+JSON.stringify(msg),{cwd:ROOT},(err,stdout,stderr)=>{
         const out = (stdout+stderr).trim(); const ok = !err;
