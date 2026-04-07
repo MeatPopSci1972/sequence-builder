@@ -5,7 +5,8 @@
 1. GET http://localhost:3799/status — confirm version, clean=true
 2. GET http://localhost:3799/test — confirm gate is green (170/170)
 3. GET http://localhost:3799/test-render — confirm render gate green (15/15)
-4. Read this file fully, paying close attention to ## BACKLOG
+4. GET https://api.github.com/repos/MeatPopSci1972/sequence-builder/issues?state=open&per_page=50 — review open issues; this is the authoritative backlog
+5. Read this file fully, paying close attention to ## BACKLOG
 
 Also available: GET /api (endpoint reference) | GET /usage (AI surgical guide)
 
@@ -207,7 +208,14 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 - scada-control — SCADA: Control Flow
 - cybersec-zones — CyberSecurity: Zone Analysis
 
-## BACKLOG (priority order — always keep items here, never leave empty)
+## BACKLOG
+
+> **GitHub Issues is the authoritative backlog.**
+> Open issues: https://github.com/MeatPopSci1972/sequence-builder/issues?state=open
+> Session start: fetch open issues (step 4 of FIRST ACTIONS) and work from highest-priority open issue.
+> Items below are preserved as context/notes. Do not treat them as the work queue — GitHub Issues owns that.
+
+### Context for next session
 
 ### Context for next session
 v0.9.95 shipped. This cycle: ARCH-001 complete (actor/note/fragment drag delegated to Factory), BUG-001+BUG-002 fixed, POST /bump and /tag now derive version from nextVersionFromGit(). Next: MessageElement Y-drag to complete ARCH-001. GET /slice is the primary token-saving tool — use it before loading full files.
@@ -294,7 +302,8 @@ FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW
 1. `GET /status` — read version; cross-check against `## VERSION — Current:`
 2. `GET /test` — read pass count; cross-check against `## FIRST ACTIONS` gate count
 3. `GET /test-render` — read pass count; cross-check against `## FIRST ACTIONS` render gate count
-4. If any value mismatches: fix HANDOFF.md before doing any other work
+4. `GET https://api.github.com/repos/MeatPopSci1972/sequence-builder/issues?state=open&per_page=50` — load open issues; this is the authoritative work queue
+5. If any value mismatches: fix HANDOFF.md before doing any other work
 
 ---
 
