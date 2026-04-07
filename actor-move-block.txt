@@ -1,0 +1,19 @@
+  // ── Actor move overlay — drag selected actor ──
+  if (type === 'actor-move') {
+    const actor = store.getActorById(id);
+    if (!actor) return;
+    e.preventDefault();
+    const canvasRect2 = canvasWrap.getBoundingClientRect();
+    dragging            = actor;
+    dragging._type      = 'actor';
+    dragging._resizeHandle = null;
+    dragging._dragBaseX = actor.x;
+    dragging._dragBaseY = actor.y || 0;
+    dragOffX = (e.clientX - canvasRect2.left) / _zoom - actor.x;
+    dragOffY = 0;
+    // Wire ghost element so mousemove can visually translate during drag
+    dragging._ghostEl = e.target.closest('g[data-id]') ||
+                        svg.querySelector(`g[data-type="actor"][data-id="${id}"]`);
+    if (dragging._ghostEl) dragging._ghostEl.style.opacity = '0.5';
+    return;
+  }

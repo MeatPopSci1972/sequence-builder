@@ -1629,7 +1629,7 @@ class ActorElement /* extends SequenceElement */ {
       baseX: actor.x,
       offsetX: (e.clientX - canvasRect.left) / ctx.zoom - actor.x,
       ghostEl:
-        e.target.closest('g[data-id]') ||
+        (e.target ? e.target.closest('g[data-id]') : null) ||
         ctx.svg.querySelector('g[data-type="actor"][data-id="' + actor.id + '"]'),
     }
     if (ctx._drag.ghostEl) ctx._drag.ghostEl.style.opacity = '0.5'
@@ -3937,6 +3937,22 @@ let _panning = false, _panStartX = 0, _panStartY = 0, _panOriginX = 0, _panOrigi
 let dragging = null, dragOffX = 0, dragOffY = 0;
 let draggingMsg = null, _msgMoved = false; // message Y-drag; _msgMoved guards undo
 
+// ── InteractionContext factory ───────────────────────────────
+// Passed to SequenceElement drag/select methods. Single definition.
+// Elements never access globals directly — only what ctx exposes.
+function _makeInteractionContext() {
+  return {
+    store:      store,
+    svg:        svg,
+    canvasWrap: canvasWrap,
+    get zoom()  { return _zoom },
+    render:     render,
+    uiState:    uiState,
+    _drag:      null,
+  }
+}
+let _interactionCtx = null // initialised on first mousedown
+
 svg.addEventListener('mousedown', e => {
   if (uiState.mode === 'connect') return; // connect mode owns clicks
   const g = e.target.closest('[data-id]');
@@ -3992,26 +4008,17 @@ svg.addEventListener('mousedown', e => {
     return; // no drag from actor body — drag is handled by actor-move overlay on selected actors
   }
 
-  // ── Actor move overlay — drag selected actor ──
+  // ── Actor move overlay — delegated to ActorElement ──
   if (type === 'actor-move') {
-    const actor = store.getActorById(id);
-    if (!actor) return;
-    e.preventDefault();
-    const canvasRect2 = canvasWrap.getBoundingClientRect();
-    dragging            = actor;
-    dragging._type      = 'actor';
-    dragging._resizeHandle = null;
-    dragging._dragBaseX = actor.x;
-    dragging._dragBaseY = actor.y || 0;
-    dragOffX = (e.clientX - canvasRect2.left) / _zoom - actor.x;
-    dragOffY = 0;
-    // Wire ghost element so mousemove can visually translate during drag
-    dragging._ghostEl = e.target.closest('g[data-id]') ||
-                        svg.querySelector(`g[data-type="actor"][data-id="${id}"]`);
-    if (dragging._ghostEl) dragging._ghostEl.style.opacity = '0.5';
-    return;
+    const actor = store.getActorById(id)
+    if (!actor) return
+    _interactionCtx = _makeInteractionContext()
+    const el = ElementFactory.create(actor)
+    el.onDragStart(e, _interactionCtx)
+    dragging = actor            // keeps legacy mousemove/mouseup guards alive
+    dragging._type = 'actor'  // routes mousemove to Factory path
+    return
   }
-
   // ── Note / fragment drag (X+Y) ──
   if (type!=='note' && type!=='fragment') return;
   e.preventDefault();
@@ -4087,8 +4094,10 @@ window.addEventListener('mousemove', e => {
   // No dispatch during drag — one undoable commit fires on mouseup.
   // store.state is a live object; writing dragging.x/y updates it without going through
   // the log, which is intentional (mid-drag positions are not undoable steps).
-  if (dragging._type === 'actor') {
-    dragging.x = newX;
+    if (dragging._type === 'actor') {
+      if (_interactionCtx && _interactionCtx._drag) {
+        ElementFactory.create(dragging).onDragMove(e, _interactionCtx)
+      } else { dragging.x = newX }
   } else if (dragging._type === 'note') {
     dragging.x = newX; dragging.y = newY;
   } else if (dragging._type === 'fragment') {
@@ -4163,26 +4172,20 @@ window.addEventListener('mouseup', e => {
   // Sort all actors by current x, assign clean evenly-spaced positions, commit as one
   // undoable REFLOW_ACTORS (single snapshot → single Ctrl+Z undoes all moves).
   else if (dragging?._type === 'actor' && state.actors.length > 1) {
-    const SLOT = ACTOR_W + STORE_ACTOR_GAP;
-    const sorted = [...state.actors].sort((a, b) => a.x - b.x);
-    const positions = sorted.map((a, i) => ({ id: a.id, x: 40 + i * SLOT }));
-    // Only dispatch if anything actually changed position
-    const changed = positions.some(p => {
-      const cur = store.getActorById(p.id);
-      return cur && Math.round(cur.x) !== Math.round(p.x);
-    });
-    if (changed) {
-      store.dispatch({ type: 'REFLOW_ACTORS', payload: { positions } });
-      // Defer render so click event can fire on the current DOM before rebuild
-      setTimeout(render, 0);
-    }
-    // No render needed if nothing changed — click will fire normally
-  } else if (dragging?._type === 'note') {
-    const noteMoved = Math.round(dragging.x) !== Math.round(dragging._dragBaseX) ||
-                      Math.round(dragging.y) !== Math.round(dragging._dragBaseY);
-    if (noteMoved) {
-      store.dispatch({ type: 'MOVE_NOTE', payload: { id: dragging.id, x: dragging.x, y: dragging.y } });
-      setTimeout(render, 0);
+    if (_interactionCtx && _interactionCtx._drag) {
+      ElementFactory.create(dragging).onDragEnd(e, _interactionCtx)
+    } else {
+      var _slot = 110 + 60
+      var _sorted = state.actors.slice().sort(function(a,b) { return a.x - b.x })
+      var _positions = _sorted.map(function(a,i) { return { id: a.id, x: 40 + i * _slot } })
+      var _changed = _positions.some(function(p) {
+        var cur = store.getActorById(p.id)
+        return cur && Math.round(cur.x) !== Math.round(p.x)
+      })
+      if (_changed) {
+        store.dispatch({ type: 'REFLOW_ACTORS', payload: { positions: _positions } })
+        setTimeout(render, 0)
+      }
     }
   } else if (dragging?._type === 'fragment') {
     const fragMoved = Math.round(dragging.x) !== Math.round(dragging._dragBaseX) ||

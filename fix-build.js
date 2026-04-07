@@ -1,12 +1,35 @@
 'use strict'
 const fs = require('fs')
-const t = fs.readFileSync('sequence-builder.html', 'utf8')
 const NL = String.fromCharCode(10)
-const start = t.indexOf('// \u2500\u2500 Actor move overlay')
-const end = t.indexOf('// \u2500\u2500 Note / fragment drag', start)
-if (start === -1) { console.error('start not found'); process.exit(1) }
-const lines = t.slice(start, end).split(NL)
-lines.forEach(function(l, i) {
-  const safe = Buffer.from(l).toString('hex')
-  console.log(i + ': ' + safe)
-})
+const SQ = String.fromCharCode(39)
+let t = fs.readFileSync('sequence-builder.html', 'utf8')
+
+const OLD = [
+  '  if (type === ' + SQ + 'actor-move' + SQ + ') {',
+  '    const actor = store.getActorById(id)',
+  '    if (!actor) return',
+  '    _interactionCtx = _makeInteractionContext()',
+  '    const el = ElementFactory.create(actor)',
+  '    el.onDragStart(e, _interactionCtx)',
+  '    return',
+  '  }',
+].join(NL)
+
+const NEW = [
+  '  if (type === ' + SQ + 'actor-move' + SQ + ') {',
+  '    const actor = store.getActorById(id)',
+  '    if (!actor) return',
+  '    _interactionCtx = _makeInteractionContext()',
+  '    const el = ElementFactory.create(actor)',
+  '    el.onDragStart(e, _interactionCtx)',
+  '    dragging = actor            // keeps legacy mousemove/mouseup guards alive',
+  '    dragging._type = ' + SQ + 'actor' + SQ + '  // routes mousemove to Factory path',
+  '    return',
+  '  }',
+].join(NL)
+
+if (t.indexOf(OLD) === -1) { console.error('OLD not found'); process.exit(1) }
+t = t.split(OLD).join(NEW)
+console.log('patch applied')
+fs.writeFileSync('sequence-builder.html', t, 'utf8')
+console.log('done')

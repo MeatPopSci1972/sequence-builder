@@ -1,0 +1,15 @@
+4171:       const SLOT = 110 + 60
+4172:       const sorted = [...state.actors].sort((a,b) => a.x - b.x)
+4173:       const positions = sorted.map((a,i) => ({ id: a.id, x: 40 + i * SLOT }))
+4174:       const changed = positions.some(p => { const cur = store.getActorById(p.id); return cur && Math.round(cur.x) !== Math.round(p.x) })
+4175:       if (changed) { store.dispatch({ type: 'REFLOW_ACTORS', payload: { positions } }); setTimeout(render, 0) }
+4176:     }
+4177:   }
+4178:   } else if (dragging?._type === 'fragment') {
+4179:     const fragMoved = Math.round(dragging.x) !== Math.round(dragging._dragBaseX) ||
+4180:                       Math.round(dragging.y) !== Math.round(dragging._dragBaseY);
+4181:     if (fragMoved) {
+4182:       store.dispatch({ type: 'MOVE_FRAGMENT', payload: { id: dragging.id, x: dragging.x, y: dragging.y } });
+4183:       setTimeout(render, 0);
+4184:     }
+4185:   }

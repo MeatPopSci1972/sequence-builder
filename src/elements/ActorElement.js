@@ -76,7 +76,7 @@ class ActorElement /* extends SequenceElement */ {
       baseX: actor.x,
       offsetX: (e.clientX - canvasRect.left) / ctx.zoom - actor.x,
       ghostEl:
-        e.target.closest('g[data-id]') ||
+        (e.target ? e.target.closest('g[data-id]') : null) ||
         ctx.svg.querySelector('g[data-type="actor"][data-id="' + actor.id + '"]'),
     }
     if (ctx._drag.ghostEl) ctx._drag.ghostEl.style.opacity = '0.5'
