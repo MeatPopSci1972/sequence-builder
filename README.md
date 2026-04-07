@@ -3,7 +3,7 @@
 > A single-file, zero-dependency UML sequence diagram builder.  
 > Runs entirely in the browser. No build step. npm install only for Playwright render tests.
 
-**[Live demo — v0.9.94](https://MeatPopSci1972.github.io/sequence-builder/releases/v0.9.94/sequence-builder.html)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
+**[Live demo — v0.9.96](https://MeatPopSci1972.github.io/sequence-builder/releases/v0.9.96/sequence-builder.html)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
 
 ---
 
@@ -24,18 +24,11 @@ Open `http://localhost:3799` in your browser.
 Capabilities pinned by the contract test suites:
 
 - **Suite 1** — REFLOW_ACTORS tests
-- **Suite 2** — DELETE_ACTOR cascade
-- **Suite 3** — UPDATE_MESSAGE partial patch
-- **Suite 4** — meta.undoable = false
-- **Suite 5** — UNDO
-- **Suite 6** — REDO
 - **Suite 7** — _parseUML (PlantUML + Mermaid parser)
 - **Suite 8** — End-to-End scenario
-- **Suite 9** — UI geometry contracts & proto2prod guard rails
 - **Suite 10** — ADD_MESSAGE null contract
 - **Suite 11** — Message label contract & inline edit
 - **Suite 12** — autoFitOnLoad preference
-- **Suite 13** — Fragment geometry contracts
 - **Suite 14** — Canvas pan & arrow-key nudge contracts
 - **Suite 15** — Properties bag contracts
 - **Suite 16** — Regex contract tests
@@ -48,11 +41,48 @@ Capabilities pinned by the contract test suites:
 |------|-------|
 | `LICENSE` | |
 | `README.md` | |
+| `_check.js` | |
+| `actor-move-block.txt` | |
+| `backlog-check.json` | |
+| `brace-check.json` | |
+| `bug001.json` | |
+| `build-elem-ctx.json` | |
+| `build-elems.json` | |
+| `build-head.json` | |
 | `build.js` | |
+| `bump-handler.json` | |
+| `check-lines.json` | |
+| `click-ctx.json` | |
+| `click-handler.json` | |
+| `ctx.json` | |
+| `diag.json` | |
+| `elem-block.json` | |
+| `end-lines.json` | |
+| `fix-build.js` | |
+| `gap.json` | |
+| `handoff-ver.json` | |
 | `launcher.js` | |
+| `lines.json` | |
+| `lines.txt` | |
+| `lines2.json` | |
 | `lint.js` | |
 | `log.html` | |
+| `md-new.json` | |
+| `mm-hits.json` | |
+| `msg-click.json` | |
+| `msg-sel-ctx.json` | |
+| `msg-sel.json` | |
+| `ne-check.json` | |
+| `note-handler.json` | |
+| `note-mu.json` | |
+| `note-mu2.json` | |
 | `package.json` | |
+| `patch-status.json` | |
+| `post-build.json` | |
+| `pre-build.json` | |
+| `render-msg-tail.json` | |
+| `render-msg.json` | |
+| `render-note.json` | |
 | `sequence-builder.html` | |
 | `sequence-builder.store.js` | |
 | `sequence-builder.test.js` | |
@@ -60,7 +90,28 @@ Capabilities pinned by the contract test suites:
 | `sf-preflight.ps1` | |
 | `sf-readme-gen.js` | |
 | `sf-server.js` | |
+| `src/elements/ActorElement.js` | |
+| `src/elements/ElementFactory.js` | |
+| `src/elements/FragmentElement.js` | |
+| `src/elements/MessageElement.js` | |
+| `src/elements/NoteElement.js` | |
+| `src/elements/SequenceElement.js` | |
+| `state.json` | |
+| `suites-data.js` | |
+| `syntax-err.json` | |
+| `tag-full.json` | |
+| `tag-handler.json` | |
+| `tag-line.json` | |
+| `tag-lines.json` | |
+| `tag-search.json` | |
+| `tags.json` | |
 | `themes.json` | |
+| `ver-check.json` | |
+| `ver.json` | |
+| `version-audit.json` | |
+| `wire-ctx.json` | |
+| `wire-lines.json` | |
+| `write-ver-calls.json` | |
 
 ---
 
