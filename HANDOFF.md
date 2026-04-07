@@ -89,7 +89,7 @@ fetch('http://localhost:3799/lint', {method:'POST'})
 ```
 
 ## RELEASE FLOW (v0.9.68+)
-1. GET /test (127/127) + GET /test-render (15/15) both green
+1. GET /test (170/170) + GET /test-render (15/15) both green — also verify sf-preflight.ps1 expected count matches
 2. POST /bump — increments patch from latest git tag, writes display version to HTML
 3. POST /build
 4. POST /lint — must be ok before continuing
