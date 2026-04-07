@@ -3532,7 +3532,7 @@ function renderMessage(m) {
   g.addEventListener('click', e => {
     if (uiState.mode === 'connect') return;
     e.stopPropagation();
-    setSelected(store.getMessageById(m.id), 'message');
+    setSelected(store.getMessageById(m.id), 'message'); render()  // show endpoint handles;
     if (DEBUG_VERBOSE) dbg('msg-click', `id=${m.id} selected`);
   });
 

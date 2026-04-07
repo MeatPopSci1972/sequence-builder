@@ -1,7 +1,17 @@
 'use strict'
-const cp = require('child_process'), fs = require('fs')
-const t = fs.readFileSync('sequence-builder.html', 'utf8')
-fs.writeFileSync('_check.js', t.slice(t.indexOf('// @@STORE-START'), t.indexOf('// @@EVENTS-END')+15), 'utf8')
-try { cp.execSync('node --check _check.js 2>&1', {encoding:'utf8'}); fs.writeFileSync('syntax-err.json', JSON.stringify({ok:true}), 'utf8') }
-catch(e) { fs.writeFileSync('syntax-err.json', JSON.stringify({ok:false,msg:(e.stdout||e.stderr||e.message||'').slice(0,200)}), 'utf8') }
+const fs = require('fs')
+const NL = String.fromCharCode(10)
+const SQ = String.fromCharCode(39)
+let lines = fs.readFileSync('sequence-builder.html', 'utf8').split(NL)
+if (!lines[3534].includes('setSelected') || !lines[3534].includes('message')) {
+  console.error('anchor miss: ' + lines[3534].trim().slice(0,60))
+  process.exit(1)
+}
+console.log('anchor ok:', lines[3534].trim())
+lines[3534] = lines[3534].replace(
+  'setSelected(store.getMessageById(m.id), ' + SQ + 'message' + SQ + ')',
+  'setSelected(store.getMessageById(m.id), ' + SQ + 'message' + SQ + '); render()  // show endpoint handles'
+)
+console.log('patched:', lines[3534].trim())
+fs.writeFileSync('sequence-builder.html', lines.join(NL), 'utf8')
 console.log('done')

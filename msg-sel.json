@@ -1,0 +1,1 @@
+[{"n":2917,"l":"_store.on('message:added',    message => { setSelected(message, 'message'); activateTab('t"},{"n":3418,"l":"  uHit.addEventListener('click', e => { e.stopPropagation(); setSelected(m, 'message', tru"},{"n":3535,"l":"    setSelected(store.getMessageById(m.id), 'message');"}]
