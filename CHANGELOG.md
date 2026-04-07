@@ -1,5 +1,21 @@
 # SequenceForge Changelog
 
+## v0.9.96 — MessageElement Y-drag — complete ARCH-001 (#19)
+_2026-04-07_
+
+### Features
+- MessageElement Y-drag — complete ARCH-001 (#19)
+
+### Fixes
+- version always derived from git tags — nextVersionFromGit() replaces readVersionFromHTML()
+
+### Chores
+- wire GitHub Issues as authoritative backlog in HANDOFF
+- HANDOFF — v0.9.95 backlog updated, BUG-001/002 shipped, new icebox items, /bump in API table
+- CHANGELOG
+
+---
+
 ## v0.9.95 — BUG-002 — message endpoint drag handles, reassign fromId/toId by dragging arrow tip (170/170, 15/15)
 _2026-04-07_
 
