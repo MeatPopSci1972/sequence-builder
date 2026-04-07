@@ -3583,6 +3583,16 @@ function renderMessage(m) {
   });
 
   _appendNetBadges(g, m, lx, ly, dir);
+  // ── Endpoint drag handles (BUG-002) — shown only when message is selected ──
+  if (sel && !isSelf) {
+    const handleAttrs = { r: 5, fill: '#00ff99', opacity: 0.85,
+      cursor: 'ew-resize', class: 'msg-endpoint-handle' }
+    const hFrom = svgEl('circle', Object.assign({}, handleAttrs, { cx: x1, cy: y,
+      'data-type': 'msg-endpoint', 'data-id': m.id, 'data-endpoint': 'from' }))
+    const hTo   = svgEl('circle', Object.assign({}, handleAttrs, { cx: x2, cy: y,
+      'data-type': 'msg-endpoint', 'data-id': m.id, 'data-endpoint': 'to' }))
+    g.append(hFrom, hTo)
+  }
 
   (uiState.selected?.id === m.id ? interactionLayer : messagesLayer).appendChild(g);
   // Direction changed via Properties panel only.
@@ -4061,6 +4071,22 @@ svg.addEventListener('mousedown', e => {
     return;
   }
 
+  // ── Message endpoint drag (BUG-002) ─────────────────────────────────────
+  if (type === 'msg-endpoint') {
+    const epMsg = store.getMessageById(id)
+    if (!epMsg) return
+    e.preventDefault()
+    const endpoint = g.dataset.endpoint  // 'from' | 'to'
+    draggingMsg = epMsg
+    draggingMsg._epDrag = {
+      endpoint,
+      origFromId: epMsg.fromId,
+      origToId:   epMsg.toId,
+    }
+    _msgMoved = false
+    return
+  }
+
   // ── Actor select — mousedown, no drag, no preventDefault
   // Selection happens here so it fires regardless of click suppression from other handlers.
   if (type === 'actor') {
@@ -4177,6 +4203,27 @@ window.addEventListener('mouseup', e => {
   }
 
   if (draggingMsg) {
+    // ── Endpoint drag commit (BUG-002) ────────────────────────────────────
+    if (draggingMsg._epDrag) {
+      const canvasRect = canvasWrap.getBoundingClientRect()
+      const dropX = (e.clientX - canvasRect.left) / _zoom
+      // Snap to nearest actor lifeline
+      const nearest = state.actors.slice().sort(function(a, b) {
+        return Math.abs((a.x + ACTOR_W/2) - dropX) - Math.abs((b.x + ACTOR_W/2) - dropX)
+      })[0]
+      if (nearest) {
+        const ep    = draggingMsg._epDrag.endpoint
+        const patch = ep === 'from' ? { fromId: nearest.id } : { toId: nearest.id }
+        store.dispatch({ type: 'UPDATE_MESSAGE', payload: Object.assign({ id: draggingMsg.id }, patch) })
+        if (uiState.selected?.id === draggingMsg.id)
+          uiState.selected = _wrapSelected(store.getMessageById(draggingMsg.id), 'message')
+        render()
+      }
+      draggingMsg._epDrag = null
+      draggingMsg = null
+      _msgMoved = false
+      return
+    }
     if (_msgMoved) {
       // Snap fromId/toId to nearest actor pair at drop X — one undoable commit
       const canvasRect = canvasWrap.getBoundingClientRect();
