@@ -2093,28 +2093,22 @@ svg.addEventListener('mousedown', e => {
     _interactionCtx = _makeInteractionContext()
     const el = ElementFactory.create(actor)
     el.onDragStart(e, _interactionCtx)
+    dragging = actor            // keeps legacy mousemove/mouseup guards alive
+    dragging._type = 'actor'  // routes mousemove to Factory path
     return
   }
   // ── Note / fragment drag (X+Y) ──
-  if (type!=='note' && type!=='fragment') return;
-  e.preventDefault();
-  const obj = store.getActorById(id) ||
-              store.getNoteById(id) ||
-              store.getFragmentById(id);
-  if (!obj) return;
-  // Tag with _type so mousemove dispatch knows which action to call.
-  // Store handles pushSnapshot on the first undoable MOVE_* dispatch.
-  dragging            = obj;
-  dragging._type      = type;  // 'actor' | 'note' | 'fragment'
-  dragging._resizeHandle = null;
-  dragging._dragBaseX = obj.x;        // capture start position for translate delta
-  dragging._dragBaseY = obj.y || 0;
-  dragOffX  = (e.clientX - canvasRect.left) / _zoom - obj.x;
-  dragOffY  = (e.clientY - canvasRect.top)  / _zoom - (obj.y||0);
-  g.style.opacity = '0.4';
-  dragging._ghostEl = g;
-});
-
+  // ── Note / fragment drag — delegated to element class ──
+  if (type !== 'note' && type !== 'fragment') return
+  const obj = store.getNoteById(id) || store.getFragmentById(id)
+  if (!obj) return
+  e.preventDefault()
+  _interactionCtx = _makeInteractionContext()
+  const el = ElementFactory.create(obj)
+  el.onDragStart(e, _interactionCtx)
+  dragging = obj
+  dragging._type = type
+})
 window.addEventListener('mousemove', e => {
   const canvasRect = canvasWrap.getBoundingClientRect();
 
@@ -2175,9 +2169,13 @@ window.addEventListener('mousemove', e => {
         ElementFactory.create(dragging).onDragMove(e, _interactionCtx)
       } else { dragging.x = newX }
   } else if (dragging._type === 'note') {
-    dragging.x = newX; dragging.y = newY;
+    if (_interactionCtx && _interactionCtx._drag) {
+      ElementFactory.create(dragging).onDragMove(e, _interactionCtx)
+    } else { dragging.x = newX; dragging.y = newY }
   } else if (dragging._type === 'fragment') {
-    dragging.x = newX; dragging.y = newY;
+    if (_interactionCtx && _interactionCtx._drag) {
+      ElementFactory.create(dragging).onDragMove(e, _interactionCtx)
+    } else { dragging.x = newX; dragging.y = newY }
   }
   if (dragging._ghostEl) {
     // Actors are X-only; notes and fragments move on both axes.
@@ -2263,12 +2261,27 @@ window.addEventListener('mouseup', e => {
         setTimeout(render, 0)
       }
     }
+  } else if (dragging?._type === 'note') {
+    if (_interactionCtx && _interactionCtx._drag) {
+      ElementFactory.create(dragging).onDragEnd(e, _interactionCtx)
+    } else {
+      const noteMoved = Math.round(dragging.x) !== Math.round(dragging._dragBaseX) ||
+                        Math.round(dragging.y) !== Math.round(dragging._dragBaseY)
+      if (noteMoved) {
+        store.dispatch({ type: 'MOVE_NOTE', payload: { id: dragging.id, x: dragging.x, y: dragging.y } })
+        setTimeout(render, 0)
+      }
+    }
   } else if (dragging?._type === 'fragment') {
-    const fragMoved = Math.round(dragging.x) !== Math.round(dragging._dragBaseX) ||
-                      Math.round(dragging.y) !== Math.round(dragging._dragBaseY);
-    if (fragMoved) {
-      store.dispatch({ type: 'MOVE_FRAGMENT', payload: { id: dragging.id, x: dragging.x, y: dragging.y } });
-      setTimeout(render, 0);
+    if (_interactionCtx && _interactionCtx._drag) {
+      ElementFactory.create(dragging).onDragEnd(e, _interactionCtx)
+    } else {
+      const fragMoved = Math.round(dragging.x) !== Math.round(dragging._dragBaseX) ||
+                        Math.round(dragging.y) !== Math.round(dragging._dragBaseY)
+      if (fragMoved) {
+        store.dispatch({ type: 'MOVE_FRAGMENT', payload: { id: dragging.id, x: dragging.x, y: dragging.y } })
+        setTimeout(render, 0)
+      }
     }
   }
   dragging = null;

@@ -1,0 +1,1 @@
+{"block":"onDragStart(e, ctx) {\n    const note = this._data\n    const ","hasImpl":true}

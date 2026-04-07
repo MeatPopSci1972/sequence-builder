@@ -58,9 +58,40 @@ class NoteElement /* extends SequenceElement */ {
 
   render(layer, ctx)      { throw new Error('NoteElement.render() not yet wired') }
   renderSelected(il, ctx) { /* stub */ }
-  onDragStart(e, ctx)     { /* stub */ }
-  onDragMove(e, ctx)      { /* stub */ }
-  onDragEnd(e, ctx)       { /* stub */ }
+    onDragStart(e, ctx) {
+    const note = this._data
+    const cr = ctx.canvasWrap.getBoundingClientRect()
+    ctx._drag = {
+      type: 'note', baseX: note.x || 20, baseY: note.y || 0,
+      offsetX: (e.clientX - cr.left) / ctx.zoom - (note.x || 20),
+      offsetY: (e.clientY - cr.top)  / ctx.zoom - (note.y || 0),
+      ghostEl: e.target ? e.target.closest('g[data-id]') : null,
+    }
+    if (ctx._drag.ghostEl) ctx._drag.ghostEl.style.opacity = '0.4'
+    e.preventDefault()
+  }
+  onDragMove(e, ctx) {
+    if (!ctx._drag) return
+    const cr = ctx.canvasWrap.getBoundingClientRect()
+    this._data.x = Math.max(0,  (e.clientX - cr.left) / ctx.zoom - ctx._drag.offsetX)
+    this._data.y = Math.max(60, (e.clientY - cr.top)  / ctx.zoom - ctx._drag.offsetY)
+    if (ctx._drag.ghostEl) {
+      ctx._drag.ghostEl.setAttribute('transform',
+        'translate(' + (this._data.x - ctx._drag.baseX) + ',' + (this._data.y - ctx._drag.baseY) + ')')
+    }
+  }
+  onDragEnd(e, ctx) {
+    if (!ctx._drag) return
+    if (ctx._drag.ghostEl) { ctx._drag.ghostEl.style.opacity = ''; ctx._drag.ghostEl = null }
+    const moved = Math.round(this._data.x) !== Math.round(ctx._drag.baseX) ||
+                  Math.round(this._data.y) !== Math.round(ctx._drag.baseY)
+    if (moved) {
+      ctx.store.dispatch({ type: 'MOVE_NOTE',
+        payload: { id: this._data.id, x: this._data.x, y: this._data.y } })
+      setTimeout(ctx.render, 0)
+    }
+    ctx._drag = null
+  }
   onSelect(ctx)           { /* stub */ }
   onDeselect(ctx)         { /* stub */ }
 }
