@@ -1,5 +1,36 @@
 # SequenceForge Changelog
 
+## v0.9.95 — BUG-002 — message endpoint drag handles, reassign fromId/toId by dragging arrow tip (170/170, 15/15)
+_2026-04-07_
+
+### Features
+- BUG-002 — message endpoint drag handles, reassign fromId/toId by dragging arrow tip (170/170, 15/15)
+- ARCH-001 complete — actor, note, fragment drag delegated to Factory (170/170, 15/15)
+- ARCH-001 canvas dispatcher live — actor drag delegated to ActorElement via ElementFactory (170/170, 15/15)
+- ARCH-001 actor drag delegated to ActorElement, InteractionContext injected (170 passing)
+- ARCH-001 MessageElement, NoteElement, FragmentElement stubs + 14 contract tests (170 passing)
+- ULID element IDs, ARCH-001 factory scaffold, two-phase test runner
+
+### Fixes
+- endpoint handles visible on message click — render() after setSelected (170/170, 15/15)
+- BUG-001 — uiState.selected refreshed after message Y-drag (170/170, 15/15)
+- v0.9.94 — message drag ghost uses direct y-attr updates; ghost stays snapped to lifelines during drag
+
+### Chores
+- update HANDOFF
+- bump version to v0.9.95 (170/170, 15/15)
+- CHANGELOG
+- fix group boundaries — bounding boxes, schema, regex contracts in correct groups
+- spec-language test descriptions — all groups, clean grouped output
+- spec-language test descriptions — ADD_ACTOR group (proof of concept)
+- clean test output — remove Suite N headers, add named group labels
+- suites-data group field, drop Suite N: prefixes from desc
+- update preflight expected test count 137 -> 156
+- CHANGELOG
+- HANDOFF v0.9.94 — message ghost fix, 137/15
+
+---
+
 ## v0.0.0 — ARCH-001 actor drag delegated to ActorElement, InteractionContext injected (170 passing)
 _2026-04-06_
 
