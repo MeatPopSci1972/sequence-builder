@@ -2221,6 +2221,10 @@ window.addEventListener('mouseup', e => {
         }
       }
       render();
+    // BUG-001: refresh selected ref after Y-drag so Properties panel stays current
+    if (uiState.selected?.id === draggingMsg.id) {
+      uiState.selected = _wrapSelected(store.getMessageById(draggingMsg.id), 'message')
+    }
     }
     // If not moved: plain click — let the svg click handler select it normally
     if (draggingMsg?._ghostEl) {

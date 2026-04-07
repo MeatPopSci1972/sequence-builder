@@ -1,8 +1,10 @@
 'use strict'
+const cp = require('child_process')
 const fs = require('fs')
-const lines = fs.readFileSync('sequence-builder.html', 'utf8').split('\n')
-const start = lines.findIndex(function(l) { return l.includes('function renderNote') })
-const end   = lines.findIndex(function(l, i) { return i > start && l.match(/^function /) })
-const ctx   = lines.slice(start, end).map(function(l,i){ return (start+1+i) + ': ' + l.slice(0,90) })
-fs.writeFileSync('render-note.json', JSON.stringify({ start:start+1, end, ctx }), 'utf8')
-console.log('done lines', ctx.length)
+const t  = fs.readFileSync('sequence-builder.html', 'utf8')
+const s  = t.indexOf('// @@STORE-START')
+const e  = t.indexOf('// @@EVENTS-END') + 15
+fs.writeFileSync('_check.js', t.slice(s, e), 'utf8')
+try { cp.execSync('node --check _check.js 2>&1', { encoding:'utf8' }); fs.writeFileSync('syntax-err.json', JSON.stringify({ok:true}), 'utf8') }
+catch(err) { fs.writeFileSync('syntax-err.json', JSON.stringify({ok:false,msg:(err.stdout||err.stderr||err.message||'').slice(0,200)}), 'utf8') }
+console.log('done')
