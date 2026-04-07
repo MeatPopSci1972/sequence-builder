@@ -39,6 +39,7 @@ Use POST /patch with a known anchor string to write. Full-file reads are PROHIBI
 | GET | /validate-readme?v=X.Y.Z | Checks README has link + label text + no loop for vX.Y.Z. Returns {ok,hasLink,hasLabel,hasLoop}. addLog fires. |
 | POST | /git-restore | Restore tracked file to HEAD. Body: {file}. Returns {ok,file,output,ms}. **addLog fires** |
 | POST | /changelog | Auto-gen CHANGELOG.md entry from git log since last tag. Body: {version}. Returns {ok,version,entry,length,ms}. **addLog fires** |
+| POST | /bump | Increment patch from latest git tag, write to HTML. Body: {} or {version}. Returns {ok,newVersion,ms}. |
 | POST | /tag | Create annotated git tag. Body: {tag,message}. Returns {ok,tag,output,ms}. **addLog fires** |
 | GET | / | List all files in repo root |
 
@@ -88,7 +89,7 @@ fetch('http://localhost:3799/lint', {method:'POST'})
 
 ## RELEASE FLOW (v0.9.68+)
 1. GET /test (127/127) + GET /test-render (15/15) both green
-2. Bump version strings in sequence-builder.html (3 occurrences)
+2. POST /bump — increments patch from latest git tag, writes display version to HTML
 3. POST /build
 4. POST /lint — must be ok before continuing
 5. POST /snapshot?v=X.Y.Z
@@ -209,16 +210,16 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 ## BACKLOG (priority order — always keep items here, never leave empty)
 
 ### Context for next session
-v0.9.83 shipped. This cycle: simplified palette (4 items), horizontal-only pan, fit-to-diagram fix, zoom controls moved to statusbar, Add Message now wires from selected actor, POST /changelog auto-commits CHANGELOG.md. Two open bugs logged below — tackle BUG-001 first (simpler). GET /slice is the primary token-saving tool — use it before loading full files.
+v0.9.95 shipped. This cycle: ARCH-001 complete (actor/note/fragment drag delegated to Factory), BUG-001+BUG-002 fixed, POST /bump and /tag now derive version from nextVersionFromGit(). Next: MessageElement Y-drag to complete ARCH-001. GET /slice is the primary token-saving tool — use it before loading full files.
 
-**BUG-001 — Properties panel stale after message Y-drag:**
-After dragging a message vertically, the Properties panel sometimes shows stale From/To actor values. Root cause: uiState.selected._ref is not refreshed after the mouseup UPDATE_MESSAGE dispatch. Fix: re-wrap uiState.selected after the dispatch in the mouseup handler (events section, mouseup block, draggingMsg path).
+~~**BUG-001 (SHIPPED v0.9.95) — Properties panel stale after message Y-drag:**
+After dragging a message vertically, the Properties panel sometimes shows stale From/To actor values. Root cause: uiState.selected._ref is not refreshed after the mouseup UPDATE_MESSAGE dispatch. Fix: re-wrap uiState.selected after the dispatch in the mouseup handler (events section, mouseup block, draggingMsg path).~~
 
 **BUG-003 — Tour spotlight goes to 0,0 on Import/Export step:**
 Tour step targets `#btn-import-uml` which is inside a collapsed dropdown (display:none). `getBoundingClientRect()` returns 0,0 for hidden elements — spotlight renders at top-left. Fix: change target to `#btn-import-menu` (the visible trigger button, always rendered). Optionally add `beforeShow: () => document.getElementById('btn-import-menu').click()` to open the dropdown during the step. Located in STEPS array, line ~4950 in sequence-builder.html.
 
-**BUG-002 — Message endpoint resize handles:**
-User should be able to drag the LEFT or RIGHT tip of a message arrow to reassign fromId or toId to any actor, not just the immediately adjacent one. Store already supports UPDATE_MESSAGE {fromId, toId}. Needs small SVG hit-target handles rendered at each arrow tip. Drag behaviour mirrors the fragment SE-corner resize pattern — mousedown on handle starts resize, mousemove updates, mouseup dispatches UPDATE_MESSAGE. UI-only change.
+~~**BUG-002 (SHIPPED v0.9.95) — Message endpoint resize handles:**
+User should be able to drag the LEFT or RIGHT tip of a message arrow to reassign fromId or toId to any actor, not just the immediately adjacent one. Store already supports UPDATE_MESSAGE {fromId, toId}. Needs small SVG hit-target handles rendered at each arrow tip. Drag behaviour mirrors the fragment SE-corner resize pattern — mousedown on handle starts resize, mousemove updates, mouseup dispatches UPDATE_MESSAGE. UI-only change.~~
 
 **Item 1 — HANDOFF template automation (icebox item 2):**
 Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
@@ -228,7 +229,24 @@ After template automation ships, open a design discussion on UI element factorie
 
 ### Icebox
 ~~0. **Tighten `GET /validate-readme`**~~ — **shipped v0.9.80**. hasLabel check added; README label was 2 versions behind and is now caught automatically. validate-readme returns {ok,hasLink,hasLabel,hasLoop}.
-0b. **Persistent cost log (`cost-log.json`)** — `POST /log-cost {tokens, model, note}` appends a timestamped entry to `cost-log.json` in the repo root. File is local-only: listed in `.gitignore`, never checked in. If the file does not exist the server creates it. Enables cross-session token/cost tracking. Pin down with store-side tests that seed a test instance (temp file, known entries, assert shape and append behaviour). Expose `GET /cost-log` to read entries as JSON. Trigger: already fired — cost visibility gap identified this session. 
+### Active backlog (next session)
+
+**MessageElement Y-drag:** `MessageElement.onDragStart/Move/End` are stubs. Y-drag is still
+the legacy path. Port to the element class to complete ARCH-001 properly.
+
+**`normalizeWS()` in `/slice`:** Added to `sf-server.js` and used in `flexPatch` but `/slice`
+still uses raw `indexOf`. Wire it in so section searches are whitespace-tolerant.
+
+### Icebox
+
+0a. **Release actions in log.html UI:** Bump, build, lint, tag, changelog as clickable
+buttons — human-actionable without a dev session.
+
+0b. **`POST /bump` idempotency guard:** Check if HTML version already matches
+`nextVersionFromGit()` and return `{ok:true,alreadyBumped:true}` without writing.
+Prevents double-bump producing wrong tags (root cause of v0.9.96 incident).
+
+0c. **Persistent cost log (`cost-log.json`)** — `POST /log-cost {tokens, model, note}` appends a timestamped entry to `cost-log.json` in the repo root. File is local-only: listed in `.gitignore`, never checked in. If the file does not exist the server creates it. Enables cross-session token/cost tracking. Pin down with store-side tests that seed a test instance (temp file, known entries, assert shape and append behaviour). Expose `GET /cost-log` to read entries as JSON. Trigger: already fired — cost visibility gap identified this session. 
 1. ~~**Define documentation standards**~~ — **shipped v0.9.69**. ## DOCUMENTATION STANDARDS and ## HANDOFF SNAPSHOT AUDIT sections written. Standards cover HANDOFF.md, CHANGELOG.md, README.md, and GitHub release notes. Template {{placeholder}} markers added for future automation. Audit covers v0.9.61–v0.9.68 archives with cross-version pattern summary.
 
 2. ~~**HANDOFF template automation**~~ — DOCUMENTATION STANDARDS section uses {{placeholder}} markers for live-fetchable values (version, test counts, bump pattern, demo URL). Future work: implement `POST /update-handoff` that calls `GET /status` + `GET /test` + `GET /test-render` and populates all {{}} fields automatically, eliminating the manual VERSION staleness class of bug seen in v0.9.61–v0.9.64. Trigger for promotion: a second VERSION staleness incident, or when the release flow is next touched for another reason.
