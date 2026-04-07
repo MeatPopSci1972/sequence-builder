@@ -214,38 +214,41 @@ const server = http.createServer(function(req, res) {
       });
     }); return;
   }
-// ── Version helpers ────────────────────────────────────────────────────────
-function readVersionFromHTML() {
-  const html = fs.readFileSync(path.join(ROOT, 'sequence-builder.html'), 'utf8')
-  const m = html.match(/Version: (\d+\.\d+\.\d+)/)
-  return m ? m[1] : null
+// ── Version helpers ───────────────────────────────────────────────────────────────
+// nextVersionFromGit: single source of truth. Reads latest git tag,
+// increments patch. Never reads HTML. Called by /bump and /tag.
+// No stored version, no two patterns, no drift.
+function nextVersionFromGit() {
+  const {execSync} = require('child_process')
+  try {
+    const latest = execSync('git describe --tags --abbrev=0', {cwd:ROOT, encoding:'utf8'}).trim()
+    const parts = latest.replace(/^v/, '').split('.').map(Number)
+    parts[2]++
+    return parts.join('.')
+  } catch(e) { return '0.0.1' }
 }
 function writeVersionToHTML(newVer) {
   const fp = path.join(ROOT, 'sequence-builder.html')
   let html = fs.readFileSync(fp, 'utf8')
-  const oldVer = readVersionFromHTML()
-  if (!oldVer) throw new Error('version not found in HTML')
+  const oldM = html.match(/Version: (\d+\.\d+\.\d+)/)
+  if (!oldM) throw new Error('Version: pattern not found in HTML')
+  const oldVer = oldM[1]
   html = html.split('Version: ' + oldVer).join('Version: ' + newVer)
-  html = html.split('data-version="' + oldVer + '"').join('data-version="' + newVer + '"')
+  html = html.split('data-version=' + JSON.stringify(oldVer)).join('data-version=' + JSON.stringify(newVer))
   fs.writeFileSync(fp, html, 'utf8')
-  return oldVer
-}
-function bumpPatch(ver) {
-  const p = ver.split('.').map(Number); p[2]++; return p.join('.')
 }
 
   if (req.method === 'POST' && urlPath === '/bump') {
     let body = ''; req.on('data', d => body += d); req.on('end', function() {
       const t0 = Date.now()
       try {
-        const oldVer = readVersionFromHTML()
-        if (!oldVer) { res.writeHead(400); res.end(JSON.stringify({ok:false,error:'version not found'})); return }
+        // Version always derived from git — single source of truth
         let parsed = {}; try { parsed = JSON.parse(body || '{}') } catch(e) {}
-        const newVer = parsed.version || bumpPatch(oldVer)
+        const newVer = parsed.version || nextVersionFromGit()
         writeVersionToHTML(newVer)
         res.writeHead(200, {'Content-Type': 'application/json'})
-        res.end(JSON.stringify({ok:true, oldVersion:oldVer, newVersion:newVer, ms:Date.now()-t0}))
-        addLog('POST /bump', oldVer + ' -> ' + newVer)
+        res.end(JSON.stringify({ok:true, newVersion:newVer, ms:Date.now()-t0}))
+        addLog('POST /bump', '-> ' + newVer)
       } catch(e) { res.writeHead(500); res.end(JSON.stringify({ok:false,error:e.message})) }
     }); return;
   }
@@ -255,8 +258,8 @@ function bumpPatch(ver) {
       let tag='', msg='';
       try { const p=JSON.parse(body); tag=p.tag||''; msg=p.message||('Release '+tag); } catch(e){}
       if (!tag) {
-        const ver = readVersionFromHTML()
-        if (!ver) { res.writeHead(400); res.end(JSON.stringify({ok:false,error:'version not found in HTML'})); return; }
+        const ver = nextVersionFromGit()
+        if (!ver) { res.writeHead(500); res.end(JSON.stringify({ok:false,error:'no git tags found'})); return; }
         tag = 'v' + ver
         if (!msg) msg = 'Release ' + tag
       }
