@@ -127,7 +127,7 @@ WORKAROUNDS (all confirmed working):
 6. PUT ?verify=1 returns {ok,wrote,status:{version,git}} -- confirms write+version in one shot, response survives proxy
 IMPORTANT: The filter triggers on the ENTIRE call text, not just string literals.
 NOTE: test-*.txt is gitignored -- safe to use for smoke tests
-NOTE: sequence-builder.html uses CRLF (\r\n); sequence-builder.test.js uses LF (\n); HANDOFF.md uses LF (\n). Always match the target file's line endings in /patch calls.
+NOTE: sequence-builder.html uses CRLF (\r\n); sequence-builder.test.js uses LF (\n); HANDOFF.md uses LF (\n). Always match the target file's line endings in /patch calls. (using .gitattributes)
 
 ## HOT RELOAD
 ALWAYS start the server with: node launcher.js
@@ -260,27 +260,6 @@ Prevents double-bump producing wrong tags (root cause of v0.9.96 incident).
 8. **UI element factories** — deferred. Trigger for promotion: a second consumer of element construction logic appears outside render(). Design decision recorded in CHANGELOG v0.9.68.
 9. **Export cost data as CSV** from the Session Cost Panel (lowest priority — nice to have).
 
-### Former icebox (good ideas, not yet scoped)
-1. Organise files into /server — move server files into server/ subfolder
-2. Evaluate esbuild for the build pipeline — only becomes necessary when the store needs to import utilities
-3. Tour DOM-ID regression protection — a build-time check that all STEPS[] target selectors resolve to actual elements in the built HTML
-
-### Shipped this cycle (v0.9.65-v0.9.78)
-- v0.9.65 — GET /test-render render gate (Playwright, 3 demos x 5 SVG layers, 15 snapshots)
-- v0.9.66 — render() pure DOM projection (_saveDiagram + updateOutput moved to store listeners)
-- v0.9.67 — CSS: --violet + --amber defined, 2 !important removed
-- v0.9.68 — Selector layer: 8 named selectors, 52 call sites replaced
-- v0.9.69 — Documentation standards: ## DOCUMENTATION STANDARDS + ## HANDOFF SNAPSHOT AUDIT written; template {{placeholders}} defined; v0.9.61–v0.9.68 archives audited
-- v0.9.70 — POST /update-handoff: HANDOFF template automation, regex-based idempotent live-field population; .gitattributes LF normalisation
-- v0.9.71 — Remove placement mode: ghost rendering, place-actor mode, placeGhostX state, mousemove tracker, placing-actor CSS all removed; actor add now consistent with note/fragment
-- v0.9.72 — Remove add-element toolbar buttons (Add Actor, Message, Note, Fragment); keyboard shortcuts + palette sufficient; tour consolidated; lint updated to 10 buttons
-- v0.9.73 — Dead code removal: orphaned btn-add-actor/btn-connect handlers, toggleConnectMode, getLastActor, duplicate getNextActorX
-- v0.9.74 — Remove ? toolbar button (sf-tour-help-btn) + 2 CSS rules + var help= JS; lint updated to 9 buttons; icebox updated with 5 new UI refinement items
-- v0.9.75/v0.9.76 — Floating zoom overlay (bottom-center canvas); Help modal with keyboard shortcuts + Tour launch; lint 6 buttons; fix kb-hint bar removed; zoom overlay clears debug console. NOTE: v0.9.75 was never separately pushed — v0.9.76 was the first released tag covering both.
-- v0.9.77 — Interaction layer: selected elements elevate above all SVG layers on selection; fragment resize handle 14px accent green; Suite 13 (13 tests) pins fragment geometry contract
-- v0.9.78 — PUT handler normalises CRLF→LF on every write; eliminates multi-line patch failure class permanently
-- v0.9.79 — GET /slice scoped context loading via sentinel sections (@@RENDER, @@EVENTS, @@TOOLBAR added); sf-preflight.ps1 pre-flight script added to repo
-- v0.9.80 — validate-readme hasLabel check (asserts label text contains version string, not just URL); README label staleness class eliminated
 
 ## DOCUMENTATION STANDARDS
 <!-- @@DOC-STANDARDS-START — managed section, do not edit header/footer lines -->
@@ -389,88 +368,3 @@ Optional manual block (appended by AI immediately after auto-gen, before commit)
 - Local: E:\uml2prompt\sequence-builder-prototype
 - Branch: main
 
-## HANDOFF SNAPSHOT AUDIT
-<!-- @@AUDIT-START — historical record, do not edit entries after commit -->
-<!-- Audit conducted: v0.9.68 documentation standards session -->
-<!-- Purpose: identify what a fresh AI instance would find missing, stale, or confusing in each archived HANDOFF -->
-
-### v0.9.30
-- **Status:** 404 — no HANDOFF snapshot archived at this version. Earliest available: v0.9.61.
-
-### v0.9.61
-- **VERSION section stale at time of snapshot:** says `Current: 0.9.59`, bump pattern `0.9.59 → 0.9.60`, and release handoff URL points to v0.9.59 — all two versions behind the file's own name. A fresh AI instance would bump the wrong version.
-- **RELEASE FLOW incomplete:** 10 steps. Missing: `POST /changelog` and `POST /tag` entirely. An AI instance following this file would produce a release with no changelog entry and no git tag.
-- **DEV SERVER API table missing 3 endpoints:** `POST /git-restore`, `POST /changelog`, `POST /tag` — all added in a later version.
-- **KEY FILES:** test count listed as "92 contract tests (Suites 1—11)" — correct for the era but would be confusing against a live gate showing a different count.
-- **BACKLOG structural corruption:** two consecutive `### Icebox` headings — first says *(empty — all items shipped)*, second has real items. A fresh AI instance has no way to know which is authoritative. Root cause: the "empty" heading was not removed when items were added.
-- **Missing:** `GET /test-render` in FIRST ACTIONS, DEV SERVER API, and RELEASE FLOW — render gate did not exist yet (not a defect, era-appropriate).
-- **Missing:** `## STORE ARCHITECTURE` selector layer and pure-projection notes — post-dated this version (not a defect).
-
-### v0.9.62
-- **VERSION section stale at time of snapshot:** says `Current: 0.9.61`, bump pattern `0.9.61 → 0.9.62`, release handoff URL points to v0.9.61 — one version behind. A fresh AI instance would bump the wrong version.
-- **RELEASE FLOW:** Steps 11–13 (tag, push, GitHub release) now present — improvement over v0.9.61. `POST /changelog` still absent.
-- **BACKLOG structural corruption:** same duplicate `### Icebox` heading pattern as v0.9.61, unresolved.
-- **DEV SERVER API, KEY FILES, STORE ARCHITECTURE:** same era-appropriate gaps as v0.9.61.
-
-### v0.9.63
-- **VERSION section stale at time of snapshot:** says `Current: 0.9.61`, bump pattern `0.9.61 → 0.9.62`, release handoff URL points to v0.9.61 — two versions behind. Worse regression than v0.9.62.
-- **RELEASE FLOW:** `POST /changelog` still absent.
-- **BACKLOG structural corruption:** duplicate `### Icebox` heading pattern persists, now three releases without a fix.
-- **New icebox item 6** (lint.js structural checks) added — content is correct, placement within the duplicate-heading confusion makes it hard to locate.
-
-### v0.9.64
-- **VERSION section stale at time of snapshot:** says `Current: 0.9.63`, bump pattern `0.9.63 → 0.9.64`, release handoff URL points to v0.9.63 — one version behind.
-- **RELEASE FLOW:** `POST /changelog` still absent.
-- **BACKLOG structural corruption:** same duplicate `### Icebox` heading pattern, now four releases unresolved.
-- **Notable improvement:** BACKLOG now has a `### Rationale summary` block explaining where items came from — useful context for a fresh AI instance.
-
-### v0.9.65
-- **VERSION section:** correct — `Current: 0.9.65`, bump to 0.9.66, URL points to v0.9.65. Staleness pattern resolved from this version forward.
-- **RELEASE FLOW:** `POST /changelog` present but numbered `10.5` (wedged between steps 10 and 11 rather than renumbered). Functional but visually awkward — a fresh AI instance might miss it.
-- **DEV SERVER API:** `GET /test-render`, `POST /git-restore`, `POST /changelog`, `POST /tag` all present. Complete.
-- **KEY FILES:** test count still shows "92 contract tests (Suites 1—11)" — stale; live gate passes 99. A fresh AI instance would see the discrepancy when running GET /test.
-- **BACKLOG:** `### Test gate — proposal` section left in place even though the gate shipped in this very version. Item 1 is struck through as shipped but the full proposal text remains — creates confusion about what is settled vs. still proposed.
-- **STORE ARCHITECTURE:** missing selector layer and pure-projection notes (not yet shipped at this version — not a defect).
-- **BACKLOG structural corruption:** duplicate `### Icebox` heading pattern finally gone — replaced with `### Rationale summary` + single `### Icebox`. Resolved.
-
-### v0.9.66
-- **VERSION section:** correct — `Current: 0.9.66`.
-- **RELEASE FLOW:** `POST /changelog` still at step `10.5`. All other steps correct.
-- **KEY FILES:** test count still "92 contract tests (Suites 1—11)" — stale (live: 99). Same issue as v0.9.65.
-- **WORKFLOW PATTERN code block:** gate comment still says `confirm: "92 passed | 0 failed"` — stale.
-- **BACKLOG:** `### Test gate — proposal` section still present with full proposal text despite gate having shipped two versions earlier. Should have been collapsed to a one-liner or removed.
-- **STORE ARCHITECTURE:** pure-projection note absent — shipped this version but not yet documented here.
-
-### v0.9.67
-- **VERSION section:** correct — `Current: 0.9.67`.
-- **RELEASE FLOW:** `POST /changelog` at `10.5` — same placement as v0.9.65/66.
-- **KEY FILES:** test count still "92 contract tests (Suites 1—11)" — stale (live: 99). Persists four versions.
-- **WORKFLOW PATTERN:** gate comment still "92 passed | 0 failed" — stale.
-- **BACKLOG:** `### Test gate — proposal` section still present. Items 1–3 struck through as shipped.
-- **STORE ARCHITECTURE:** pure-projection note still absent.
-- **Notable improvement over prior versions:** selector layer note absent (not yet shipped — correct for this era).
-
-### v0.9.68
-- **VERSION section:** correct — `Current: 0.9.68`.
-- **RELEASE FLOW:** `POST /changelog` renumbered to step 10 in the live HANDOFF.md (verified) — the archive snapshot at this version shows the same `10.5` pattern as v0.9.65–67. The live fix happened during session prep and post-dates the snapshot.
-- **KEY FILES:** test count corrected to "99 contract tests" in the live HANDOFF.md — archive snapshot still shows "92 (Suites 1—11)". Live fix happened during session prep.
-- **BACKLOG:** duplicate item numbering (two items labelled "6.") — present in archive, fixed in live HANDOFF.md during session prep.
-- **BACKLOG:** `### Test gate — proposal` section still present in archive snapshot — live HANDOFF.md removed it during session prep.
-- **STORE ARCHITECTURE:** selector layer (8 selectors, 52 call sites) and pure-projection note both present and correct. Complete.
-
-### Cross-version patterns (summary for future auditors)
-1. **VERSION section staleness (v0.9.61–v0.9.64):** VERSION.Current, bump pattern, and release handoff URL were consistently one-to-two versions behind at snapshot time. Fixed v0.9.65. Root cause: manual update step; mitigation: template automation (icebox).
-2. **Duplicate `### Icebox` headings (v0.9.61–v0.9.64):** Four consecutive releases carried structural BACKLOG corruption. Fixed v0.9.65. Root cause: "empty" heading not removed when items were re-added.
-3. **`POST /changelog` absent from RELEASE FLOW (v0.9.61–v0.9.64):** An AI instance following these files would produce releases with no changelog entry. Fixed v0.9.65 (as step 10.5).
-4. **Stale test count in KEY FILES (v0.9.65–v0.9.68 archive):** "92 contract tests" persisted four versions after the live count reached 99. Root cause: manual update step; mitigation: template automation (icebox).
-5. **`### Test gate — proposal` lingered post-ship (v0.9.65–v0.9.68 archive):** Proposal text remained after the feature shipped, creating ambiguity. Fixed in live HANDOFF.md during session prep.
-6. **`POST /changelog` at step 10.5 (v0.9.65–v0.9.68 archive):** Wedged numbering was functional but visually easy to miss. Fixed in live HANDOFF.md during session prep (renumbered to step 10).
-
-<!-- @@AUDIT-END -->
-
-## NOTE: sf-server.js IS IN GIT (as of v0.9.43)
-sf-server.js is tracked in git. If it is lost or corrupted:
-1. Use the bootstrap recovery: node -e "require('http').createServer(function(req,res){if(req.method==='PUT'){var b='';req.on('data',function(d){b+=d});req.on('end',function(){require('fs').writeFileSync('sf-server.js',b);res.end('OK');process.exit()})}else{res.end('ready')}}).listen(9999,function(){console.log('BOOTSTRAP:ready')})"
-2. Navigate browser to http://localhost:9999
-3. PUT the server content via javascript_tool fetch
-4. See /api and /usage for the full endpoint spec to rebuild from.
