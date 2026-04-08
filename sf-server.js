@@ -245,6 +245,16 @@ function writeVersionToHTML(newVer) {
         // Version always derived from git — single source of truth
         let parsed = {}; try { parsed = JSON.parse(body || '{}') } catch(e) {}
         const newVer = parsed.version || nextVersionFromGit()
+        // Idempotency guard — if HTML already matches target version, skip write
+        const fp = require('path').join(ROOT, 'sequence-builder.html')
+        const curM = require('fs').readFileSync(fp, 'utf8').match(/Version: (\d+\.\d+\.\d+)/)
+        const curVer = curM ? curM[1] : null
+        if (curVer && curVer === newVer) {
+          res.writeHead(200, {'Content-Type': 'application/json'})
+          res.end(JSON.stringify({ok:true, alreadyBumped:true, version:newVer, ms:Date.now()-t0}))
+          addLog('POST /bump', '-> already at ' + newVer)
+          return
+        }
         writeVersionToHTML(newVer)
         res.writeHead(200, {'Content-Type': 'application/json'})
         res.end(JSON.stringify({ok:true, newVersion:newVer, ms:Date.now()-t0}))
