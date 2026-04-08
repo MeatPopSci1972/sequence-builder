@@ -226,6 +226,8 @@ After dragging a message vertically, the Properties panel sometimes shows stale 
 ~~**BUG-002 (SHIPPED v0.9.95) — Message endpoint resize handles:**
 User should be able to drag the LEFT or RIGHT tip of a message arrow to reassign fromId or toId to any actor, not just the immediately adjacent one. Store already supports UPDATE_MESSAGE {fromId, toId}. Needs small SVG hit-target handles rendered at each arrow tip. Drag behaviour mirrors the fragment SE-corner resize pattern — mousedown on handle starts resize, mousemove updates, mouseup dispatches UPDATE_MESSAGE. UI-only change.~~
 
+~~**BUG-003 (SHIPPED — fixed before v0.9.93) — Tour spotlight 0,0 on Import/Export step.** Do not re-add. Confirmed gone. Tombstone only.~~
+
 **Item 1 — HANDOFF template automation (icebox item 2):**
 Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
 
