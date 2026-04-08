@@ -392,8 +392,16 @@ function writeVersionToHTML(newVer) {
       const key = section.toUpperCase();
       const startMark = '// @@' + key + '-START';
       const endMark   = '// @@' + key + '-END';
-      const si = content.indexOf(startMark);
-      const ei = content.indexOf(endMark);
+      let si = content.indexOf(startMark);
+      let ei = content.indexOf(endMark);
+      // Flex fallback: whitespace-tolerant sentinel search (matches flexPatch behaviour)
+      if (si === -1 || ei === -1) {
+        const nContent = normalizeWS(content);
+        const nStart = normalizeWS(startMark);
+        const nEnd = normalizeWS(endMark);
+        si = nContent.indexOf(nStart);
+        ei = nContent.indexOf(nEnd);
+      }
       if (si === -1 || ei === -1) {
         res.writeHead(404, {'Content-Type': 'application/json'});
         res.end(JSON.stringify({ok: false, error: 'section not found: ' + section}));
