@@ -47,7 +47,7 @@ Use POST /patch with a known anchor string to write. Full-file reads are PROHIBI
 ## KEY FILES
 - sequence-builder.html — single-file app (toolbar, CSS, JS, store injected at build)
 - sequence-builder.store.js — store source (build.js syncs into HTML between sentinels)
-- sequence-builder.test.js — 120 contract tests (Suites 1-14)
+- sequence-builder.test.js — 170 contract tests (Suites 1-16)
 - themes.json — theme definitions (dark/light/system/lcars), served as GET /themes.json
 - build.js — syncs store.js into HTML between @@STORE-START / @@STORE-END
 - lint.js — HTML integrity checker: buttons, SVG balance, sentinels, version
@@ -133,7 +133,7 @@ NOTE: sequence-builder.html uses CRLF (\r\n); sequence-builder.test.js uses LF (
 ## HOT RELOAD
 ALWAYS start the server with: node launcher.js
 NEVER run: node sf-server.js directly (loses auto-restart on sf-server.js changes)
-launcher.js watches sf-server.js via fs.watch, kills and restarts within ~300ms.
+launcher.js watches sf-server.js, sf-readme-gen.js, and sf-endpoints.js via fs.watch, kills and restarts within ~300ms.
 After writing sf-server.js, wait ~1s then verify with GET /status.
 
 ## LOG UI
@@ -198,9 +198,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.95
-- Bump pattern: html.split('0.9.95').join('0.9.96')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.95/sequence-builder.html
+- Current: 0.9.97
+- Bump pattern: html.split('0.9.97').join('0.9.98')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.97/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -236,25 +236,7 @@ Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` +
 After template automation ships, open a design discussion on UI element factories. The trigger condition (a second consumer of element construction logic outside render()) has not fired — this is a scoping conversation, not implementation. Proto2prod discipline applies: validate the need before building. Review render() with fresh eyes, identify any duplication that has emerged since v0.9.68, and decide together whether the trigger has been met.
 
 ### Icebox
-~~0. **Tighten `GET /validate-readme`**~~ — **shipped v0.9.80**. hasLabel check added; README label was 2 versions behind and is now caught automatically. validate-readme returns {ok,hasLink,hasLabel,hasLoop}.
-### Active backlog (next session)
-
-**MessageElement Y-drag:** `MessageElement.onDragStart/Move/End` are stubs. Y-drag is still
-the legacy path. Port to the element class to complete ARCH-001 properly.
-
-**`normalizeWS()` in `/slice`:** Added to `sf-server.js` and used in `flexPatch` but `/slice`
-still uses raw `indexOf`. Wire it in so section searches are whitespace-tolerant.
-
-### Icebox
-
-0a. **Release actions in log.html UI:** Bump, build, lint, tag, changelog as clickable
-buttons — human-actionable without a dev session.
-
-0b. **`POST /bump` idempotency guard:** Check if HTML version already matches
-`nextVersionFromGit()` and return `{ok:true,alreadyBumped:true}` without writing.
-Prevents double-bump producing wrong tags (root cause of v0.9.96 incident).
-
-0c. **Persistent cost log (`cost-log.json`)** — `POST /log-cost {tokens, model, note}` appends a timestamped entry to `cost-log.json` in the repo root. File is local-only: listed in `.gitignore`, never checked in. If the file does not exist the server creates it. Enables cross-session token/cost tracking. Pin down with store-side tests that seed a test instance (temp file, known entries, assert shape and append behaviour). Expose `GET /cost-log` to read entries as JSON. Trigger: already fired — cost visibility gap identified this session. 
+GitHub Issues is the authoritative backlog. No local icebox maintained.
 1. ~~**Define documentation standards**~~ — **shipped v0.9.69**. ## DOCUMENTATION STANDARDS and ## HANDOFF SNAPSHOT AUDIT sections written. Standards cover HANDOFF.md, CHANGELOG.md, README.md, and GitHub release notes. Template {{placeholder}} markers added for future automation. Audit covers v0.9.61–v0.9.68 archives with cross-version pattern summary.
 
 2. ~~**HANDOFF template automation**~~ — DOCUMENTATION STANDARDS section uses {{placeholder}} markers for live-fetchable values (version, test counts, bump pattern, demo URL). Future work: implement `POST /update-handoff` that calls `GET /status` + `GET /test` + `GET /test-render` and populates all {{}} fields automatically, eliminating the manual VERSION staleness class of bug seen in v0.9.61–v0.9.64. Trigger for promotion: a second VERSION staleness incident, or when the release flow is next touched for another reason.
@@ -288,9 +270,9 @@ FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
 - `## FIRST ACTIONS` — gate counts must match `GET /test` (170/170) and `GET /test-render` (15/15)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.95)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.95').join('0.9.96')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.95)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.97)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.97').join('0.9.98')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.97)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
