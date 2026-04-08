@@ -23,15 +23,24 @@ Open `http://localhost:3799` in your browser.
 
 Capabilities pinned by the contract test suites:
 
-- **Suite 1** — REFLOW_ACTORS tests
-- **Suite 7** — _parseUML (PlantUML + Mermaid parser)
-- **Suite 8** — End-to-End scenario
-- **Suite 10** — ADD_MESSAGE null contract
-- **Suite 11** — Message label contract & inline edit
-- **Suite 12** — autoFitOnLoad preference
-- **Suite 14** — Canvas pan & arrow-key nudge contracts
-- **Suite 15** — Properties bag contracts
-- **Suite 16** — Regex contract tests
+- ADD_ACTOR
+- DELETE_ACTOR cascade
+- UPDATE_MESSAGE
+- meta.undoable
+- UNDO
+- REDO
+- _parseUML
+- end-to-end
+- bounding boxes + selection
+- message label + inline edit
+- canvas pan + nudge
+- schema + properties
+- regex contracts
+- ULID ID contract
+- ActorElement contract
+- MessageElement contract
+- NoteElement contract
+- FragmentElement contract
 
 ---
 
@@ -42,52 +51,15 @@ Capabilities pinned by the contract test suites:
 | `LICENSE` | |
 | `README.md` | |
 | `_check.js` | |
-| `actor-move-block.txt` | |
-| `backlog-check.json` | |
-| `brace-check.json` | |
-| `bug001.json` | |
-| `build-elem-ctx.json` | |
-| `build-elems.json` | |
-| `build-head.json` | |
 | `build.js` | |
-| `bump-handler.json` | |
-| `check-lines.json` | |
-| `click-ctx.json` | |
-| `click-handler.json` | |
-| `ctx.json` | |
-| `diag.json` | |
-| `elem-block.json` | |
-| `end-lines.json` | |
 | `fix-build.js` | |
-| `gap.json` | |
-| `handoff-ver.json` | |
 | `launcher.js` | |
-| `lines.json` | |
-| `lines.txt` | |
-| `lines2.json` | |
 | `lint.js` | |
 | `log.html` | |
-| `md-new.json` | |
-| `mm-hits.json` | |
-| `msg-click.json` | |
-| `msg-sel-ctx.json` | |
-| `msg-sel.json` | |
-| `ne-check.json` | |
-| `note-handler.json` | |
-| `note-mu.json` | |
-| `note-mu2.json` | |
-| `package.json` | |
-| `patch-status.json` | |
-| `post-build.json` | |
-| `pre-build.json` | |
-| `render-msg-tail.json` | |
-| `render-msg.json` | |
-| `render-note.json` | |
 | `sequence-builder.html` | |
 | `sequence-builder.store.js` | |
 | `sequence-builder.test.js` | |
 | `sf-endpoints.js` | |
-| `sf-preflight.ps1` | |
 | `sf-readme-gen.js` | |
 | `sf-server.js` | |
 | `src/elements/ActorElement.js` | |
@@ -96,22 +68,7 @@ Capabilities pinned by the contract test suites:
 | `src/elements/MessageElement.js` | |
 | `src/elements/NoteElement.js` | |
 | `src/elements/SequenceElement.js` | |
-| `state.json` | |
 | `suites-data.js` | |
-| `syntax-err.json` | |
-| `tag-full.json` | |
-| `tag-handler.json` | |
-| `tag-line.json` | |
-| `tag-lines.json` | |
-| `tag-search.json` | |
-| `tags.json` | |
-| `themes.json` | |
-| `ver-check.json` | |
-| `ver.json` | |
-| `version-audit.json` | |
-| `wire-ctx.json` | |
-| `wire-lines.json` | |
-| `write-ver-calls.json` | |
 
 ---
 
@@ -150,7 +107,7 @@ Served by `sf-server.js` via `launcher.js` on port 3799.
 
 ```bash
 node build.js && node sequence-builder.test.js
-# Expected: 127 passed | 0 failed | 127 total
+# Expected: 170 passed | 0 failed | 170 total
 ```
 
 Or via the dev server: `GET http://localhost:3799/test`

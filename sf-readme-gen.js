@@ -20,21 +20,30 @@ function generateReadme(ROOT) {
 
   // 2. Repo file list from git — exclude generated/archive/dev dirs
   const EXCLUDE = ['releases/', 'docs/', 'test-snapshots/', 'dev/', '.'];
+  const EXCLUDE_FILES = ['CHANGELOG.md', 'HANDOFF.md', 'package-lock.json'];
+  const EXCLUDE_EXT   = ['.json', '.txt', '.ps1'];
   const gitFiles = execSync('git ls-files', { cwd: ROOT })
     .toString().trim().split('\n')
     .filter(f => !EXCLUDE.some(ex => f.startsWith(ex)))
-    .filter(f => f !== 'CHANGELOG.md' && f !== 'HANDOFF.md' && f !== 'package-lock.json');
+    .filter(f => !EXCLUDE_FILES.includes(f))
+    .filter(f => !EXCLUDE_EXT.some(ext => f.endsWith(ext)));
 
-  // 3. Suite names from test file — lines matching 'Suite N — Name'
+  // 3. Feature groups from test file — setGroup() calls are the canonical capability list
   const testTxt = fs.readFileSync(path.join(ROOT, 'sequence-builder.test.js'), 'utf8');
-  const suites  = [...testTxt.matchAll(/Suite (\d+) \u2014 ([^\n'"`\u2500]+)/g)]
-    .map(m => ({ n: parseInt(m[1]), name: m[2].trim() }))
-    .filter((v, i, a) => a.findIndex(x => x.n === v.n) === i)
-    .sort((a, b) => a.n - b.n);
+  const suites  = [...testTxt.matchAll(/setGroup\(['"](.*?)['"]\)/g)]
+    .map(m => ({ name: m[1] }))
+    .filter((v, i, a) => a.findIndex(x => x.name === v.name) === i);
 
-  // 4. Test count from summary line in test file
-  const countMatch = testTxt.match(/console\.log\(`\\n.*?(\d+) passed/);
-  const testCount  = countMatch ? countMatch[1] : '127';
+  // 4. Test count — run tests live for accurate count
+  let testCount = '170';
+  try {
+    const testOut = execSync('node sequence-builder.test.js 2>&1', { cwd: ROOT, timeout: 30000 }).toString();
+    const cm = testOut.match(/(\d+) passed \| 0 failed/);
+    if (cm) testCount = cm[1];
+  } catch (e) {
+    const cm = ((e.stdout || '') + (e.stderr || '')).toString().match(/(\d+) passed \| 0 failed/);
+    if (cm) testCount = cm[1];
+  }
 
   // 5. Build sections
   const repoRows  = gitFiles.map(f => '| `' + f + '` | |').join('\n');
@@ -42,8 +51,8 @@ function generateReadme(ROOT) {
     '| ' + ep.method + ' | `' + ep.path + '` | ' + ep.desc + ' |'
   ).join('\n');
   const suiteList = suites.length
-    ? suites.map(s => '- **Suite ' + s.n + '** \u2014 ' + s.name).join('\n')
-    : '_suite headers not found — add \'// \u2014 Suite N \u2014 Name\' comments to test file_';
+    ? suites.map(s => '- ' + s.name).join('\n')
+    : '_feature groups not found — add setGroup() calls to sequence-builder.test.js_';
 
   return [
     '# SequenceForge',
