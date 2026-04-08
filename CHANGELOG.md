@@ -1,5 +1,26 @@
 # SequenceForge Changelog
 
+## v0.9.97 — release v0.9.97 — bump guard, slice normalizeWS, launcher watch coverage
+_2026-04-08_
+
+### Features
+- release v0.9.97 — bump guard, slice normalizeWS, launcher watch coverage
+
+### Fixes
+- launcher.js watches sf-readme-gen.js + sf-endpoints.js for hot-reload (closes #26)
+- wire normalizeWS() into /slice sentinel search — whitespace-tolerant section lookup (closes #20)
+- POST /bump idempotency guard — alreadyBumped:true if HTML already at target version (closes #21)
+- GET /status version regex — match "Version: X.Y.Z" comment in HTML
+- clean repo — gitignore scratch files, remove extension filter, clean README (#25)
+- README gen — setGroup() feature groups, filter scratch files, live test count (#25)
+- update sf-preflight.ps1 expected test count 156→170
+
+### Chores
+- removed tracked scratch files, issue #11
+- HANDOFF note sf-preflight count must match on release
+
+---
+
 ## v0.9.96 — MessageElement Y-drag — complete ARCH-001 (#19)
 _2026-04-07_
 
