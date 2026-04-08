@@ -223,9 +223,6 @@ v0.9.95 shipped. This cycle: ARCH-001 complete (actor/note/fragment drag delegat
 ~~**BUG-001 (SHIPPED v0.9.95) — Properties panel stale after message Y-drag:**
 After dragging a message vertically, the Properties panel sometimes shows stale From/To actor values. Root cause: uiState.selected._ref is not refreshed after the mouseup UPDATE_MESSAGE dispatch. Fix: re-wrap uiState.selected after the dispatch in the mouseup handler (events section, mouseup block, draggingMsg path).~~
 
-**BUG-003 — Tour spotlight goes to 0,0 on Import/Export step:**
-Tour step targets `#btn-import-uml` which is inside a collapsed dropdown (display:none). `getBoundingClientRect()` returns 0,0 for hidden elements — spotlight renders at top-left. Fix: change target to `#btn-import-menu` (the visible trigger button, always rendered). Optionally add `beforeShow: () => document.getElementById('btn-import-menu').click()` to open the dropdown during the step. Located in STEPS array, line ~4950 in sequence-builder.html.
-
 ~~**BUG-002 (SHIPPED v0.9.95) — Message endpoint resize handles:**
 User should be able to drag the LEFT or RIGHT tip of a message arrow to reassign fromId or toId to any actor, not just the immediately adjacent one. Store already supports UPDATE_MESSAGE {fromId, toId}. Needs small SVG hit-target handles rendered at each arrow tip. Drag behaviour mirrors the fragment SE-corner resize pattern — mousedown on handle starts resize, mousemove updates, mouseup dispatches UPDATE_MESSAGE. UI-only change.~~
 
