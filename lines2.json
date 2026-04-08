@@ -1,1 +1,0 @@
-{"l4174":"      const changed = positions.some(p => { const cur = store.getActorById(p.id); return cur && Math.round(cur.x) !== Math.round(p.x) })","l4175":"      if (changed) { store.dispatch({ type: 'REFLOW_ACTORS', payload: { positions } }); setTimeout(render, 0) }"}
