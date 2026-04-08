@@ -111,7 +111,7 @@ const server = http.createServer(function(req, res) {
 
   if (req.method === 'GET' && urlPath === '/status') {
     let version = '0.0.0';
-    try { const h = fs.readFileSync(path.join(ROOT,'sequence-builder.html'),'utf8'); const vm = h.match(/SequenceForge v(\d+\.\d+\.\d+)/); if (vm) version = vm[1]; } catch(e){}
+    try { const h = fs.readFileSync(path.join(ROOT,'sequence-builder.html'),'utf8'); const vm = h.match(/Version:\s*([\d.]+)/); if (vm) version = vm[1]; } catch(e){}
     const {execSync} = require('child_process');
     let git = {branch:'main',clean:true,changed:[],lastCommit:''};
     try { const br = execSync('git rev-parse --abbrev-ref HEAD',{cwd:ROOT}).toString().trim(); const st = execSync('git status --porcelain',{cwd:ROOT}).toString().trim(); const lc = execSync('git log -1 --oneline',{cwd:ROOT}).toString().trim(); git = {branch:br,clean:st.length===0,changed:st?st.split('\n'):[],lastCommit:lc}; } catch(e){}
