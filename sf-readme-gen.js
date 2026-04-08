@@ -21,12 +21,10 @@ function generateReadme(ROOT) {
   // 2. Repo file list from git — exclude generated/archive/dev dirs
   const EXCLUDE = ['releases/', 'docs/', 'test-snapshots/', 'dev/', '.'];
   const EXCLUDE_FILES = ['CHANGELOG.md', 'HANDOFF.md', 'package-lock.json'];
-  const EXCLUDE_EXT   = ['.json', '.txt', '.ps1'];
   const gitFiles = execSync('git ls-files', { cwd: ROOT })
     .toString().trim().split('\n')
     .filter(f => !EXCLUDE.some(ex => f.startsWith(ex)))
-    .filter(f => !EXCLUDE_FILES.includes(f))
-    .filter(f => !EXCLUDE_EXT.some(ext => f.endsWith(ext)));
+    .filter(f => !EXCLUDE_FILES.includes(f));
 
   // 3. Feature groups from test file — setGroup() calls are the canonical capability list
   const testTxt = fs.readFileSync(path.join(ROOT, 'sequence-builder.test.js'), 'utf8');

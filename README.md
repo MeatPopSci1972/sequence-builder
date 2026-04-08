@@ -50,9 +50,7 @@ Capabilities pinned by the contract test suites:
 |------|-------|
 | `LICENSE` | |
 | `README.md` | |
-| `_check.js` | |
 | `build.js` | |
-| `fix-build.js` | |
 | `launcher.js` | |
 | `lint.js` | |
 | `log.html` | |
@@ -68,7 +66,6 @@ Capabilities pinned by the contract test suites:
 | `src/elements/MessageElement.js` | |
 | `src/elements/NoteElement.js` | |
 | `src/elements/SequenceElement.js` | |
-| `suites-data.js` | |
 
 ---
 

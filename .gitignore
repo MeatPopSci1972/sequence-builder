@@ -3,3 +3,9 @@ test-*.txt
 releases/*-test/
 test-snapshots/
 node_modules/
+build/
+*.json
+*.txt
+_*.js
+fix-*.js
+suites-data.js
