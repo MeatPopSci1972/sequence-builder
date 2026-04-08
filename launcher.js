@@ -36,10 +36,19 @@ function restart() {
   }, 300);
 }
 
-// Watch sf-server.js for changes
-fs.watch(SERVER, function(event) {
-  if (event === 'change') restart();
+// Watch all server files for changes
+const WATCH_FILES = [
+  path.join(__dirname, 'sf-server.js'),
+  path.join(__dirname, 'sf-readme-gen.js'),
+  path.join(__dirname, 'sf-endpoints.js')
+];
+WATCH_FILES.forEach(function(f) {
+  if (fs.existsSync(f)) {
+    fs.watch(f, function(event) {
+      if (event === 'change') restart();
+    });
+  }
 });
 
-console.log('[launcher] watching sf-server.js for changes');
+console.log('[launcher] watching: ' + WATCH_FILES.map(f => path.basename(f)).join(', '));
 start();
