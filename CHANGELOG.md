@@ -1,5 +1,20 @@
 # SequenceForge Changelog
 
+## v0.9.99 — v0.9.99
+_2026-04-09_
+
+### Features
+- v0.9.99
+
+### Fixes
+- revert README/sf-readme-gen/HANDOFF to github.io URL — releases/download forced download, github.io is correct and works once pushed
+- README live demo link — github.io → releases/download URL (was 404); fix sf-readme-gen.js + HANDOFF template
+
+### Chores
+- HANDOFF
+
+---
+
 ## v0.9.98 — v0.9.98
 _2026-04-09_
 
