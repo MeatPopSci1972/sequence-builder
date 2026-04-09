@@ -15,7 +15,7 @@ function generateReadme(ROOT) {
   const htmlHead  = fs.readFileSync(path.join(ROOT, 'sequence-builder.html'), 'utf8').slice(0, 2000);
   const verMatch  = htmlHead.match(/Version:\s*([\d.]+)/);
   const version   = verMatch ? verMatch[1] : '0.0.0';
-  const demoUrl   = 'https://MeatPopSci1972.github.io/sequence-builder/releases/v' + version + '/sequence-builder.html';
+  const demoUrl   = 'https://github.com/MeatPopSci1972/sequence-builder/releases/download/v' + version + '/sequence-builder.html';
   const relUrl    = 'https://github.com/MeatPopSci1972/sequence-builder/releases';
 
   // 2. Repo file list from git — exclude generated/archive/dev dirs

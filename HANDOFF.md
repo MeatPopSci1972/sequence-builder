@@ -317,7 +317,7 @@ Optional manual block (appended by AI immediately after auto-gen, before commit)
 
 **Required content:**
 - One-sentence description of what SequenceForge is
-- Live demo link — format: `https://MeatPopSci1972.github.io/sequence-builder/releases/v{{version}}/sequence-builder.html`
+- Live demo link — format: `https://github.com/MeatPopSci1972/sequence-builder/releases/download/v{{version}}/sequence-builder.html`
 - All-releases link — format: `https://github.com/MeatPopSci1972/sequence-builder/releases`
 
 **Template-tracked fields:**
