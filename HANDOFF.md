@@ -358,3 +358,10 @@ Optional manual block (appended by AI immediately after auto-gen, before commit)
 - Local: E:\uml2prompt\sequence-builder-prototype
 - Branch: main
 
+## SEQUENCE-LOG-VIEWER
+- GitHub: https://github.com/MeatPopSci1972/sequence-log-viewer
+- Status: TRANSITION — logview.html is being extracted here from SF repo
+- SF config: logview.sf.config.json (committed to SF repo, drives the left panel)
+- logview.html and logview-test.html remain in SF repo as reference until standalone is verified
+- Issues 1–4 (config-driven panel, multi-repo, OTel, right-click copy) live in the logview repo
+
