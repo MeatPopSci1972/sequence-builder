@@ -361,6 +361,25 @@ function writeVersionToHTML(newVer) {
     }
     return;
   }
+  if (req.method === 'GET' && urlPath === '/check-pages') {
+    const version = urlObj.searchParams.get('v')||'0.0.0';
+    const t0 = Date.now();
+    const pageUrl = 'https://MeatPopSci1972.github.io/sequence-builder/releases/v'+version+'/sequence-builder.html';
+    const https = require('https');
+    https.get(pageUrl, (r) => {
+      const ok = r.statusCode === 200;
+      const ms = Date.now()-t0;
+      res.writeHead(200,{'Content-Type':'application/json'});
+      res.end(JSON.stringify({ok, status:r.statusCode, url:pageUrl, ms}));
+      addLog('GET /check-pages', (ok?'live':'FAIL '+r.statusCode)+' v'+version+' ('+ms+'ms)');
+    }).on('error', (e) => {
+      res.writeHead(200,{'Content-Type':'application/json'});
+      res.end(JSON.stringify({ok:false, error:e.message, url:pageUrl, ms:Date.now()-t0}));
+      addLog('GET /check-pages', 'ERR: '+e.message);
+    });
+    return;
+  }
+
   if (req.method === 'GET' && urlPath === '/validate-readme') {
     const version = urlObj.searchParams.get('v')||'0.0.0';
     try {

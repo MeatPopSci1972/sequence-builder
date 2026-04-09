@@ -37,7 +37,8 @@ Use POST /patch with a known anchor string to write. Full-file reads are PROHIBI
 | PUT | /<file> | Write any file in repo root. Add ?verify=1 to get {ok,wrote,status} back inline |
 | POST | /update-handoff | Populate all live fields in HANDOFF.md from /status+/test+/test-render. Idempotent. |
 | POST | /snapshot?v=X.Y.Z | Copy build + HANDOFF-vX.Y.Z.md into releases/vX.Y.Z/ |
-| GET | /validate-readme?v=X.Y.Z | Checks README has link + label text + no loop for vX.Y.Z. Returns {ok,hasLink,hasLabel,hasLoop}. addLog fires. |
+| GET | /validate-readme?v=X.Y.Z | Checks README has link + label text + no loop for vX.Y.Z. Returns {ok,hasLink,hasLabel,hasLoop}.
+| GET | /check-pages?v=X.Y.Z | Fetch live GitHub Pages URL. Returns {ok,status,url,ms}. Run after push to confirm release is live. addLog fires. |
 | POST | /git-restore | Restore tracked file to HEAD. Body: {file}. Returns {ok,file,output,ms}. **addLog fires** |
 | POST | /changelog | Auto-gen CHANGELOG.md entry from git log since last tag. Body: {version}. Returns {ok,version,entry,length,ms}. **addLog fires** |
 | POST | /bump | Increment patch from latest git tag, write to HTML. Body: {} or {version}. Returns {ok,newVersion,ms}. |

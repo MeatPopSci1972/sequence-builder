@@ -15,6 +15,7 @@ const SF_ENDPOINTS = [
   {method:'GET', path:'/test',             desc:'Run build+tests — returns HTML report'},
   {method:'GET', path:'/test-render',      desc:'Playwright render gate — 3 demos x 5 SVG layers'},
   {method:'GET', path:'/validate-readme',  desc:'Check README link+label for vX.Y.Z. Returns {ok,hasLink,hasLabel}'},
+  {method:'GET', path:'/check-pages?v=X.Y.Z',   desc:'Fetch live GitHub Pages URL for vX.Y.Z. Returns {ok,status,url,ms}'},
   {method:'GET', path:'/slice',            desc:'Return named sentinel section of a file. No section = manifest'},
   {method:'POST',path:'/generate-readme',  desc:'Generate README.md from live sources — git, test suites, endpoints, version'},
   {method:'POST',path:'/build',            desc:'Run build.js — sync store.js into HTML'},
