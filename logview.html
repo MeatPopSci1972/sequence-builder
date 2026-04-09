@@ -99,6 +99,13 @@
   #log-empty{padding:40px 20px;text-align:center;color:var(--text-dim);font-size:11px;line-height:2}
   .log-payload::-webkit-scrollbar{width:3px}
   .log-payload::-webkit-scrollbar-thumb{background:var(--border-bright)}
+  #run-all-btn{background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:3px;cursor:pointer;letter-spacing:.06em;transition:background .15s,color .15s;flex-shrink:0}
+  #run-all-btn:hover{background:var(--accent);color:#fff}
+  #run-all-btn:disabled{opacity:.35;cursor:not-allowed}
+  .log-pass{color:var(--done-fg);font-weight:700}
+  .log-fail{color:var(--error-fg);font-weight:700}
+  .log-summary.is-pass{color:var(--done-fg)}
+  .log-summary.is-fail{color:var(--error-fg)}
 </style>
 </head>
 <body>
@@ -115,6 +122,7 @@
     <div class="panel-header">
       <span class="ph-label">Release Runner</span>
       <span class="ph-count" id="runner-progress">0 / 13 done</span>
+      <button id="run-all-btn" onclick="runAll()">&#9654;&#9654; run all</button>
     </div>
     <div class="panel-body" id="steps-list"></div>
   </div>
@@ -324,13 +332,17 @@ function prependLog(e) {
   const method = /^POST /i.test(action)?'POS':/^PUT /i.test(action)?'PUT':/^DEL/i.test(action)?'DEL':'GET';
   const path = action.replace(/^(GET|POST|PUT|DELETE)\s+/i,'');
   const result = e.result||'';
+  const isPass = /pass|\bok\b|done/i.test(result) && !/fail|error/i.test(result);
+  const isFail = /fail|error/i.test(result);
+  const sumClass = isPass ? ' is-pass' : isFail ? ' is-fail' : '';
+  const hilResult = esc(result).replace(/(\d+ passed)/gi,'<span class="log-pass">$1<\/span>').replace(/(\d+ failed)/gi,'<span class="log-fail">$1<\/span>').replace(/\b(FAIL|ERROR)\b/gi,'<span class="log-fail">$1<\/span>').replace(/\b(ok|passed|done)\b/gi,'<span class="log-pass">$1<\/span>');
   const ts = new Date(e.ts).toTimeString().slice(0,8);
   el.innerHTML =
     '<div class="log-entry-header" onclick="this.parentElement.classList.toggle(\'open\')">'+
       '<span class="log-ts">'+ts+'</span>'+
       '<span class="log-method m-'+method+'">'+method+'</span>'+
       '<span class="log-path">'+esc(path)+'</span>'+
-      '<span class="log-summary">'+esc(result.slice(0,60))+'</span>'+
+      '<span class="log-summary'+sumClass+'">'+hilResult.slice(0,100)+'</span>'+
       '<span class="log-chevron">▶</span>'+
     '</div>'+
     '<div class="log-entry-body">'+
@@ -373,6 +385,30 @@ async function pollStatus() {
   document.addEventListener('mousemove',e=>{if(!drag)return;const wsw=ws.getBoundingClientRect().width;const nw=Math.min(Math.max(sw+(e.clientX-sx),240),wsw-240);rn.style.flex='none';rn.style.width=nw+'px'});
   document.addEventListener('mouseup',()=>{if(!drag)return;drag=false;dv.classList.remove('dragging');document.body.style.cursor='';document.body.style.userSelect=''});
 })();
+
+async function runAll() {
+  const btn = document.getElementById('run-all-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ running…';
+  const runnable = STEPS.filter(s => !s.terminalOnly);
+  for (const step of runnable) {
+    // skip steps already done
+    if (state.stepStates[step.id] === 'done') continue;
+    // open the step so user can see it working
+    const el = document.getElementById('step-'+step.id);
+    if (el && !el.classList.contains('open')) el.classList.add('open');
+    el && el.scrollIntoView({behavior:'smooth',block:'nearest'});
+    await runStep(step.id);
+    // stop chain on error
+    if (state.stepStates[step.id] === 'error') {
+      btn.disabled = false;
+      btn.innerHTML = '&#9654;&#9654; run all';
+      return;
+    }
+  }
+  btn.disabled = false;
+  btn.innerHTML = '&#9654;&#9654; run all';
+}
 
 renderSteps();
 pollStatus();
