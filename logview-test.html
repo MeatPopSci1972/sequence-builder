@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SF · OPS · TESTS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@800&display=swap');
+  :root{--bg:#0d0f11;--surface:#13161a;--border:#1e2328;--text:#c8cdd6;--text-dim:#505870;--text-bright:#e8ecf4;--accent:#4a7cf7;--pass:#4ddb8a;--fail:#f07070;--skip:#ffd060;--mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px}
+  #header{height:40px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px}
+  #header .logo{font-family:var(--sans);font-weight:800;font-size:14px;color:var(--text-bright)}
+  #header .logo span{color:var(--accent)}
+  #summary{display:flex;gap:20px;margin-left:auto;font-size:11px}
+  .s-pass{color:var(--pass)} .s-fail{color:var(--fail)} .s-skip{color:var(--skip)}
+  #container{max-width:900px;margin:0 auto;padding:24px 20px}
+  .suite{margin-bottom:28px}
+  .suite-title{font-family:var(--sans);font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:4px}
+  .test{display:grid;grid-template-columns:18px 1fr;gap:0 10px;padding:6px 0;border-bottom:1px solid var(--border);align-items:start}
+  .test:last-child{border-bottom:none}
+  .test-icon{font-size:11px;padding-top:1px}
+  .test-icon.p{color:var(--pass)} .test-icon.f{color:var(--fail)} .test-icon.s{color:var(--skip)}
+  .test-name{font-size:12px;color:var(--text-bright);margin-bottom:2px}
+  .test-detail{font-size:11px;color:var(--text-dim);line-height:1.6}
+  .got{color:var(--fail)} .exp{color:var(--pass)} .note{color:var(--skip)}
+</style>
+</head>
+<body>
+<div id="header">
+  <div class="logo">SF <span>·</span> OPS <span>·</span> TESTS</div>
+  <div id="summary">
+    <span class="s-pass" id="sum-pass">— passed</span>
+    <span class="s-fail" id="sum-fail">— failed</span>
+    <span class="s-skip" id="sum-skip">— skipped</span>
+  </div>
+</div>
+<div id="container"></div>
+<script>
+// SUT: pure logic copied verbatim from logview.html
+// If logview.html changes these functions, update here too.
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function syntaxHL(obj){
+  let s;try{s=JSON.stringify(obj,null,2);}catch(e){s=String(obj);}
+  return s
+    .replace(/"([^"]+)":/g,'<span class="key">"$1"</span>:')
+    .replace(/: "([^"]*)"/g,': <span class="str">"$1"</span>')
+    .replace(/: (\d+\.?\d*)/g,': <span class="num">$1</span>')
+    .replace(/: (true|false|null)/g,': <span class="bool">$1</span>');
+}
+
+function parseTestHtml(text){
+  const pm=text.match(/(\d+) passed/),fm=text.match(/(\d+) failed/);
+  const passed=pm?parseInt(pm[1],10):0,failed=fm?parseInt(fm[1],10):0;
+  return{ok:failed===0,passed,failed};
+}
+
+function summarise(id,d){
+  if(id==='test-store')      return d.ok?'✓ '+d.passed+'/'+d.passed+' passed':'✗ '+d.failed+' failed';
+  if(id==='test-render')     return d.ok?'✓ '+d.passed+'/'+d.total+' passed':'✗ '+d.failed+' failed';
+  if(id==='bump')            return '→ v'+d.newVersion+' ('+d.ms+'ms)';
+  if(id==='build')           return '✓ build ok ('+d.ms+'ms)';
+  if(id==='lint')            return d.ok?'✓ lint clean':'✗ '+d.output;
+  if(id==='snapshot')        return '✓ snapshot written';
+  if(id==='gen-readme')      return '✓ README generated';
+  if(id==='validate-readme') return d.ok?'✓ valid':'✗ missing link/label';
+  if(id==='git-feat')        return '✓ committed';
+  if(id==='update-handoff')  return '✓ HANDOFF updated ('+d.ms+'ms)';
+  if(id==='git-handoff')     return '✓ committed';
+  if(id==='changelog')       return '✓ changelog written';
+  if(id==='tag')             return '✓ tagged '+d.tag;
+  return JSON.stringify(d).slice(0,120);
+}
+
+function guessMethod(action){
+  if(/^POST /i.test(action))return'POS';
+  if(/^PUT /i.test(action))return'PUT';
+  if(/^DEL/i.test(action))return'DEL';
+  return'GET';
+}
+
+function logHighlight(result){
+  const isFail=/fail|error|:false/i.test(result);
+  const isPass=!isFail&&/passed|\bok:|done/i.test(result);
+  return isPass?'pass':isFail?'fail':'neutral';
+}
+
+function checkPrereqs(stepId,stepDefs,stepStates){
+  const step=stepDefs.find(s=>s.id===stepId);
+  if(!step)return{ok:false,reason:'step not found: '+stepId};
+  for(const pre of step.prereqs){
+    if(stepStates[pre]!=='done'){
+      const ps=stepDefs.find(s=>s.id===pre);
+      return{ok:false,reason:'Prerequisite not met — run "'+(ps?ps.label:pre)+'" first.'};
+    }
+  }
+  return{ok:true};
+}
+
+// Test runner
+const results={pass:0,fail:0,skip:0};
+const suites=[];
+let cur=null;
+function suite(n){cur={name:n,tests:[]};suites.push(cur);}
+function test(n,fn){try{fn();cur.tests.push({name:n,status:'pass'});results.pass++;}catch(e){cur.tests.push({name:n,status:'fail',error:e.message});results.fail++;}}
+function skip(n){cur.tests.push({name:n,status:'skip'});results.skip++;}
+function assert(a,e,l){if(a!==e)throw new Error((l?l+'\n':'')+'  got: '+JSON.stringify(a)+'\n  exp: '+JSON.stringify(e));}
+function assertContains(s,sub,l){if(!String(s).includes(sub))throw new Error((l?l+'\n':'')+'  "'+s+'" does not contain "'+sub+'"');}
+
+// --- Suite 1: esc() ---
+suite('esc()');
+test('escapes &',()=>assert(esc('a&b'),'a&amp;b'));
+test('escapes <',()=>assert(esc('a<b'),'a&lt;b'));
+test('escapes >',()=>assert(esc('a>b'),'a&gt;b'));
+test('escapes "',()=>assert(esc('say "hi"'),'say &quot;hi&quot;'));
+test('plain text unchanged',()=>assert(esc('hello world'),'hello world'));
+test('coerces number',()=>assert(esc(42),'42'));
+test('empty string',()=>assert(esc(''),''));
+
+// --- Suite 2: parseTestHtml() ---
+suite('parseTestHtml()');
+test('170 passed 0 failed → ok:true',()=>{const r=parseTestHtml('<div>170 passed | 0 failed</div>');assert(r.ok,true);assert(r.passed,170);assert(r.failed,0);});
+test('0 passed 3 failed → ok:false',()=>{const r=parseTestHtml('0 passed | 3 failed');assert(r.ok,false);assert(r.failed,3);});
+test('168 passed 2 failed → ok:false',()=>{const r=parseTestHtml('168 passed | 2 failed');assert(r.ok,false);assert(r.passed,168);assert(r.failed,2);});
+test('no match → 0/0 ok:true',()=>{const r=parseTestHtml('nothing here');assert(r.passed,0);assert(r.ok,true);});
+test('real SF HTML span structure',()=>{const r=parseTestHtml('<span class="pass">170 passed</span><span class="fail">0 failed</span>');assert(r.ok,true);assert(r.passed,170);});
+
+// --- Suite 3: summarise() ---
+suite('summarise()');
+test('test-store pass',()=>assert(summarise('test-store',{ok:true,passed:170,failed:0}),'✓ 170/170 passed'));
+test('test-store fail',()=>assert(summarise('test-store',{ok:false,passed:0,failed:3}),'✗ 3 failed'));
+test('test-render pass',()=>assert(summarise('test-render',{ok:true,passed:15,failed:0,total:15}),'✓ 15/15 passed'));
+test('test-render fail',()=>assert(summarise('test-render',{ok:false,passed:12,failed:3,total:15}),'✗ 3 failed'));
+test('bump',()=>assert(summarise('bump',{newVersion:'0.9.98',ms:53}),'→ v0.9.98 (53ms)'));
+test('build',()=>assert(summarise('build',{ok:true,ms:142}),'✓ build ok (142ms)'));
+test('lint clean',()=>assert(summarise('lint',{ok:true}),'✓ lint clean'));
+test('lint fail',()=>assert(summarise('lint',{ok:false,output:'missing sentinel'}),'✗ missing sentinel'));
+test('snapshot',()=>assert(summarise('snapshot',{ok:true}),'✓ snapshot written'));
+test('gen-readme',()=>assert(summarise('gen-readme',{ok:true}),'✓ README generated'));
+test('validate-readme pass',()=>assert(summarise('validate-readme',{ok:true}),'✓ valid'));
+test('validate-readme fail',()=>assert(summarise('validate-readme',{ok:false}),'✗ missing link/label'));
+test('git-feat',()=>assert(summarise('git-feat',{ok:true}),'✓ committed'));
+test('update-handoff',()=>assert(summarise('update-handoff',{ok:true,ms:310}),'✓ HANDOFF updated (310ms)'));
+test('git-handoff',()=>assert(summarise('git-handoff',{ok:true}),'✓ committed'));
+test('changelog',()=>assert(summarise('changelog',{ok:true}),'✓ changelog written'));
+test('tag',()=>assert(summarise('tag',{ok:true,tag:'v0.9.98'}),'✓ tagged v0.9.98'));
+test('unknown id → JSON slice',()=>assertContains(summarise('unknown',{foo:'bar'}),'foo'));
+
+// --- Suite 4: guessMethod() ---
+suite('guessMethod()');
+test('POST /git → POS',()=>assert(guessMethod('POST /git'),'POS'));
+test('PUT /file → PUT',()=>assert(guessMethod('PUT /logview.html'),'PUT'));
+test('GET /test → GET',()=>assert(guessMethod('GET /test'),'GET'));
+test('bare path → GET',()=>assert(guessMethod('/something'),'GET'));
+test('lowercase post',()=>assert(guessMethod('post /bump'),'POS'));
+
+// --- Suite 5: logHighlight() ---
+suite('logHighlight()');
+test('170 passed → pass',()=>assert(logHighlight('170 passed'),'pass'));
+test('ok: → pass',()=>assert(logHighlight('ok: logview.html r=1'),'pass'));
+test('done → pass',()=>assert(logHighlight('done'),'pass'));
+test('3 failed → fail',()=>assert(logHighlight('3 failed'),'fail'));
+test('FAIL → fail',()=>assert(logHighlight('FAIL'),'fail'));
+test('ERROR → fail',()=>assert(logHighlight('ERROR'),'fail'));
+test('wrote N bytes → neutral',()=>assert(logHighlight('wrote 22991 bytes'),'neutral'));
+test('commit hash → neutral',()=>assert(logHighlight('a8955dc feat: logview.html'),'neutral'));
+test('ok:false → fail',()=>assert(logHighlight('{"ok":false}'),'fail'));
+test('"broken" not \bok\b → neutral',()=>assert(logHighlight('broken'),'neutral'));
+
+// --- Suite 6: checkPrereqs() ---
+suite('checkPrereqs()');
+const MS=[
+  {id:'test-store', label:'Store tests',  prereqs:[]},
+  {id:'test-render',label:'Render tests', prereqs:['test-store']},
+  {id:'bump',       label:'Bump version', prereqs:['test-store','test-render']},
+  {id:'build',      label:'Build',        prereqs:['bump']},
+];
+test('no prereqs always ok',()=>assert(checkPrereqs('test-store',MS,{}).ok,true));
+test('prereq met → ok',()=>assert(checkPrereqs('test-render',MS,{'test-store':'done'}).ok,true));
+test('prereq not met → fail with label',()=>{const r=checkPrereqs('test-render',MS,{});assert(r.ok,false);assertContains(r.reason,'Store tests');});
+test('all prereqs met → ok',()=>assert(checkPrereqs('bump',MS,{'test-store':'done','test-render':'done'}).ok,true));
+test('first prereq missing blocks',()=>{const r=checkPrereqs('bump',MS,{'test-render':'done'});assert(r.ok,false);assertContains(r.reason,'Store tests');});
+test('second prereq missing blocks',()=>{const r=checkPrereqs('bump',MS,{'test-store':'done'});assert(r.ok,false);assertContains(r.reason,'Render tests');});
+test('error state blocks next',()=>assert(checkPrereqs('build',MS,{'bump':'error'}).ok,false));
+test('working state blocks next',()=>assert(checkPrereqs('build',MS,{'bump':'working'}).ok,false));
+test('unknown step → fail gracefully',()=>{const r=checkPrereqs('nope',MS,{});assert(r.ok,false);assertContains(r.reason,'not found');});
+
+// --- Suite 7: syntaxHL() ---
+suite('syntaxHL()');
+test('highlights string values',()=>assertContains(syntaxHL({action:'GET /test'}),'class="str"'));
+test('highlights numeric values',()=>assertContains(syntaxHL({ms:142}),'class="num"'));
+test('highlights boolean values',()=>assertContains(syntaxHL({ok:true}),'class="bool"'));
+test('highlights key names',()=>assertContains(syntaxHL({action:'x'}),'class="key"'));
+test('handles plain string',()=>assertContains(syntaxHL('plain text'),'plain text'));
+test('raw span tags in output (trusted data)',()=>assertContains(syntaxHL({ok:true}),'<span'));
+
+// Render
+document.getElementById('sum-pass').textContent=results.pass+' passed';
+document.getElementById('sum-fail').textContent=results.fail+' failed';
+document.getElementById('sum-skip').textContent=results.skip+' skipped';
+if(results.fail>0){document.getElementById('sum-fail').style.fontWeight='700';document.title='✗ SF · OPS · TESTS';}
+else{document.getElementById('sum-pass').style.fontWeight='700';document.title='✓ SF · OPS · TESTS';}
+
+const cont=document.getElementById('container');
+suites.forEach(s=>{
+  const se=document.createElement('div');se.className='suite';
+  const pc=s.tests.filter(t=>t.status==='pass').length,fc=s.tests.filter(t=>t.status==='fail').length;
+  const badge=fc>0?'<span style="color:var(--fail)">'+fc+' failed<\/span>':'<span style="color:var(--pass)">'+pc+'/'+s.tests.length+'<\/span>';
+  se.innerHTML='<div class="suite-title">'+s.name+' <span style="font-weight:400;letter-spacing:0">'+badge+'<\/span><\/div>';
+  s.tests.forEach(t=>{
+    const row=document.createElement('div');row.className='test';
+    const icon=t.status==='pass'?'<span class="test-icon p">✓<\/span>':t.status==='fail'?'<span class="test-icon f">✗<\/span>':'<span class="test-icon s">–<\/span>';
+    let detail='';
+    if(t.status==='fail'&&t.error){
+      detail=t.error.split('\n').map(l=>l.trim().startsWith('got:')?'<span class="got">'+esc(l)+'<\/span>':l.trim().startsWith('exp:')?'<span class="exp">'+esc(l)+'<\/span>':'<span class="note">'+esc(l)+'<\/span>').join('<br>');
+    }
+    row.innerHTML=icon+'<div class="test-body"><div class="test-name">'+esc(t.name)+'<\/div>'+(detail?'<div class="test-detail">'+detail+'<\/div>':'')+'<\/div>';
+    se.appendChild(row);
+  });
+  cont.appendChild(se);
+});
+</script>
+</body>
+</html>

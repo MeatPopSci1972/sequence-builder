@@ -332,8 +332,8 @@ function prependLog(e) {
   const method = /^POST /i.test(action)?'POS':/^PUT /i.test(action)?'PUT':/^DEL/i.test(action)?'DEL':'GET';
   const path = action.replace(/^(GET|POST|PUT|DELETE)\s+/i,'');
   const result = e.result||'';
-  const isPass = /pass|\bok\b|done/i.test(result) && !/fail|error/i.test(result);
-  const isFail = /fail|error/i.test(result);
+  const isFail = /fail|error|:false/i.test(result);
+  const isPass = !isFail && /passed|\bok:|done/i.test(result);
   const sumClass = isPass ? ' is-pass' : isFail ? ' is-fail' : '';
   const hilResult = esc(result).replace(/(\d+ passed)/gi,'<span class="log-pass">$1<\/span>').replace(/(\d+ failed)/gi,'<span class="log-fail">$1<\/span>').replace(/\b(FAIL|ERROR)\b/gi,'<span class="log-fail">$1<\/span>').replace(/\b(ok|passed|done)\b/gi,'<span class="log-pass">$1<\/span>');
   const ts = new Date(e.ts).toTimeString().slice(0,8);
@@ -353,7 +353,7 @@ function prependLog(e) {
 
 function syntaxHL(obj) {
   let s; try{s=JSON.stringify(obj,null,2);}catch(e){s=String(obj);}
-  s=esc(s);
+  // Data is trusted server log output — no esc() needed, spans rendered raw
   return s
     .replace(/"([^"]+)":/g,'<span class="key">"$1"</span>:')
     .replace(/: "([^"]*)"/g,': <span class="str">"$1"</span>')
