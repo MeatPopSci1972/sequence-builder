@@ -561,11 +561,11 @@ function writeVersionToHTML(newVer) {
         uhContent = uhContent.replace(/html\.split\('[^']*'\)\.join\('[^']*'\)/,"html.split('"+uhVer+"').join('"+uhNext+"')");
         uhContent = uhContent.replace(/- Release handoff: [^\n]*/,'- Release handoff: '+uhReleaseUrl);
         // Live section: ## FIRST ACTIONS gate lines
-        uhContent = uhContent.replace(/GET http:\/\/localhost:3799\/test[^\n]*confirm gate is green \(\d+\/\d+\)/,'GET http://localhost:3799/test — confirm gate is green ('+storeCount+'/'+storeCount+')');
-        uhContent = uhContent.replace(/GET http:\/\/localhost:3799\/test-render[^\n]*confirm render gate green \(\d+\/\d+\)/,'GET http://localhost:3799/test-render — confirm render gate green ('+renderCount+'/'+renderCount+')');
+        uhContent = uhContent.replace(/GET http:\/\/localhost:3799\/test[^\n]*confirm gate is green \([^)]+\)/,'GET http://localhost:3799/test — confirm gate is green (0 failures, '+storeCount+' ran)');
+        uhContent = uhContent.replace(/GET http:\/\/localhost:3799\/test-render[^\n]*confirm render gate green \([^)]+\)/,'GET http://localhost:3799/test-render — confirm render gate green (0 failures, '+renderCount+' ran)');
         // Documentation standards — regex-based, idempotent on re-runs
-        uhContent = uhContent.replace(/`GET \/test` \(\d+\/\d+\)/g, '`GET /test` ('+storeCount+'/'+storeCount+')');
-        uhContent = uhContent.replace(/`GET \/test-render` \(\d+\/\d+\)/g, '`GET /test-render` ('+renderCount+'/'+renderCount+')');
+        uhContent = uhContent.replace(/`GET \/test` \([^)]+\)/g, '`GET /test` ('+storeCount+' ran, 0 failures)');
+        uhContent = uhContent.replace(/`GET \/test-render` \(\d+\/\d+\)/g, '`GET /test-render` ('+renderCount+' ran, 0 failures)');
         // Standards section version references — regex-based
         uhContent = uhContent.replace(/releases\/v\d+\.\d+\.\d+\/sequence-builder\.html`/g, 'releases/v'+uhVer+'/sequence-builder.html`');
         uhContent = uhContent.replace(/`version` field \(\d+\.\d+\.\d+\)/g, '`version` field ('+uhVer+')');

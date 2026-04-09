@@ -2723,6 +2723,20 @@ test('SF_VERSION — data-version attribute exists and is a valid semver', funct
   assert(!!m, true, 'data-version attribute not found')
 })
 
+
+test('SF_VERSION — no SequenceForge v\\d version reads in sf-server.js', function () {
+  var src = require('fs').readFileSync(require('path').join(__dirname, 'sf-server.js'), 'utf8')
+  // Allow the string 'SequenceForge v' only in plain text/comment contexts, not in regex patterns
+  var regexReads = src.match(/match\([^)]*SequenceForge v/g) || []
+  assert(regexReads.length, 0, 'found SequenceForge v regex reads in sf-server.js: ' + JSON.stringify(regexReads))
+})
+
+test('SF_VERSION — no SequenceForge v\\d version reads in sf-readme-gen.js', function () {
+  var src = require('fs').readFileSync(require('path').join(__dirname, 'sf-readme-gen.js'), 'utf8')
+  var regexReads = src.match(/match\([^)]*SequenceForge v/g) || []
+  assert(regexReads.length, 0, 'found SequenceForge v regex reads in sf-readme-gen.js: ' + JSON.stringify(regexReads))
+})
+
   console.log("  " + passed + " passed  |  " + failed + " failed  |  " + total + " total")
   console.log("──────────────────────────────────────────────────" + "\n")
   if (failed > 0) { console.log("  Gate failed."); process.exit(1) }

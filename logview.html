@@ -145,8 +145,8 @@ const BASE = 'http://localhost:3799';
 let state = { version: null, logSeenIds: new Set(), stepStates: {}, stepResults: {} };
 
 const STEPS = [
-  { id:'test-store',      label:'Store tests',          method:'GET',  path:'/test',            prereqs:[],                    fields:[], terminalOnly:false, desc:'Run 170 contract tests. Must pass before any release action.' },
-  { id:'test-render',     label:'Render tests',         method:'GET',  path:'/test-render',      prereqs:['test-store'],         fields:[], terminalOnly:false, desc:'Playwright render gate — 15/15 snapshots must match.' },
+  { id:'test-store',      label:'Store tests',          method:'GET',  path:'/test',            prereqs:[],                    fields:[], terminalOnly:false, desc:'Run contract tests. Gate: 0 failures. Count is informational.' },
+  { id:'test-render',     label:'Render tests',         method:'GET',  path:'/test-render',      prereqs:['test-store'],         fields:[], terminalOnly:false, desc:'Playwright render gate. Gate: 0 failures. Count is informational.' },
   { id:'build',           label:'Build',                method:'POST', path:'/build',            prereqs:['test-store','test-render'], fields:[], terminalOnly:false, desc:'Syncs store.js into HTML between @@STORE-START/END sentinels.' },
   { id:'lint',            label:'Lint',                 method:'POST', path:'/lint',             prereqs:['build'],              fields:[], terminalOnly:false, desc:'HTML integrity check — buttons, SVG balance, sentinels, version.' },
   { id:'bump',            label:'Bump version',         method:'POST', path:'/bump',             prereqs:['lint'],               fields:[{id:'bump-version',label:'Override version (blank for auto)',placeholder:'e.g. 0.9.98',vfn:()=>''}], terminalOnly:false, desc:'Bump version AFTER green gates — single source of truth: SF_VERSION constant.' },

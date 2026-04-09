@@ -3,8 +3,8 @@
 
 ## FIRST ACTIONS (do these before anything else)
 1. GET http://localhost:3799/status — confirm version, clean=true
-2. GET http://localhost:3799/test — confirm gate is green (170/170)
-3. GET http://localhost:3799/test-render — confirm render gate green (15/15)
+2. GET http://localhost:3799/test — confirm gate is green (0 failures)
+3. GET http://localhost:3799/test-render — confirm render gate green (0 failures)
 4. GET https://api.github.com/repos/MeatPopSci1972/sequence-builder/issues?state=open&per_page=50 — review open issues; this is the authoritative backlog
 5. Read this file fully, paying close attention to ## BACKLOG
 

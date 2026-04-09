@@ -30,20 +30,20 @@ try {
     Fail "GET /status -- $($_.Exception.Message)"
 }
 
-# 2. Store gate (HTML -- parse summary line)
+# 2. Store gate (HTML -- gate is 0 failures, count is informational)
 try {
     $html = Invoke-WebRequest -Uri "$base/test" -TimeoutSec 30 -UseBasicParsing
     $text = $html.Content
-    # Summary line looks like: "170 passed | 0 failed | 170 total"
     if ($text -match '(\d+) passed \| (\d+) failed \| (\d+) total') {
         $p = [int]$Matches[1]
         $f = [int]$Matches[2]
-        if ($p -eq 170 -and $f -eq 0) {
+        $t = [int]$Matches[3]
+        if ($f -eq 0) {
             Ok "GET /test -- store gate"
-            Info "passed  : $p / 170"
+            Info "passed  : $p / $t"
         } else {
             Fail "GET /test -- store gate"
-            Info "passed  : $p / 170  failed: $f"
+            Info "passed  : $p / $t  failed: $f"
         }
     } else {
         Fail "GET /test -- could not parse summary line"
@@ -52,10 +52,10 @@ try {
     Fail "GET /test -- $($_.Exception.Message)"
 }
 
-# 3. Render gate (JSON)
+# 3. Render gate (JSON -- gate is ok:true, count is informational)
 try {
     $render = Invoke-RestMethod -Uri "$base/test-render" -TimeoutSec 60
-    if ($render.ok -eq $false) {
+    if ($render.ok -eq $false -and $render.error) {
         Fail "GET /test-render -- $($render.error)"
         Write-Host ""
         Warn "Playwright not installed. Run:"
@@ -63,12 +63,12 @@ try {
         Write-Host "          npx playwright install chromium"                          -ForegroundColor Yellow
         Warn "Restart launcher.js, then seed once:"
         Write-Host "          Invoke-RestMethod http://localhost:3799/test-render?update=1" -ForegroundColor Yellow
-    } elseif ($render.passed -eq 15 -and $render.failed -eq 0) {
+    } elseif ($render.ok) {
         Ok "GET /test-render -- render gate"
-        Info "passed  : $($render.passed) / 15"
+        Info "passed  : $($render.passed) / $($render.total)"
     } else {
         Fail "GET /test-render -- render gate"
-        Info "passed  : $($render.passed)  failed: $($render.failed)"
+        Info "passed  : $($render.passed)  failed: $($render.failed) / $($render.total)"
     }
 } catch {
     Fail "GET /test-render -- $($_.Exception.Message)"
