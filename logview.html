@@ -236,7 +236,7 @@ function buildQuery(step) {
 }
 
 function summarise(id, d) {
-  if (id==='test-store')      return d.ok ? '✓ passed' : '✗ failed';
+  if (id==='test-store')      return d.ok ? '✓ '+d.passed+'/'+d.passed+' passed' : '✗ '+d.failed+' failed';
   if (id==='test-render')     return d.ok ? '✓ '+d.passed+'/'+d.total+' passed' : '✗ '+d.failed+' failed';
   if (id==='bump')            return '→ v'+d.newVersion+' ('+d.ms+'ms)';
   if (id==='build')           return '✓ build ok ('+d.ms+'ms)';
@@ -282,7 +282,16 @@ async function runStep(id) {
     else { const qp=buildQuery(step); if(qp) url+='?'+qp; }
     const resp = await fetch(url,opts);
     const text = await resp.text();
-    let data; try{data=JSON.parse(text);}catch(e){data={raw:text.slice(0,300)};}
+    let data;
+    // GET /test returns HTML, not JSON — parse pass/fail from markup
+    if (id==='test-store') {
+      const pm = text.match(/(\d+) passed/); const fm = text.match(/(\d+) failed/);
+      const passed = pm ? parseInt(pm[1],10) : 0;
+      const failed = fm ? parseInt(fm[1],10) : 0;
+      data = { ok: failed===0, passed, failed };
+    } else {
+      try{data=JSON.parse(text);}catch(e){data={raw:text.slice(0,300)};}
+    }
     if (id==='bump' && data.newVersion) { state.version=data.newVersion; refreshDefaults(); }
     if (data.ok===false||resp.status>=400) setStepState(id,'error',data.error||data.output||text.slice(0,200));
     else setStepState(id,'done',summarise(id,data));
