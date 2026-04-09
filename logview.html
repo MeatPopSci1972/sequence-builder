@@ -198,7 +198,7 @@ function toggleStep(id) {
   if (step && !el.classList.contains('open')) {
     (step.fields||[]).forEach(f => {
       const inp = document.getElementById('field-'+f.id);
-      if (inp && !inp.value) inp.value = f.vfn();
+      if (inp) inp.value = f.vfn();
     });
   }
   el.classList.toggle('open');
@@ -264,7 +264,7 @@ function refreshDefaults() {
   STEPS.forEach(step => {
     (step.fields||[]).forEach(f => {
       const inp = document.getElementById('field-'+f.id);
-      if (inp && !inp.value) inp.value = f.vfn();
+      if (inp) inp.value = f.vfn();
     });
   });
 }
