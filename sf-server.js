@@ -505,7 +505,7 @@ function writeVersionToHTML(newVer) {
   let uhVer = '0.0.0';
   try {
     const uhHtml = fs.readFileSync(path.join(ROOT,'sequence-builder.html'),'utf8');
-    const uhVm = uhHtml.match(/SequenceForge v(\d+\.\d+\.\d+)/);
+    const uhVm = uhHtml.match(/const SF_VERSION = '(\d+\.\d+\.\d+)'/);
     if (uhVm) uhVer = uhVm[1];
   } catch(e){}
   const uhParts = uhVer.split('.');
