@@ -2698,6 +2698,31 @@ test("ElementFactory creates FragmentElement for fragment record", function() {
   }
   var total = passed + failed
   console.log("\n" + "──────────────────────────────────────────────────")
+
+// ── Suite 16 addendum — SF_VERSION contract ───────────────────────────────
+// Rule: SF_VERSION is the single source of truth for the release version.
+// Exactly one declaration must exist. No other hardcoded version strings allowed.
+
+test('SF_VERSION — exactly one declaration in sequence-builder.html', function () {
+  var html = require('fs').readFileSync(require('path').join(__dirname, 'sequence-builder.html'), 'utf8')
+  var matches = html.match(/const SF_VERSION = '\d+\.\d+\.\d+'/g) || []
+  assert(matches.length, 1, 'expected exactly 1 SF_VERSION declaration, got ' + matches.length)
+})
+
+test('SF_VERSION — no stale SequenceForge vX.Y.Z hardcoded strings', function () {
+  var html = require('fs').readFileSync(require('path').join(__dirname, 'sequence-builder.html'), 'utf8')
+  // Strip the SF_VERSION declaration line itself, then check for any remaining hardcoded version strings
+  var stripped = html.replace(/const SF_VERSION = '\d+\.\d+\.\d+'/, '')
+  var stale = stripped.match(/SequenceForge v\d+\.\d+\.\d+/g) || []
+  assert(stale.length, 0, 'stale hardcoded version strings found: ' + JSON.stringify(stale))
+})
+
+test('SF_VERSION — data-version attribute exists and is a valid semver', function () {
+  var html = require('fs').readFileSync(require('path').join(__dirname, 'sequence-builder.html'), 'utf8')
+  var m = html.match(/data-version="(\d+\.\d+\.\d+)"/)
+  assert(!!m, true, 'data-version attribute not found')
+})
+
   console.log("  " + passed + " passed  |  " + failed + " failed  |  " + total + " total")
   console.log("──────────────────────────────────────────────────" + "\n")
   if (failed > 0) { console.log("  Gate failed."); process.exit(1) }

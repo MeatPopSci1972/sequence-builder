@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   SequenceForge — Visual Sequence Diagram Builder
-  Version: (see SF_VERSION constant in boot section)
+  Version: 0.9.98
   License: MIT
   Repository: https://github.com/GGemini/sequenceforge
 
@@ -823,7 +823,7 @@
 
     <!-- Group 1: Brand -->
     <div class="tbtn-group">
-      <h1 aria-label="SequenceForge" id="app-title" data-version="0.9.99">Sequence<span>Forge</span></h1><span id="app-version-badge" class="app-version-badge"></span>
+      <h1 aria-label="SequenceForge" id="app-title" data-version="0.9.98">Sequence<span>Forge</span></h1><span id="app-version-badge" class="app-version-badge"></span>
     </div>
 
     <!-- Group 2: Create elements -->
@@ -1403,13 +1403,8 @@ document.getElementById('debug-verbose-toggle')?.addEventListener('click', () =>
   dbg('verbose', DEBUG_VERBOSE ? 'ON — high-frequency logging enabled' : 'OFF');
 });
 
-// Single source of truth for release version
-const SF_VERSION = '0.9.99';
-// Sync data-version attribute from SF_VERSION — keeps HTML in step with the constant
-document.getElementById('app-title').dataset.version = SF_VERSION;
-
 // Boot message
-_dbgWrite('info', ['SequenceForge v' + SF_VERSION + ' — debug console ready']);
+_dbgWrite('info', ['SequenceForge v0.9.95 — debug console ready']);
 
 // Set true to enable high-frequency diagnostic logging (save, msg-dblclick).
 // Keep false in production — save fires on every render cycle.

@@ -111,7 +111,7 @@ const server = http.createServer(function(req, res) {
 
   if (req.method === 'GET' && urlPath === '/status') {
     let version = '0.0.0';
-    try { const h = fs.readFileSync(path.join(ROOT,'sequence-builder.html'),'utf8'); const vm = h.match(/Version:\s*([\d.]+)/); if (vm) version = vm[1]; } catch(e){}
+    try { const h = fs.readFileSync(path.join(ROOT,'sequence-builder.html'),'utf8'); const vm = h.match(/const SF_VERSION = '([\d.]+)'/); if (vm) version = vm[1]; } catch(e){}
     const {execSync} = require('child_process');
     let git = {branch:'main',clean:true,changed:[],lastCommit:''};
     try { const br = execSync('git rev-parse --abbrev-ref HEAD',{cwd:ROOT}).toString().trim(); const st = execSync('git status --porcelain',{cwd:ROOT}).toString().trim(); const lc = execSync('git log -1 --oneline',{cwd:ROOT}).toString().trim(); git = {branch:br,clean:st.length===0,changed:st?st.split('\n'):[],lastCommit:lc}; } catch(e){}
@@ -230,10 +230,12 @@ function nextVersionFromGit() {
 function writeVersionToHTML(newVer) {
   const fp = path.join(ROOT, 'sequence-builder.html')
   let html = fs.readFileSync(fp, 'utf8')
-  const oldM = html.match(/Version: (\d+\.\d+\.\d+)/)
-  if (!oldM) throw new Error('Version: pattern not found in HTML')
+  // SF_VERSION is the single source of truth — only one string to replace
+  const oldM = html.match(/const SF_VERSION = '(\d+\.\d+\.\d+)'/)
+  if (!oldM) throw new Error("SF_VERSION constant not found in HTML")
   const oldVer = oldM[1]
-  html = html.split('Version: ' + oldVer).join('Version: ' + newVer)
+  html = html.split("const SF_VERSION = '" + oldVer + "'").join("const SF_VERSION = '" + newVer + "'")
+  // Keep data-version attribute in sync
   html = html.split('data-version=' + JSON.stringify(oldVer)).join('data-version=' + JSON.stringify(newVer))
   fs.writeFileSync(fp, html, 'utf8')
 }
@@ -247,7 +249,7 @@ function writeVersionToHTML(newVer) {
         const newVer = parsed.version || nextVersionFromGit()
         // Idempotency guard — if HTML already matches target version, skip write
         const fp = require('path').join(ROOT, 'sequence-builder.html')
-        const curM = require('fs').readFileSync(fp, 'utf8').match(/Version: (\d+\.\d+\.\d+)/)
+        const curM = require('fs').readFileSync(fp, 'utf8').match(/const SF_VERSION = '(\d+\.\d+\.\d+)'/)
         const curVer = curM ? curM[1] : null
         if (curVer && curVer === newVer) {
           res.writeHead(200, {'Content-Type': 'application/json'})
@@ -470,7 +472,7 @@ function writeVersionToHTML(newVer) {
         if (!verify) { res.writeHead(200); res.end('OK'); return; }
         const {execSync} = require('child_process');
         let version='0.0.0';
-        try { const h=fs.readFileSync(path.join(ROOT,'sequence-builder.html'),'utf8'); const vm=h.match(/SequenceForge v(\d+\.\d+\.\d+)/); if(vm) version=vm[1]; } catch(ex){}
+        try { const h=fs.readFileSync(path.join(ROOT,'sequence-builder.html'),'utf8'); const vm=h.match(/const SF_VERSION = '(\d+\.\d+\.\d+)'/); if(vm) version=vm[1]; } catch(ex){}
         let git={};
         try { git={branch:execSync('git rev-parse --abbrev-ref HEAD',{cwd:ROOT}).toString().trim(),clean:execSync('git status --porcelain',{cwd:ROOT}).toString().trim().length===0}; } catch(ex){}
         res.writeHead(200,{'Content-Type':'application/json'});

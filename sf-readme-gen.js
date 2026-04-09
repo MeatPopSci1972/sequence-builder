@@ -12,8 +12,8 @@ const { SF_ENDPOINTS } = require('./sf-endpoints');
 
 function generateReadme(ROOT) {
   // 1. Version from HTML comment
-  const htmlHead  = fs.readFileSync(path.join(ROOT, 'sequence-builder.html'), 'utf8').slice(0, 2000);
-  const verMatch  = htmlHead.match(/Version:\s*([\d.]+)/);
+  const htmlHead  = fs.readFileSync(path.join(ROOT, 'sequence-builder.html'), 'utf8');
+  const verMatch  = htmlHead.match(/const SF_VERSION = '([\d.]+)'/);
   const version   = verMatch ? verMatch[1] : '0.0.0';
   const demoUrl   = 'https://MeatPopSci1972.github.io/sequence-builder/releases/v' + version + '/sequence-builder.html';
   const relUrl    = 'https://github.com/MeatPopSci1972/sequence-builder/releases';
