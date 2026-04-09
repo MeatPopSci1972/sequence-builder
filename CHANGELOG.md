@@ -1,5 +1,23 @@
 # SequenceForge Changelog
 
+## v0.9.97 — logview.html — PASS/FAIL log highlighting, Run All sequential runner
+_2026-04-09_
+
+### Features
+- logview.html — PASS/FAIL log highlighting, Run All sequential runner
+- logview.html — split-pane ops console, release runner + live log feed
+
+### Fixes
+- logview.html — parse HTML response from GET /test, show actual pass count
+
+### Chores
+- HANDOFF
+- add BUG-003 tombstone to HANDOFF.md — prevent resurrection
+- remove stale BUG-003 from HANDOFF.md (fixed long ago)
+- HANDOFF.md — update to v0.9.97, drop local icebox (GitHub Issues is authoritative), fix hot-reload note and test count
+
+---
+
 ## v0.9.97 — release v0.9.97 — bump guard, slice normalizeWS, launcher watch coverage
 _2026-04-08_
 
