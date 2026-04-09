@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SF · OPS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;800&display=swap');
+  :root {
+    --bg:#0d0f11;--surface:#13161a;--border:#1e2328;--border-bright:#2a3040;
+    --text:#c8cdd6;--text-dim:#505870;--text-bright:#e8ecf4;
+    --accent:#4a7cf7;--accent-dim:rgba(74,124,247,0.12);
+    --idle:#3a3f50;--idle-fg:#7080a0;
+    --working:#b8860b;--working-fg:#ffd060;
+    --done:#1a5c36;--done-fg:#4ddb8a;
+    --error:#5c1a1a;--error-fg:#f07070;
+    --skip:#2a2f3a;--skip-fg:#505870;
+    --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;overflow:hidden}
+  #header{height:40px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:16px;flex-shrink:0}
+  #header .logo{font-family:var(--sans);font-weight:800;font-size:14px;color:var(--text-bright);letter-spacing:.05em}
+  #header .logo span{color:var(--accent)}
+  #header .sep{width:1px;height:20px;background:var(--border-bright)}
+  #header .meta{font-size:11px;color:var(--text-dim);display:flex;gap:12px}
+  #header .meta b{color:var(--text)}
+  #status-dot{width:7px;height:7px;border-radius:50%;background:var(--done-fg);box-shadow:0 0 6px var(--done-fg);flex-shrink:0}
+  #status-dot.err{background:var(--error-fg);box-shadow:0 0 6px var(--error-fg)}
+  .spacer{flex:1}
+  #poll-indicator{font-size:10px;color:var(--text-dim);letter-spacing:.05em}
+  #poll-indicator.pulse{color:var(--accent)}
+  #workspace{display:flex;height:calc(100vh - 40px);overflow:hidden}
+  .panel{display:flex;flex-direction:column;overflow:hidden;min-width:180px}
+  #panel-runner{flex:0 0 420px}
+  #panel-log{flex:1}
+  .panel-header{height:34px;padding:0 14px;display:flex;align-items:center;gap:8px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+  .panel-header .ph-label{font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim)}
+  .panel-header .ph-count{font-size:10px;color:var(--text-dim);margin-left:auto}
+  .panel-body{flex:1;overflow-y:auto;padding:8px 0}
+  .panel-body::-webkit-scrollbar{width:4px}
+  .panel-body::-webkit-scrollbar-thumb{background:var(--border-bright);border-radius:2px}
+  #divider{width:4px;background:var(--border);cursor:col-resize;flex-shrink:0;transition:background .15s;position:relative}
+  #divider::after{content:'';position:absolute;inset:0 -3px}
+  #divider:hover,#divider.dragging{background:var(--accent)}
+  .step{border-bottom:1px solid var(--border)}
+  .step:last-child{border-bottom:none}
+  .step-header{display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;user-select:none;min-height:38px}
+  .step-header:hover{background:rgba(255,255,255,.02)}
+  .step-num{font-size:10px;color:var(--text-dim);width:18px;flex-shrink:0;text-align:right}
+  .step-badge{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:3px;flex-shrink:0;width:58px;text-align:center}
+  .step-label{flex:1;font-size:12px;color:var(--text);line-height:1.3}
+  .step-chevron{font-size:9px;color:var(--text-dim);transition:transform .15s;flex-shrink:0}
+  .step.open .step-chevron{transform:rotate(90deg)}
+  .s-idle{background:var(--idle);color:var(--idle-fg)}
+  .s-working{background:var(--working);color:var(--working-fg);animation:pulse-badge 1s infinite}
+  .s-done{background:var(--done);color:var(--done-fg)}
+  .s-error{background:var(--error);color:var(--error-fg)}
+  .s-skip{background:var(--skip);color:var(--skip-fg)}
+  @keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.6}}
+  .step-body{display:none;padding:0 14px 12px 42px;flex-direction:column;gap:8px}
+  .step.open .step-body{display:flex}
+  .step-endpoint{font-size:10px;color:var(--text-dim);line-height:1.6}
+  .step-endpoint b{color:var(--accent)}
+  .step-field{display:flex;flex-direction:column;gap:3px}
+  .step-field label{font-size:10px;color:var(--text-dim);letter-spacing:.06em;text-transform:uppercase}
+  .step-field input,.step-field textarea{background:var(--bg);border:1px solid var(--border-bright);color:var(--text-bright);font-family:var(--mono);font-size:12px;padding:5px 8px;border-radius:3px;outline:none;resize:vertical;transition:border-color .15s}
+  .step-field input:focus,.step-field textarea:focus{border-color:var(--accent)}
+  .step-error-msg{font-size:11px;color:var(--error-fg);background:rgba(240,112,112,.07);border:1px solid rgba(240,112,112,.2);border-radius:3px;padding:5px 8px;display:none;white-space:pre-wrap}
+  .step-error-msg.visible{display:block}
+  .step-result{font-size:11px;color:var(--done-fg);background:rgba(77,219,138,.06);border:1px solid rgba(77,219,138,.15);border-radius:3px;padding:5px 8px;display:none;white-space:pre-wrap}
+  .step-result.visible{display:block}
+  .step-run-btn{align-self:flex-start;background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);font-family:var(--mono);font-size:11px;padding:4px 12px;border-radius:3px;cursor:pointer;letter-spacing:.06em;transition:background .15s,color .15s}
+  .step-run-btn:hover{background:var(--accent);color:#fff}
+  .step-run-btn:disabled{opacity:.35;cursor:not-allowed}
+  .step-run-btn.terminal-only{background:transparent;border-color:var(--border-bright);color:var(--text-dim);cursor:default}
+  .log-entry{border-bottom:1px solid var(--border);animation:slide-in .15s ease}
+  @keyframes slide-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+  .log-entry:last-child{border-bottom:none}
+  .log-entry-header{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;user-select:none}
+  .log-entry-header:hover{background:rgba(255,255,255,.02)}
+  .log-ts{font-size:10px;color:var(--text-dim);flex-shrink:0;width:68px}
+  .log-method{font-size:9px;font-weight:700;letter-spacing:.06em;padding:1px 5px;border-radius:2px;flex-shrink:0;width:34px;text-align:center}
+  .m-GET{background:rgba(74,124,247,.15);color:#6b9fff}
+  .m-POS{background:rgba(77,219,138,.12);color:#4ddb8a}
+  .m-PUT{background:rgba(255,208,96,.12);color:#ffd060}
+  .m-DEL{background:rgba(240,112,112,.12);color:#f07070}
+  .log-path{flex:1;font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .log-summary{font-size:10px;color:var(--text-dim);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .log-chevron{font-size:9px;color:var(--text-dim);transition:transform .15s;flex-shrink:0}
+  .log-entry.open .log-chevron{transform:rotate(90deg)}
+  .log-entry-body{display:none;padding:0 14px 10px 14px}
+  .log-entry.open .log-entry-body{display:block}
+  .log-payload{background:var(--bg);border:1px solid var(--border-bright);border-radius:3px;padding:8px 10px;font-size:11px;color:var(--text-dim);white-space:pre-wrap;word-break:break-all;max-height:160px;overflow-y:auto;line-height:1.6}
+  .log-payload .key{color:var(--accent)}
+  .log-payload .str{color:#a8d8a8}
+  .log-payload .num{color:#ffd060}
+  .log-payload .bool{color:#f07070}
+  #log-empty{padding:40px 20px;text-align:center;color:var(--text-dim);font-size:11px;line-height:2}
+  .log-payload::-webkit-scrollbar{width:3px}
+  .log-payload::-webkit-scrollbar-thumb{background:var(--border-bright)}
+</style>
+</head>
+<body>
+<div id="header">
+  <div id="status-dot"></div>
+  <div class="logo">SF <span>·</span> OPS</div>
+  <div class="sep"></div>
+  <div class="meta">v<b id="hdr-version">—</b> &nbsp;·&nbsp; branch <b id="hdr-branch">—</b> &nbsp;·&nbsp; <span id="hdr-clean">—</span></div>
+  <div class="spacer"></div>
+  <div id="poll-indicator">● LIVE</div>
+</div>
+<div id="workspace">
+  <div class="panel" id="panel-runner">
+    <div class="panel-header">
+      <span class="ph-label">Release Runner</span>
+      <span class="ph-count" id="runner-progress">0 / 13 done</span>
+    </div>
+    <div class="panel-body" id="steps-list"></div>
+  </div>
+  <div id="divider"></div>
+  <div class="panel" id="panel-log">
+    <div class="panel-header">
+      <span class="ph-label">Server Log</span>
+      <span class="ph-count" id="log-count">0 entries</span>
+    </div>
+    <div class="panel-body" id="log-list">
+      <div id="log-empty">No log entries yet.<br>Waiting for server activity…</div>
+    </div>
+  </div>
+</div>
+<script>
+const BASE = 'http://localhost:3799';
+let state = { version: null, logSeenIds: new Set(), stepStates: {}, stepResults: {} };
+
+const STEPS = [
+  { id:'test-store',      label:'Store tests',          method:'GET',  path:'/test',            prereqs:[],                    fields:[], terminalOnly:false, desc:'Run 170 contract tests. Must pass before any release action.' },
+  { id:'test-render',     label:'Render tests',         method:'GET',  path:'/test-render',      prereqs:['test-store'],         fields:[], terminalOnly:false, desc:'Playwright render gate — 15/15 snapshots must match.' },
+  { id:'bump',            label:'Bump version',         method:'POST', path:'/bump',             prereqs:['test-store','test-render'], fields:[{id:'bump-version',label:'Override version (blank for auto)',placeholder:'e.g. 0.9.98',vfn:()=>''}], terminalOnly:false, desc:'Increment patch from latest git tag. Writes version to HTML.' },
+  { id:'build',           label:'Build',                method:'POST', path:'/build',            prereqs:['bump'],               fields:[], terminalOnly:false, desc:'Syncs store.js into HTML between @@STORE-START/END sentinels.' },
+  { id:'lint',            label:'Lint',                 method:'POST', path:'/lint',             prereqs:['build'],              fields:[], terminalOnly:false, desc:'HTML integrity check — buttons, SVG balance, sentinels, version.' },
+  { id:'snapshot',        label:'Snapshot',             method:'POST', path:'/snapshot',         prereqs:['lint'],               fields:[{id:'snap-version',label:'Version',placeholder:'e.g. 0.9.98',vfn:()=>state.version||''}], terminalOnly:false, desc:'Copy build + HANDOFF into releases/vX.Y.Z/' },
+  { id:'gen-readme',      label:'Generate README',      method:'POST', path:'/generate-readme',  prereqs:['snapshot'],           fields:[], terminalOnly:false, desc:'Regenerate README.md from live git, test, endpoint, version sources.' },
+  { id:'validate-readme', label:'Validate README',      method:'GET',  path:'/validate-readme',  prereqs:['gen-readme'],         fields:[{id:'val-version',label:'Version',placeholder:'e.g. 0.9.98',vfn:()=>state.version||''}], terminalOnly:false, desc:'Must return ok:true before release can continue.' },
+  { id:'git-feat',        label:'Git commit (feat)',    method:'POST', path:'/git',              prereqs:['validate-readme'],    fields:[{id:'git-feat-msg',label:'Commit message',placeholder:'feat: …',vfn:()=>state.version?'feat: v'+state.version:'feat: '}], terminalOnly:false, desc:'Commit all staged changes.' },
+  { id:'update-handoff',  label:'Update HANDOFF',       method:'POST', path:'/update-handoff',   prereqs:['git-feat'],           fields:[], terminalOnly:false, desc:'Populate all live fields in HANDOFF.md.' },
+  { id:'git-handoff',     label:'Git commit (HANDOFF)', method:'POST', path:'/git',              prereqs:['update-handoff'],     fields:[{id:'git-handoff-msg',label:'Commit message',placeholder:'chore: HANDOFF …',vfn:()=>state.version?'chore: HANDOFF v'+state.version:'chore: HANDOFF'}], terminalOnly:false, desc:'Commit the updated HANDOFF.md.' },
+  { id:'changelog',       label:'Changelog',            method:'POST', path:'/changelog',        prereqs:['git-handoff'],        fields:[{id:'changelog-ver',label:'Version',placeholder:'e.g. 0.9.98',vfn:()=>state.version||''}], terminalOnly:false, desc:'Auto-generate CHANGELOG.md entry from git log since last tag.' },
+  { id:'tag',             label:'Tag',                  method:'POST', path:'/tag',              prereqs:['changelog'],          fields:[{id:'tag-name',label:'Tag',placeholder:'v0.9.98',vfn:()=>state.version?'v'+state.version:''},{id:'tag-msg',label:'Tag message',placeholder:'Release v0.9.98 — …',vfn:()=>state.version?'Release v'+state.version+' — ':''}], terminalOnly:false, desc:'Create annotated git tag. Point of no return.' },
+  { id:'push',            label:'Push to GitHub',       method:null,   path:null,                prereqs:['tag'],                fields:[], terminalOnly:true,  desc:'Terminal: git push && git push --tags | Then: GitHub Releases > New release > select tag > attach html > Publish' },
+];
+
+function renderSteps() {
+  const list = document.getElementById('steps-list');
+  list.innerHTML = '';
+  STEPS.forEach((step, idx) => {
+    const s = state.stepStates[step.id] || 'idle';
+    const el = document.createElement('div');
+    el.className = 'step';
+    el.id = 'step-' + step.id;
+    const bl = {idle:'IDLE',working:'BUSY',done:'DONE',error:'ERR',skip:'SKIP'};
+    el.innerHTML =
+      '<div class="step-header" onclick="toggleStep(\''+step.id+'\')">'+
+        '<span class="step-num">'+(idx+1)+'</span>'+
+        '<span class="step-badge s-'+s+'">'+bl[s]+'</span>'+
+        '<span class="step-label">'+step.label+'</span>'+
+        '<span class="step-chevron">▶</span>'+
+      '</div>'+
+      '<div class="step-body">'+
+        '<div class="step-endpoint"><b>'+(step.method||'—')+'</b> '+(step.path||'')+' <span style="color:var(--text-dim);font-size:10px">— '+esc(step.desc)+'</span></div>'+
+        (step.fields||[]).map(f =>
+          '<div class="step-field"><label>'+esc(f.label)+'</label>'+
+          '<input type="text" id="field-'+f.id+'" placeholder="'+esc(f.placeholder)+'" value="'+esc(f.vfn())+'"></div>'
+        ).join('')+
+        '<div class="step-error-msg" id="err-'+step.id+'"></div>'+
+        '<div class="step-result" id="res-'+step.id+'"></div>'+
+        (step.terminalOnly
+          ? '<button class="step-run-btn terminal-only" disabled>↑ run in terminal</button>'
+          : '<button class="step-run-btn" onclick="runStep(\''+step.id+'\')">&#9654; run</button>')+
+      '</div>';
+    list.appendChild(el);
+  });
+  updateProgress();
+}
+
+function toggleStep(id) {
+  const el = document.getElementById('step-'+id);
+  if (!el) return;
+  const step = STEPS.find(s => s.id===id);
+  if (step && !el.classList.contains('open')) {
+    (step.fields||[]).forEach(f => {
+      const inp = document.getElementById('field-'+f.id);
+      if (inp && !inp.value) inp.value = f.vfn();
+    });
+  }
+  el.classList.toggle('open');
+}
+
+function updateProgress() {
+  const done = STEPS.filter(s => state.stepStates[s.id]==='done').length;
+  document.getElementById('runner-progress').textContent = done+' / '+(STEPS.length-1)+' done';
+}
+
+function setStepState(id, s, msg) {
+  state.stepStates[id] = s;
+  const el = document.getElementById('step-'+id);
+  if (!el) return;
+  const badge = el.querySelector('.step-badge');
+  badge.className = 'step-badge s-'+s;
+  badge.textContent = {idle:'IDLE',working:'BUSY',done:'DONE',error:'ERR',skip:'SKIP'}[s]||s.toUpperCase();
+  const errEl = document.getElementById('err-'+id);
+  const resEl = document.getElementById('res-'+id);
+  if (msg && s==='error') { errEl.textContent=msg; errEl.classList.add('visible'); resEl.classList.remove('visible'); }
+  else if (msg && s==='done') { resEl.textContent=msg; resEl.classList.add('visible'); errEl.classList.remove('visible'); }
+  else { errEl.classList.remove('visible'); resEl.classList.remove('visible'); }
+  updateProgress();
+}
+
+function fv(id) { const e = document.getElementById('field-'+id); return e?e.value.trim():''; }
+
+function buildBody(step) {
+  const b = {};
+  if (step.id==='bump')       { const v=fv('bump-version'); if(v) b.version=v; }
+  if (step.id==='snapshot')   { b.v = fv('snap-version')||state.version; }
+  if (step.id==='git-feat')   { b.message = fv('git-feat-msg'); }
+  if (step.id==='git-handoff'){ b.message = fv('git-handoff-msg'); }
+  if (step.id==='changelog')  { b.version = fv('changelog-ver')||state.version; }
+  if (step.id==='tag')        { b.tag=fv('tag-name'); b.message=fv('tag-msg'); }
+  return b;
+}
+
+function buildQuery(step) {
+  if (step.id==='validate-readme') { const v=fv('val-version')||state.version; return v?'v='+encodeURIComponent(v):''; }
+  if (step.id==='snapshot')        { const v=fv('snap-version')||state.version; return v?'v='+encodeURIComponent(v):''; }
+  return '';
+}
+
+function summarise(id, d) {
+  if (id==='test-store')      return d.ok ? '✓ passed' : '✗ failed';
+  if (id==='test-render')     return d.ok ? '✓ '+d.passed+'/'+d.total+' passed' : '✗ '+d.failed+' failed';
+  if (id==='bump')            return '→ v'+d.newVersion+' ('+d.ms+'ms)';
+  if (id==='build')           return '✓ build ok ('+d.ms+'ms)';
+  if (id==='lint')            return d.ok ? '✓ lint clean' : '✗ '+d.output;
+  if (id==='snapshot')        return '✓ snapshot written';
+  if (id==='gen-readme')      return '✓ README generated';
+  if (id==='validate-readme') return d.ok ? '✓ valid' : '✗ missing link/label';
+  if (id==='git-feat')        return '✓ committed';
+  if (id==='update-handoff')  return '✓ HANDOFF updated ('+d.ms+'ms)';
+  if (id==='git-handoff')     return '✓ committed';
+  if (id==='changelog')       return '✓ changelog written';
+  if (id==='tag')             return '✓ tagged '+d.tag;
+  return JSON.stringify(d).slice(0,120);
+}
+
+function refreshDefaults() {
+  STEPS.forEach(step => {
+    (step.fields||[]).forEach(f => {
+      const inp = document.getElementById('field-'+f.id);
+      if (inp && !inp.value) inp.value = f.vfn();
+    });
+  });
+}
+
+async function runStep(id) {
+  const step = STEPS.find(s => s.id===id);
+  if (!step || step.terminalOnly) return;
+  for (const pre of step.prereqs) {
+    if (state.stepStates[pre]!=='done') {
+      const ps = STEPS.find(s => s.id===pre);
+      setStepState(id,'error','Prerequisite not met — run "'+(ps?ps.label:pre)+'" first.');
+      const el = document.getElementById('step-'+id);
+      if (el && !el.classList.contains('open')) el.classList.add('open');
+      return;
+    }
+  }
+  setStepState(id,'working');
+  const el = document.getElementById('step-'+id);
+  if (el && !el.classList.contains('open')) el.classList.add('open');
+  try {
+    let url = BASE+step.path, opts = {method:step.method};
+    if (step.method==='POST') { opts.headers={'Content-Type':'application/json'}; opts.body=JSON.stringify(buildBody(step)); }
+    else { const qp=buildQuery(step); if(qp) url+='?'+qp; }
+    const resp = await fetch(url,opts);
+    const text = await resp.text();
+    let data; try{data=JSON.parse(text);}catch(e){data={raw:text.slice(0,300)};}
+    if (id==='bump' && data.newVersion) { state.version=data.newVersion; refreshDefaults(); }
+    if (data.ok===false||resp.status>=400) setStepState(id,'error',data.error||data.output||text.slice(0,200));
+    else setStepState(id,'done',summarise(id,data));
+  } catch(e) { setStepState(id,'error','Network error: '+e.message); }
+}
+
+// Log
+async function pollLog() {
+  try {
+    const data = await fetch(BASE+'/log').then(r=>r.json());
+    const entries = data.entries||[];
+    let added=0;
+    entries.forEach(e => {
+      const key = e.ts+''+e.action;
+      if (state.logSeenIds.has(key)) return;
+      state.logSeenIds.add(key);
+      prependLog(e);
+      added++;
+    });
+    if (added>0) { flashPoll(); document.getElementById('log-empty').style.display='none'; }
+    document.getElementById('log-count').textContent = state.logSeenIds.size+' entries';
+  } catch(e) { document.getElementById('status-dot').classList.add('err'); }
+}
+
+function prependLog(e) {
+  const list = document.getElementById('log-list');
+  const el = document.createElement('div');
+  el.className = 'log-entry';
+  const action = e.action||'';
+  const method = /^POST /i.test(action)?'POS':/^PUT /i.test(action)?'PUT':/^DEL/i.test(action)?'DEL':'GET';
+  const path = action.replace(/^(GET|POST|PUT|DELETE)\s+/i,'');
+  const result = e.result||'';
+  const ts = new Date(e.ts).toTimeString().slice(0,8);
+  el.innerHTML =
+    '<div class="log-entry-header" onclick="this.parentElement.classList.toggle(\'open\')">'+
+      '<span class="log-ts">'+ts+'</span>'+
+      '<span class="log-method m-'+method+'">'+method+'</span>'+
+      '<span class="log-path">'+esc(path)+'</span>'+
+      '<span class="log-summary">'+esc(result.slice(0,60))+'</span>'+
+      '<span class="log-chevron">▶</span>'+
+    '</div>'+
+    '<div class="log-entry-body">'+
+      '<div class="log-payload">'+syntaxHL({action,result,ts:new Date(e.ts).toISOString()})+'</div>'+
+    '</div>';
+  list.insertBefore(el, list.firstChild);
+}
+
+function syntaxHL(obj) {
+  let s; try{s=JSON.stringify(obj,null,2);}catch(e){s=String(obj);}
+  s=esc(s);
+  return s
+    .replace(/"([^"]+)":/g,'<span class="key">"$1"</span>:')
+    .replace(/: "([^"]*)"/g,': <span class="str">"$1"</span>')
+    .replace(/: (\d+\.?\d*)/g,': <span class="num">$1</span>')
+    .replace(/: (true|false|null)/g,': <span class="bool">$1</span>');
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function flashPoll(){const e=document.getElementById('poll-indicator');e.classList.add('pulse');setTimeout(()=>e.classList.remove('pulse'),400);}
+
+async function pollStatus() {
+  try {
+    const d = await fetch(BASE+'/status').then(r=>r.json());
+    document.getElementById('hdr-version').textContent = d.version||'—';
+    document.getElementById('hdr-branch').textContent  = d.git?.branch||'—';
+    document.getElementById('hdr-clean').textContent   = d.git?.clean?'clean':'● uncommitted';
+    document.getElementById('status-dot').classList.remove('err');
+    if (!state.version) { state.version=d.version; refreshDefaults(); }
+  } catch(e) {
+    document.getElementById('status-dot').classList.add('err');
+    document.getElementById('hdr-version').textContent='offline';
+  }
+}
+
+// Divider drag
+(function(){
+  const dv=document.getElementById('divider'),rn=document.getElementById('panel-runner'),ws=document.getElementById('workspace');
+  let drag=false,sx=0,sw=0;
+  dv.addEventListener('mousedown',e=>{drag=true;sx=e.clientX;sw=rn.getBoundingClientRect().width;dv.classList.add('dragging');document.body.style.cursor='col-resize';document.body.style.userSelect='none'});
+  document.addEventListener('mousemove',e=>{if(!drag)return;const wsw=ws.getBoundingClientRect().width;const nw=Math.min(Math.max(sw+(e.clientX-sx),240),wsw-240);rn.style.flex='none';rn.style.width=nw+'px'});
+  document.addEventListener('mouseup',()=>{if(!drag)return;drag=false;dv.classList.remove('dragging');document.body.style.cursor='';document.body.style.userSelect=''});
+})();
+
+renderSteps();
+pollStatus();
+pollLog();
+setInterval(pollStatus,5000);
+setInterval(pollLog,2000);
+</script>
+</body>
+</html>
