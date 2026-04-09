@@ -218,6 +218,8 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 
 ### Context for next session
 
+v0.9.99 shipped. This cycle: SF_VERSION single source of truth, bump-after-gates release flow reorder, logview.html ops console (15 steps, Run All, PASS/FAIL highlighting, 60/60 tests), logview-test.html, GET /check-pages, zero-failures gate (hardcoded counts removed everywhere), sequence-log-viewer repo created. Next: (1) sequence-log-viewer initial commit — copy logview.html + logview-test.html + logview.sf.config.json + .gitattributes, push, close Issue #32. (2) test runner refactor — extract IIFE into sequence-builder.test-runner.js, export plain array from test.js (Issue opened). (3) close Issue #27 — superseded by logview.html.
+
 ### Context for next session
 v0.9.95 shipped. This cycle: ARCH-001 complete (actor/note/fragment drag delegated to Factory), BUG-001+BUG-002 fixed, POST /bump and /tag now derive version from nextVersionFromGit(). Next: MessageElement Y-drag to complete ARCH-001. GET /slice is the primary token-saving tool — use it before loading full files.
 
