@@ -1,0 +1,229 @@
+{
+  "label": "SequenceForge",
+  "baseUrl": "http://localhost:3799",
+  "logFormat": "sf-server",
+  "repo": "MeatPopSci1972/sequence-builder",
+  "steps": [
+    {
+      "id": "test-store",
+      "label": "Store tests",
+      "method": "GET",
+      "path": "/test",
+      "prereqs": [],
+      "fields": [],
+      "terminalOnly": false,
+      "desc": "Run 170 contract tests. Must pass before any release action."
+    },
+    {
+      "id": "test-render",
+      "label": "Render tests",
+      "method": "GET",
+      "path": "/test-render",
+      "prereqs": [
+        "test-store"
+      ],
+      "fields": [],
+      "terminalOnly": false,
+      "desc": "Playwright render gate — 15/15 snapshots must match."
+    },
+    {
+      "id": "bump",
+      "label": "Bump version",
+      "method": "POST",
+      "path": "/bump",
+      "prereqs": [
+        "test-store",
+        "test-render"
+      ],
+      "fields": [
+        {
+          "id": "bump-version",
+          "label": "Override version (blank for auto)",
+          "placeholder": "e.g. 0.9.98"
+        }
+      ],
+      "terminalOnly": false,
+      "desc": "Increment patch from latest git tag. Writes version to HTML."
+    },
+    {
+      "id": "build",
+      "label": "Build",
+      "method": "POST",
+      "path": "/build",
+      "prereqs": [
+        "bump"
+      ],
+      "fields": [],
+      "terminalOnly": false,
+      "desc": "Syncs store.js into HTML between @@STORE-START/END sentinels."
+    },
+    {
+      "id": "lint",
+      "label": "Lint",
+      "method": "POST",
+      "path": "/lint",
+      "prereqs": [
+        "build"
+      ],
+      "fields": [],
+      "terminalOnly": false,
+      "desc": "HTML integrity check — buttons, SVG balance, sentinels, version."
+    },
+    {
+      "id": "snapshot",
+      "label": "Snapshot",
+      "method": "POST",
+      "path": "/snapshot",
+      "prereqs": [
+        "lint"
+      ],
+      "fields": [
+        {
+          "id": "snap-version",
+          "label": "Version",
+          "placeholder": "e.g. 0.9.98",
+          "valueFrom": "state.version"
+        }
+      ],
+      "terminalOnly": false,
+      "desc": "Copy build + HANDOFF into releases/vX.Y.Z/"
+    },
+    {
+      "id": "gen-readme",
+      "label": "Generate README",
+      "method": "POST",
+      "path": "/generate-readme",
+      "prereqs": [
+        "snapshot"
+      ],
+      "fields": [],
+      "terminalOnly": false,
+      "desc": "Regenerate README.md from live git, test, endpoint, version sources."
+    },
+    {
+      "id": "validate-readme",
+      "label": "Validate README",
+      "method": "GET",
+      "path": "/validate-readme",
+      "prereqs": [
+        "gen-readme"
+      ],
+      "fields": [
+        {
+          "id": "val-version",
+          "label": "Version",
+          "placeholder": "e.g. 0.9.98",
+          "valueFrom": "state.version"
+        }
+      ],
+      "terminalOnly": false,
+      "desc": "Must return ok:true before release can continue."
+    },
+    {
+      "id": "git-feat",
+      "label": "Git commit (feat)",
+      "method": "POST",
+      "path": "/git",
+      "prereqs": [
+        "validate-readme"
+      ],
+      "fields": [
+        {
+          "id": "git-feat-msg",
+          "label": "Commit message",
+          "placeholder": "feat: …",
+          "valueFrom": "'feat: v'+state.version"
+        }
+      ],
+      "terminalOnly": false,
+      "desc": "Commit all staged changes."
+    },
+    {
+      "id": "update-handoff",
+      "label": "Update HANDOFF",
+      "method": "POST",
+      "path": "/update-handoff",
+      "prereqs": [
+        "git-feat"
+      ],
+      "fields": [],
+      "terminalOnly": false,
+      "desc": "Populate all live fields in HANDOFF.md."
+    },
+    {
+      "id": "git-handoff",
+      "label": "Git commit (HANDOFF)",
+      "method": "POST",
+      "path": "/git",
+      "prereqs": [
+        "update-handoff"
+      ],
+      "fields": [
+        {
+          "id": "git-handoff-msg",
+          "label": "Commit message",
+          "placeholder": "chore: HANDOFF …",
+          "valueFrom": "'chore: HANDOFF v'+state.version"
+        }
+      ],
+      "terminalOnly": false,
+      "desc": "Commit the updated HANDOFF.md."
+    },
+    {
+      "id": "changelog",
+      "label": "Changelog",
+      "method": "POST",
+      "path": "/changelog",
+      "prereqs": [
+        "git-handoff"
+      ],
+      "fields": [
+        {
+          "id": "changelog-ver",
+          "label": "Version",
+          "placeholder": "e.g. 0.9.98",
+          "valueFrom": "state.version"
+        }
+      ],
+      "terminalOnly": false,
+      "desc": "Auto-generate CHANGELOG.md entry from git log since last tag."
+    },
+    {
+      "id": "tag",
+      "label": "Tag",
+      "method": "POST",
+      "path": "/tag",
+      "prereqs": [
+        "changelog"
+      ],
+      "fields": [
+        {
+          "id": "tag-name",
+          "label": "Tag",
+          "placeholder": "v0.9.98",
+          "valueFrom": "'v'+state.version"
+        },
+        {
+          "id": "tag-msg",
+          "label": "Tag message",
+          "placeholder": "Release v0.9.98 — …",
+          "valueFrom": "'Release v'+state.version+' — '"
+        }
+      ],
+      "terminalOnly": false,
+      "desc": "Create annotated git tag. Point of no return."
+    },
+    {
+      "id": "push",
+      "label": "Push to GitHub",
+      "method": null,
+      "path": null,
+      "prereqs": [
+        "tag"
+      ],
+      "fields": [],
+      "terminalOnly": true,
+      "desc": "Terminal: git push && git push --tags\nThen: GitHub → Releases → New release → select tag → attach releases/vX.Y.Z/sequence-builder.html → Publish"
+    }
+  ]
+}

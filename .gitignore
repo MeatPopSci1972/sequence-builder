@@ -4,8 +4,8 @@ releases/*-test/
 test-snapshots/
 node_modules/
 build/
-*.json
-*.txt
+scratch-*.json
+temp-*.json
 _*.js
 fix-*.js
 suites-data.js
