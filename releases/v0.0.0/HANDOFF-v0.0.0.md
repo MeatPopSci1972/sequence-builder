@@ -198,9 +198,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.97
-- Bump pattern: html.split('0.9.97').join('0.9.98')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.97/sequence-builder.html
+- Current: 0.9.95
+- Bump pattern: html.split('0.9.95').join('0.9.96')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.95/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -269,9 +269,9 @@ FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
 - `## FIRST ACTIONS` — gate counts must match `GET /test` (170/170) and `GET /test-render` (15/15)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.97)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.97').join('0.9.98')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.97)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.95)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.95').join('0.9.96')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.95)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
@@ -357,4 +357,11 @@ Optional manual block (appended by AI immediately after auto-gen, before commit)
 - GitHub: https://github.com/MeatPopSci1972/sequence-builder
 - Local: E:\uml2prompt\sequence-builder-prototype
 - Branch: main
+
+## SEQUENCE-LOG-VIEWER
+- GitHub: https://github.com/MeatPopSci1972/sequence-log-viewer
+- Status: TRANSITION — logview.html is being extracted here from SF repo
+- SF config: logview.sf.config.json (committed to SF repo, drives the left panel)
+- logview.html and logview-test.html remain in SF repo as reference until standalone is verified
+- Issues 1–4 (config-driven panel, multi-repo, OTel, right-click copy) live in the logview repo
 

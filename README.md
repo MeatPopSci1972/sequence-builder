@@ -54,7 +54,9 @@ Capabilities pinned by the contract test suites:
 | `launcher.js` | |
 | `lint.js` | |
 | `log.html` | |
+| `logview-test.html` | |
 | `logview.html` | |
+| `logview.sf.config.json` | |
 | `package.json` | |
 | `sequence-builder.html` | |
 | `sequence-builder.store.js` | |
