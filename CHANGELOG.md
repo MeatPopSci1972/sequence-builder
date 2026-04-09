@@ -1,5 +1,32 @@
 # SequenceForge Changelog
 
+## v0.9.98 — v0.9.98
+_2026-04-09_
+
+### Features
+- v0.9.98
+- logview.html — PASS/FAIL log highlighting, Run All sequential runner
+- logview.html — split-pane ops console, release runner + live log feed
+
+### Fixes
+- logview — logHighlight fail-first, :false catch, syntaxHL no pre-escape; logview-test 60/60 green
+- logview.html — always refresh version fields from state after bump, not only when empty
+- logview.html — parse HTML response from GET /test, show actual pass count
+
+### Chores
+- fix .gitignore — scope json/txt ignores to scratch/temp patterns; track logview.sf.config.json
+- renormalize all files to LF per updates to .getattributes
+- remove sequence-log-viewer.gitattributes — copied to new repo, no longer needed here
+- improve .gitattributes (LF, binaries, export-ignore, diff drivers); add sequence-log-viewer.gitattributes for new repo
+- transition — logview.sf.config.json, logview.html note, HANDOFF ref to sequence-log-viewer
+- CHANGELOG
+- HANDOFF
+- add BUG-003 tombstone to HANDOFF.md — prevent resurrection
+- remove stale BUG-003 from HANDOFF.md (fixed long ago)
+- HANDOFF.md — update to v0.9.97, drop local icebox (GitHub Issues is authoritative), fix hot-reload note and test count
+
+---
+
 ## v0.9.97 — logview.html — PASS/FAIL log highlighting, Run All sequential runner
 _2026-04-09_
 
