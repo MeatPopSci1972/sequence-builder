@@ -12,7 +12,7 @@
       "prereqs": [],
       "fields": [],
       "terminalOnly": false,
-      "desc": "Run 170 contract tests. Must pass before any release action."
+      "desc": "Run contract tests. Gate: 0 failures."
     },
     {
       "id": "test-render",
@@ -24,26 +24,7 @@
       ],
       "fields": [],
       "terminalOnly": false,
-      "desc": "Playwright render gate — 15/15 snapshots must match."
-    },
-    {
-      "id": "bump",
-      "label": "Bump version",
-      "method": "POST",
-      "path": "/bump",
-      "prereqs": [
-        "test-store",
-        "test-render"
-      ],
-      "fields": [
-        {
-          "id": "bump-version",
-          "label": "Override version (blank for auto)",
-          "placeholder": "e.g. 0.9.98"
-        }
-      ],
-      "terminalOnly": false,
-      "desc": "Increment patch from latest git tag. Writes version to HTML."
+      "desc": "Playwright render gate. Gate: 0 failures."
     },
     {
       "id": "build",
@@ -51,7 +32,8 @@
       "method": "POST",
       "path": "/build",
       "prereqs": [
-        "bump"
+        "test-store",
+        "test-render"
       ],
       "fields": [],
       "terminalOnly": false,
@@ -70,18 +52,36 @@
       "desc": "HTML integrity check — buttons, SVG balance, sentinels, version."
     },
     {
-      "id": "snapshot",
-      "label": "Snapshot",
+      "id": "bump",
+      "label": "Bump version",
       "method": "POST",
-      "path": "/snapshot",
+      "path": "/bump",
       "prereqs": [
         "lint"
       ],
       "fields": [
         {
+          "id": "bump-version",
+          "label": "Override version (blank for auto)",
+          "placeholder": "e.g. 0.9.99"
+        }
+      ],
+      "terminalOnly": false,
+      "desc": "Bump version AFTER green gates. Single source of truth: SF_VERSION constant."
+    },
+    {
+      "id": "snapshot",
+      "label": "Snapshot",
+      "method": "POST",
+      "path": "/snapshot",
+      "prereqs": [
+        "bump"
+      ],
+      "fields": [
+        {
           "id": "snap-version",
           "label": "Version",
-          "placeholder": "e.g. 0.9.98",
+          "placeholder": "e.g. 0.9.99",
           "valueFrom": "state.version"
         }
       ],
@@ -98,7 +98,7 @@
       ],
       "fields": [],
       "terminalOnly": false,
-      "desc": "Regenerate README.md from live git, test, endpoint, version sources."
+      "desc": "Regenerate README.md from live sources."
     },
     {
       "id": "validate-readme",
@@ -112,7 +112,7 @@
         {
           "id": "val-version",
           "label": "Version",
-          "placeholder": "e.g. 0.9.98",
+          "placeholder": "e.g. 0.9.99",
           "valueFrom": "state.version"
         }
       ],
@@ -181,7 +181,7 @@
         {
           "id": "changelog-ver",
           "label": "Version",
-          "placeholder": "e.g. 0.9.98",
+          "placeholder": "e.g. 0.9.99",
           "valueFrom": "state.version"
         }
       ],
@@ -200,13 +200,13 @@
         {
           "id": "tag-name",
           "label": "Tag",
-          "placeholder": "v0.9.98",
+          "placeholder": "v0.9.99",
           "valueFrom": "'v'+state.version"
         },
         {
           "id": "tag-msg",
           "label": "Tag message",
-          "placeholder": "Release v0.9.98 — …",
+          "placeholder": "Release v0.9.99 — …",
           "valueFrom": "'Release v'+state.version+' — '"
         }
       ],
@@ -224,6 +224,25 @@
       "fields": [],
       "terminalOnly": true,
       "desc": "Terminal: git push && git push --tags\nThen: GitHub → Releases → New release → select tag → attach releases/vX.Y.Z/sequence-builder.html → Publish"
+    },
+    {
+      "id": "check-pages",
+      "label": "Verify live demo",
+      "method": "GET",
+      "path": "/check-pages",
+      "prereqs": [
+        "push"
+      ],
+      "fields": [
+        {
+          "id": "pages-version",
+          "label": "Version",
+          "placeholder": "e.g. 0.9.99",
+          "valueFrom": "state.version"
+        }
+      ],
+      "terminalOnly": false,
+      "desc": "Confirm GitHub Pages is serving the release. Returns ok:true when HTTP 200."
     }
   ]
 }
