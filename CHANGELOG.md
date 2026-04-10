@@ -1,5 +1,19 @@
 # SequenceForge Changelog
 
+## v0.9.101 — v0.9.101
+_2026-04-10_
+
+### Features
+- v0.9.101
+
+### Fixes
+- check-pages prereq 'push'→'tag' — terminal-only steps never reach done, tag is the correct gate
+
+### Chores
+- HANDOFF
+
+---
+
 ## v0.9.100 — v0.9.100
 _2026-04-10_
 
