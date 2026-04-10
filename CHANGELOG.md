@@ -5,6 +5,27 @@ _2026-04-10_
 
 ### Features
 - v0.9.102
+- v0.9.102
+
+### Fixes
+- README corrected to v0.9.102 — generate-readme is authoritative, never edit README on GitHub directly
+- check-pages prereqs:[] — always runnable on demand, no release flow state required
+- check-pages uses state.version as authoritative source — field was not wired into buildQuery
+
+### Chores
+- HANDOFF — README is generated, never edit on GitHub directly
+- CHANGELOG
+- HANDOFF
+- add missing snapshots v0.9.100 and
+- HANDOFF v0.9.101 — session close-out
+
+---
+
+## v0.9.102 — v0.9.102
+_2026-04-10_
+
+### Features
+- v0.9.102
 
 ### Fixes
 - check-pages prereqs:[] — always runnable on demand, no release flow state required
