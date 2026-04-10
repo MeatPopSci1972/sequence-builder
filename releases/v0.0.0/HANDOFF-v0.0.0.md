@@ -3,8 +3,8 @@
 
 ## FIRST ACTIONS (do these before anything else)
 1. GET http://localhost:3799/status — confirm version, clean=true
-2. GET http://localhost:3799/test — confirm gate is green (170/170)
-3. GET http://localhost:3799/test-render — confirm render gate green (15/15)
+2. GET http://localhost:3799/test — confirm gate is green (0 failures)
+3. GET http://localhost:3799/test-render — confirm render gate green (0 failures)
 4. GET https://api.github.com/repos/MeatPopSci1972/sequence-builder/issues?state=open&per_page=50 — review open issues; this is the authoritative backlog
 5. Read this file fully, paying close attention to ## BACKLOG
 
@@ -37,7 +37,8 @@ Use POST /patch with a known anchor string to write. Full-file reads are PROHIBI
 | PUT | /<file> | Write any file in repo root. Add ?verify=1 to get {ok,wrote,status} back inline |
 | POST | /update-handoff | Populate all live fields in HANDOFF.md from /status+/test+/test-render. Idempotent. |
 | POST | /snapshot?v=X.Y.Z | Copy build + HANDOFF-vX.Y.Z.md into releases/vX.Y.Z/ |
-| GET | /validate-readme?v=X.Y.Z | Checks README has link + label text + no loop for vX.Y.Z. Returns {ok,hasLink,hasLabel,hasLoop}. addLog fires. |
+| GET | /validate-readme?v=X.Y.Z | Checks README has link + label text + no loop for vX.Y.Z. Returns {ok,hasLink,hasLabel,hasLoop}.
+| GET | /check-pages?v=X.Y.Z | Fetch live GitHub Pages URL. Returns {ok,status,url,ms}. Run after push to confirm release is live. addLog fires. |
 | POST | /git-restore | Restore tracked file to HEAD. Body: {file}. Returns {ok,file,output,ms}. **addLog fires** |
 | POST | /changelog | Auto-gen CHANGELOG.md entry from git log since last tag. Body: {version}. Returns {ok,version,entry,length,ms}. **addLog fires** |
 | POST | /bump | Increment patch from latest git tag, write to HTML. Body: {} or {version}. Returns {ok,newVersion,ms}. |
@@ -198,9 +199,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 3. Visible errors over graceful degradation.
 
 ## VERSION
-- Current: 0.9.95
-- Bump pattern: html.split('0.9.95').join('0.9.96')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.95/sequence-builder.html
+- Current: 0.9.99
+- Bump pattern: html.split('0.9.99').join('0.9.100')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.99/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -216,6 +217,8 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 > Items below are preserved as context/notes. Do not treat them as the work queue — GitHub Issues owns that.
 
 ### Context for next session
+
+v0.9.99 shipped. This cycle: SF_VERSION single source of truth, bump-after-gates release flow reorder, logview.html ops console (15 steps, Run All, PASS/FAIL highlighting, 60/60 tests), logview-test.html, GET /check-pages, zero-failures gate (hardcoded counts removed everywhere), sequence-log-viewer repo created. Next: (1) sequence-log-viewer initial commit — copy logview.html + logview-test.html + logview.sf.config.json + .gitattributes, push, close Issue #32. (2) test runner refactor — extract IIFE into sequence-builder.test-runner.js, export plain array from test.js (Issue opened). (3) close Issue #27 — superseded by logview.html.
 
 ### Context for next session
 v0.9.95 shipped. This cycle: ARCH-001 complete (actor/note/fragment drag delegated to Factory), BUG-001+BUG-002 fixed, POST /bump and /tag now derive version from nextVersionFromGit(). Next: MessageElement Y-drag to complete ARCH-001. GET /slice is the primary token-saving tool — use it before loading full files.
@@ -269,9 +272,9 @@ FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
 - `## FIRST ACTIONS` — gate counts must match `GET /test` (170/170) and `GET /test-render` (15/15)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.95)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.95').join('0.9.96')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.95)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.99)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.99').join('0.9.100')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.99)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
