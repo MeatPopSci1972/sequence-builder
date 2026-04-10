@@ -1,5 +1,24 @@
 # SequenceForge Changelog
 
+## v0.9.100 — v0.9.100
+_2026-04-10_
+
+### Features
+- v0.9.100
+- GET /check-pages — verify GitHub Pages live after push; step 15 in logview runner; HANDOFF + endpoints updated
+
+### Fixes
+- update-handoff reads SF_VERSION constant — last remaining SequenceForge v pattern removed
+
+### Chores
+- HANDOFF
+- logview.sf.config.json — correct step order (build→lint→bump), add check-pages step 15
+- HANDOFF v0.9.99 — context for next session
+- zero-failures gate — remove hardcoded test counts from preflight, logview, HANDOFF, sf-server update-handoff; add Suite 16 server scan tests
+- snapshot v0.9.99 — releases/v0.9.99/ written with correct SF_VERSION
+
+---
+
 ## v0.9.99 — v0.9.99
 _2026-04-09_
 
