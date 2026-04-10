@@ -244,6 +244,7 @@ function buildBody(step) {
 function buildQuery(step) {
   if (step.id==='validate-readme') { const v=fv('val-version')||state.version; return v?'v='+encodeURIComponent(v):''; }
   if (step.id==='snapshot')        { const v=fv('snap-version')||state.version; return v?'v='+encodeURIComponent(v):''; }
+  if (step.id==='check-pages')     { const v=state.version||fv('pages-version'); return v?'v='+encodeURIComponent(v):''; }
   return '';
 }
 
