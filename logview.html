@@ -159,7 +159,7 @@ const STEPS = [
   { id:'changelog',       label:'Changelog',            method:'POST', path:'/changelog',        prereqs:['git-handoff'],        fields:[{id:'changelog-ver',label:'Version',placeholder:'e.g. 0.9.98',vfn:()=>state.version||''}], terminalOnly:false, desc:'Auto-generate CHANGELOG.md entry from git log since last tag.' },
   { id:'tag',             label:'Tag',                  method:'POST', path:'/tag',              prereqs:['changelog'],          fields:[{id:'tag-name',label:'Tag',placeholder:'v0.9.98',vfn:()=>state.version?'v'+state.version:''},{id:'tag-msg',label:'Tag message',placeholder:'Release v0.9.98 — …',vfn:()=>state.version?'Release v'+state.version+' — ':''}], terminalOnly:false, desc:'Create annotated git tag. Point of no return.' },
   { id:'push',            label:'Push to GitHub',       method:null,   path:null,                prereqs:['tag'],                fields:[], terminalOnly:true,  desc:'Terminal: git push && git push --tags | Then: GitHub Releases > New release > select tag > attach html > Publish' },
-  { id:'check-pages', label:'Verify live demo', method:'GET', path:'/check-pages', prereqs:['tag'], fields:[{id:'pages-version',label:'Version',placeholder:'e.g. 0.9.99',vfn:()=>state.version||''}], terminalOnly:false, desc:'Confirm GitHub Pages is serving the release. Returns ok when HTTP 200.' },
+  { id:'check-pages', label:'Verify live demo', method:'GET', path:'/check-pages', prereqs:[], fields:[{id:'pages-version',label:'Version',placeholder:'e.g. 0.9.99',vfn:()=>state.version||''}], terminalOnly:false, desc:'Confirm GitHub Pages is serving the release. Returns ok when HTTP 200.' },
 ];
 
 function renderSteps() {

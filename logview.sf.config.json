@@ -230,9 +230,7 @@
     "label": "Verify live demo",
     "method": "GET",
     "path": "/check-pages",
-    "prereqs": [
-      "tag"
-    ],
+    "prereqs": [],
       "fields": [
         {
           "id": "pages-version",
