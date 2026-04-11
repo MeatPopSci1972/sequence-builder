@@ -1,4 +1,4 @@
-{
+﻿{
   "dark": {
     "name": "Dark",
     "vars": {
@@ -12,8 +12,8 @@
       "--accent2": "#7b6fff",
       "--accent3": "#ff6b8a",
       "--text": "#e8ecf4",
-      "--text2": "#8892aa",
-      "--text3": "#7d899e",
+      "--text2": "#a3acc4",
+      "--text3": "#a7b2c6",
       "--actor-bg": "#1a1f35",
       "--actor-border": "#3d4466",
       "--msg-color": "#4af0c4",
