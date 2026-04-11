@@ -6130,7 +6130,7 @@ function _renderEditBtn() {
 
 <div id="sf-tour-backdrop" style="display:none"></div>
 <div id="sf-tour-spotlight" style="display:none"></div>
-<div id="sf-tour-card" style="display:none">
+<div id="sf-tour-card" style="display:none" aria-live="polite" aria-atomic="true" role="dialog" aria-labelledby="sf-tour-title">
   <div id="sf-tour-step-label"></div>
   <div id="sf-tour-title"></div>
   <div id="sf-tour-body"></div>
@@ -6221,6 +6221,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('sf-tour-step-label').textContent='Step '+(current+1)+' of '+STEPS.length;
     document.getElementById('sf-tour-title').textContent=step.title;
     document.getElementById('sf-tour-body').innerHTML=step.body;
+    var card=document.getElementById('sf-tour-card');if(card)card.setAttribute('aria-label','Tour step '+(current+1)+' of '+STEPS.length+': '+step.title);
     var dots=document.getElementById('sf-tour-dots');
     dots.innerHTML=STEPS.map(function(_,i){return'<div class="sf-tour-dot'+(i===current?' active':'')+'"></div>';}).join('');
     document.getElementById('sf-tour-prev').style.visibility=current===0?'hidden':'visible';
