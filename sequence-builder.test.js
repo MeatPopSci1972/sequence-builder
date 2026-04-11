@@ -1,4 +1,4 @@
-// SequenceForge — Store Contract Tests
+﻿// SequenceForge — Store Contract Tests
 // Two-phase runner: test() registers, runAll() executes once at end.
 // Add new test() calls anywhere above runAll(). Count is always correct.
 'use strict'
@@ -1510,14 +1510,14 @@ test('placement mode has been removed — no pendingActorId in state', () => {
   // Verify the arm-and-fire mechanic is fully removed from uiState initializer
   // We check the store script for the removed field
   const fs = require('fs')
-  const html = fs.readFileSync('./sequence-builder.html', 'utf8')
+  const html = fs.readFileSync(require('path').join(__dirname, 'sequence-builder.html'), 'utf8')
   assert(!html.includes('pendingActorId: null'), 'pendingActorId removed from uiState')
   assert(!html.includes('uiState.pendingActorId'), 'no pendingActorId references in UI code')
 })
 
 test('renderActor does not reference the removed isPending flag', () => {
   const fs = require('fs')
-  const html = fs.readFileSync('./sequence-builder.html', 'utf8')
+  const html = fs.readFileSync(require('path').join(__dirname, 'sequence-builder.html'), 'utf8')
   // Extract renderActor function body
   const start = html.indexOf('function renderActor(')
   const end = html.indexOf('function renderMessage(', start)
@@ -1531,7 +1531,7 @@ test('renderActor does not reference the removed isPending flag', () => {
 
 test('messages can be added at any time without preconditions', () => {
   const fs = require('fs')
-  const html = fs.readFileSync('./sequence-builder.html', 'utf8')
+  const html = fs.readFileSync(require('path').join(__dirname, 'sequence-builder.html'), 'utf8')
   // No precondition guard on msg paths (proto2prod UI rule)
   assert(!html.includes('state.actors.length < 1'), 'no 1-actor guard in msg add paths')
   // Check that no guard blocks msg add (the one remaining actors.length < 2 is in API analysis text, not a guard)
@@ -1541,7 +1541,7 @@ test('messages can be added at any time without preconditions', () => {
 
 test('notes and fragments have no actor precondition guard', () => {
   const fs = require('fs')
-  const html = fs.readFileSync('./sequence-builder.html', 'utf8')
+  const html = fs.readFileSync(require('path').join(__dirname, 'sequence-builder.html'), 'utf8')
   // Find ADD_NOTE dispatch — should not be preceded by actors.length check
   const noteIdx = html.indexOf("type: 'ADD_NOTE'")
   const fragIdx = html.indexOf("type: 'ADD_FRAGMENT'")
@@ -2708,28 +2708,5 @@ test('SF_VERSION — no SequenceForge v\\d version reads in sf-readme-gen.js', f
   assert(regexReads.length === 0, 'found SequenceForge v regex reads in sf-readme-gen.js: ' + JSON.stringify(regexReads))
 })
 
-;(function runAll() {
-  var groups = [], groupMap = {}
-  for (var i = 0; i < _tests.length; i++) {
-    var tt = _tests[i], g = tt.group || "Tests"
-    if (!groupMap[g]) { groupMap[g] = []; groups.push(g) }
-    groupMap[g].push(tt)
-  }
-  var passed = 0, failed = 0
-  for (var gi = 0; gi < groups.length; gi++) {
-    var gn = groups[gi], gt = groupMap[gn]
-    console.log("\n" + gn)
-    for (var ti = 0; ti < gt.length; ti++) {
-      var tt = gt[ti]
-      try { tt.fn(); console.log("  ✓  " + tt.desc); passed++ }
-      catch(e) { console.log("  ✗  " + tt.desc); console.log("       " + e.message); failed++ }
-    }
-  }
-  var total = passed + failed
-  console.log("\n" + "──────────────────────────────────────────────────")
 
-  console.log("  " + passed + " passed  |  " + failed + " failed  |  " + total + " total")
-  console.log("──────────────────────────────────────────────────" + "\n")
-  if (failed > 0) { console.log("  Gate failed."); process.exit(1) }
-  console.log("  All tests pass. Gate green."); process.exit(0)
-})()
+module.exports = _tests

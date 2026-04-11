@@ -33,9 +33,9 @@ function generateReadme(ROOT) {
     .filter((v, i, a) => a.findIndex(x => x.name === v.name) === i);
 
   // 4. Test count — run tests live for accurate count
-  let testCount = '170';
+  let testCount = '175';
   try {
-    const testOut = execSync('node sequence-builder.test.js 2>&1', { cwd: ROOT, timeout: 30000 }).toString();
+    const testOut = execSync('node sequence-builder.test-runner.js 2>&1', { cwd: ROOT, timeout: 30000 }).toString();
     const cm = testOut.match(/(\d+) passed \| 0 failed/);
     if (cm) testCount = cm[1];
   } catch (e) {
@@ -103,7 +103,7 @@ function generateReadme(ROOT) {
     '## Running the tests',
     '',
     '```bash',
-    'node build.js && node sequence-builder.test.js',
+    'node build.js && node sequence-builder.test-runner.js',
     '# Expected: ' + testCount + ' passed | 0 failed | ' + testCount + ' total',
     '```',
     '',

@@ -242,8 +242,8 @@ function buildBody(step) {
 }
 
 function buildQuery(step) {
-  if (step.id==='validate-readme') { const v=fv('val-version')||state.version; return v?'v='+encodeURIComponent(v):''; }
-  if (step.id==='snapshot')        { const v=fv('snap-version')||state.version; return v?'v='+encodeURIComponent(v):''; }
+  if (step.id==='validate-readme') { const v=state.version||fv('val-version'); return v?'v='+encodeURIComponent(v):''; }
+  if (step.id==='snapshot')        { const v=state.version||fv('snap-version'); return v?'v='+encodeURIComponent(v):''; }
   if (step.id==='check-pages')     { const v=state.version||fv('pages-version'); return v?'v='+encodeURIComponent(v):''; }
   return '';
 }
@@ -290,6 +290,20 @@ async function runStep(id) {
   const el = document.getElementById('step-'+id);
   if (el && !el.classList.contains('open')) el.classList.add('open');
   try {
+    // check-pages: call GitHub API directly - no SF server needed
+    if (id === 'check-pages') {
+      const v = state.version || fv('pages-version');
+      if (!v) { setStepState(id,'error','Enter a version number first.'); return; }
+      setStepState(id,'working');
+      try {
+        const apiUrl = 'https://api.github.com/repos/MeatPopSci1972/sequence-builder/releases/tags/v'+v;
+        const r = await fetch(apiUrl, {headers:{Accept:'application/vnd.github+json'}});
+        if (r.status === 200) setStepState(id,'done','Release v'+v+' found on GitHub.');
+        else if (r.status === 404) setStepState(id,'error','Release v'+v+' not found on GitHub (404).');
+        else setStepState(id,'error','GitHub returned HTTP '+r.status);
+      } catch(e) { setStepState(id,'error','Network error: '+e.message); }
+      return;
+    }
     let url = BASE+step.path, opts = {method:step.method};
     if (step.method==='POST') { opts.headers={'Content-Type':'application/json'}; opts.body=JSON.stringify(buildBody(step)); }
     else { const qp=buildQuery(step); if(qp) url+='?'+qp; }

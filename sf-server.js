@@ -86,7 +86,7 @@ function normalizeWS(s) {
 function runTests(cb) {
   execFile('node', ['build.js'], { cwd: ROOT }, (bErr, bOut, bErrOut) => {
     if (bErr) return cb({ buildErr: bErrOut || bErr.message, testOut: null, exitCode: 1 });
-    execFile('node', ['sequence-builder.test.js'], { cwd: ROOT }, (tErr, tOut, tErrOut) => {
+    execFile('node', ['sequence-builder.test-runner.js'], { cwd: ROOT }, (tErr, tOut, tErrOut) => {
       cb({ buildErr: null, testOut: tOut || tErrOut, exitCode: tErr ? (tErr.code || 1) : 0 });
     });
   });
@@ -511,7 +511,7 @@ function writeVersionToHTML(newVer) {
   const uhParts = uhVer.split('.');
   const uhNext = uhParts[0]+'.'+uhParts[1]+'.'+(parseInt(uhParts[2],10)+1);
   // Step 2: run tests (skip build — already run in release flow)
-  execFile('node', ['sequence-builder.test.js'], { cwd: ROOT }, function(tErr, tOut, tErrOut) {
+  execFile('node', ['sequence-builder.test-runner.js'], { cwd: ROOT }, function(tErr, tOut, tErrOut) {
     const tRaw = tOut || tErrOut || '';
     const tM = tRaw.match(/(\d+) passed/);
     const storeCount = tM ? tM[1] : '?';

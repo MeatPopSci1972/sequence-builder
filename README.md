@@ -110,8 +110,8 @@ Served by `sf-server.js` via `launcher.js` on port 3799.
 ## Running the tests
 
 ```bash
-node build.js && node sequence-builder.test.js
-# Expected: 170 passed | 0 failed | 170 total
+node build.js && node sequence-builder.test-runner.js
+# Expected: 175 passed | 0 failed | 175 total
 ```
 
 Or via the dev server: `GET http://localhost:3799/test`
