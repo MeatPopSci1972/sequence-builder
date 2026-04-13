@@ -1,5 +1,41 @@
 # SequenceForge Changelog
 
+## v0.9.103 — v0.9.103
+_2026-04-13_
+
+### Features
+- v0.9.103
+- v0.9.102
+- v0.9.102
+- v0.9.102
+- v0.9.102
+- v0.9.102
+
+### Fixes
+- themes.json BOM removed; lint.js + BOM contract tests guard against recurrence
+- README + sf-readme-gen updated for test-runner.js and 175 count; close Issue #34
+- README corrected to v0.9.102 — generate-readme is authoritative, never edit README on GitHub directly
+- check-pages prereqs:[] — always runnable on demand, no release flow state required
+- check-pages uses state.version as authoritative source — field was not wired into buildQuery
+
+### Chores
+- HANDOFF
+- CHANGELOG
+- CHANGELOG
+- CHANGELOG
+- HANDOFF
+- HANDOFF -- Issue #17 closed, next is #24 keyboard shortcuts tour step
+- HANDOFF v0.9.102 — session close, push pending, snapshot bug documented
+- snapshot v0.9.102 — releases/v0.9.102/ with correct SF_VERSION
+- CHANGELOG
+- HANDOFF — README is generated, never edit on GitHub directly
+- CHANGELOG
+- HANDOFF
+- add missing snapshots v0.9.100 and
+- HANDOFF v0.9.101 — session close-out
+
+---
+
 ## v0.9.102 — v0.9.102
 _2026-04-13_
 
