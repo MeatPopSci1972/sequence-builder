@@ -227,6 +227,9 @@ This cycle (v0.9.103 session):
 - buildQuery fix: state.version now authoritative for snapshot + validate-readme (both repos)
 - test runner refactor: IIFE extracted to sequence-builder.test-runner.js, test.js exports plain array
 - sf-server.js updated to invoke test-runner.js
+- Issue #17 CLOSED: WCAG v3 quick pass -- SVG text alternative (diagram-description live region), APCA contrast fix (dark --text2/--text3 nudged to Lc 60+), tour aria-live on step navigation
+
+NEXT: Issue #24 -- Tour: dedicated keyboard shortcuts step
 
 ~~FIXED v0.9.103 - snapshot v0.0.0 during Run All: buildQuery now reads state.version first for snapshot and validate-readme steps. field value is manual override only.~~
 
