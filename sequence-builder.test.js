@@ -1,4 +1,4 @@
-﻿// SequenceForge — Store Contract Tests
+// SequenceForge — Store Contract Tests
 // Two-phase runner: test() registers, runAll() executes once at end.
 // Add new test() calls anywhere above runAll(). Count is always correct.
 'use strict'
@@ -2254,6 +2254,19 @@ test('export button has exactly one click handler', () => {
 //  RESULTS
 // ═══════════════════════════════════════════════════════
 // ── ULID ID contract ─────────────────────────────────────
+setGroup('BOM contract')
+
+test('themes.json has no UTF-8 BOM', () => {
+  const buf = require('fs').readFileSync(require('path').join(__dirname, 'themes.json'))
+  assert(!(buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF), 'themes.json must not have a UTF-8 BOM -- use UTF8NoBOM encoding when writing')
+})
+
+test('lint.js BOM check covers themes.json', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'lint.js'), 'utf8')
+  assert(src.includes('themes.json'), 'lint.js must include a BOM check for themes.json')
+  assert(src.includes('0xEF'), 'lint.js BOM check must test for the BOM byte sequence')
+})
+
 setGroup('ULID ID contract')
 test('ADD_ACTOR id has actor_ prefix + 26-char ULID', function () {
   ;(function (freshStore, assert) {

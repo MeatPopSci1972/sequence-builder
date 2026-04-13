@@ -84,6 +84,15 @@ if (
 }
 
 // Report
+// BOM check -- WriteAllText with UTF8 encoding adds BOM on Windows, breaks JSON.parse
+const BOM_FILES = ['themes.json']
+BOM_FILES.forEach(function(f) {
+  try {
+    const b = require('fs').readFileSync(require('path').join(__dirname, f))
+    if (b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF) fail(f + ' has UTF-8 BOM -- rewrite with UTF8NoBOM encoding')
+  } catch(e) { warn('BOM check skipped: ' + f + ' not found') }
+})
+
 const all = failures.concat(warnings)
 if (all.length)
   all.forEach(function (l) {
