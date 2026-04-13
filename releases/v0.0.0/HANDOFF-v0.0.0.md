@@ -3,7 +3,7 @@
 
 ## FIRST ACTIONS (do these before anything else)
 1. GET http://localhost:3799/status — confirm version, clean=true
-2. GET http://localhost:3799/test — confirm gate is green (0 failures, 175 ran)
+2. GET http://localhost:3799/test — confirm gate is green (0 failures, 177 ran)
 3. GET http://localhost:3799/test-render — confirm render gate green (0 failures, 15 ran)
 4. GET https://api.github.com/repos/MeatPopSci1972/sequence-builder/issues?state=open&per_page=50 — review open issues; this is the authoritative backlog
 5. Read this file fully, paying close attention to ## BACKLOG
@@ -294,7 +294,7 @@ These standards define what each document type must contain, what format to use,
 FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW · READ CONSOLE PATTERN · STORE ARCHITECTURE · SECURITY NOTE · HOT RELOAD · LOG UI · TOUR SYSTEM · DEV LOOP WISDOM · VERSION · DEMOS · BACKLOG · REPO · (recovery note)
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
-- `## FIRST ACTIONS` — gate counts must match `GET /test` (175 ran, 0 failures) and `GET /test-render` (15 ran, 0 failures)
+- `## FIRST ACTIONS` — gate counts must match `GET /test` (177 ran, 0 failures) and `GET /test-render` (15 ran, 0 failures)
 - `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.102)
 - `## VERSION — Bump pattern:` — must be `html.split('0.9.102').join('0.9.103')`
 - `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.102)
