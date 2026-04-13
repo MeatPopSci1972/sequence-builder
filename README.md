@@ -36,6 +36,7 @@ Capabilities pinned by the contract test suites:
 - canvas pan + nudge
 - schema + properties
 - regex contracts
+- BOM contract
 - ULID ID contract
 - ActorElement contract
 - MessageElement contract
@@ -60,6 +61,7 @@ Capabilities pinned by the contract test suites:
 | `package.json` | |
 | `sequence-builder.html` | |
 | `sequence-builder.store.js` | |
+| `sequence-builder.test-runner.js` | |
 | `sequence-builder.test.js` | |
 | `sf-endpoints.js` | |
 | `sf-preflight.ps1` | |

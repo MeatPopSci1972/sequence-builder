@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <!--
   SequenceForge — Visual Sequence Diagram Builder
   Version: (see SF_VERSION constant in boot section)
@@ -1016,6 +1016,8 @@
           <g id="connect-preview" style="pointer-events:none"></g>
         </g>
       </svg>
+
+      <ol id="diagram-description" aria-label="Diagram contents" aria-live="polite" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"></ol>
 
       <div id="empty-hint" aria-hidden="true">
         <h2>DROP ELEMENTS HERE</h2>
@@ -5177,8 +5179,8 @@ window._SF_THEMES = {
       "--accent2": "#7b6fff",
       "--accent3": "#ff6b8a",
       "--text": "#e8ecf4",
-      "--text2": "#8892aa",
-      "--text3": "#7d899e",
+      "--text2": "#a3acc4",
+      "--text3": "#a7b2c6",
       "--actor-bg": "#1a1f35",
       "--actor-border": "#3d4466",
       "--msg-color": "#4af0c4",
@@ -5748,6 +5750,29 @@ document.getElementById('btn-api-send')?.addEventListener('click', sendToAPI);
 // ═══════════════════════════════════════════════════════
 //  STATUS BAR
 // ═══════════════════════════════════════════════════════
+function updateAriaDescription() {
+  const el = document.getElementById('diagram-description');
+  if (!el) return;
+  if (state.actors.length === 0) {
+    el.innerHTML = '<li>Empty diagram. Use the toolbar to add actors and messages.</li>';
+    return;
+  }
+  const actorNames = Object.fromEntries(state.actors.map(a => [a.id, a.label || a.id]));
+  const items = [];
+  state.actors.forEach(a => items.push('<li>Actor: ' + (a.label || a.id) + '</li>'));
+  const sorted = [...state.messages].sort((a,b) => (a.y||0)-(b.y||0));
+  sorted.forEach(m => {
+    const from  = actorNames[m.fromId] || 'unknown';
+    const to    = actorNames[m.toId]   || 'unknown';
+    const label = m.label || 'message';
+    const kind  = m.kind  || 'sync';
+    items.push('<li>' + kind + ' message from ' + from + ' to ' + to + ': ' + label + '</li>');
+  });
+  if (state.fragments.length) {
+    state.fragments.forEach(f => items.push('<li>Fragment: ' + f.kind + (f.cond ? ' (' + f.cond + ')' : '') + '</li>'));
+  }
+  el.innerHTML = items.join('');
+}
 function updateStats() {
   const ac = state.actors.length;
   const mc = state.messages.length;
@@ -5761,6 +5786,7 @@ function updateStats() {
     if (fc) parts.push(`${fc} fragment${fc!==1?'s':''}`);
     canvas.setAttribute('aria-label', `Sequence diagram — ${parts.join(', ')}`);
   }
+  updateAriaDescription();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -6104,7 +6130,7 @@ function _renderEditBtn() {
 
 <div id="sf-tour-backdrop" style="display:none"></div>
 <div id="sf-tour-spotlight" style="display:none"></div>
-<div id="sf-tour-card" style="display:none">
+<div id="sf-tour-card" style="display:none" aria-live="polite" aria-atomic="true" role="dialog" aria-labelledby="sf-tour-title">
   <div id="sf-tour-step-label"></div>
   <div id="sf-tour-title"></div>
   <div id="sf-tour-body"></div>
@@ -6150,6 +6176,7 @@ document.addEventListener('DOMContentLoaded', function() {
 (function(){
   var STEPS=[
     {target:'#sidebar,.sidebar',title:'Palette',body:'The left panel is your palette &mdash; click any item to add it to the canvas. You can also use keyboard shortcuts: <kbd>A</kbd> adds an Actor, <kbd>M</kbd> a Message, <kbd>N</kbd> a Note, <kbd>F</kbd> a Fragment. All elements drop onto the canvas immediately &mdash; drag to position, then edit properties in the right panel.',position:'right'},
+    {target:'#toolbar',title:'Keyboard Shortcuts',body:'<b>Add elements</b><br><kbd>A</kbd> Actor &nbsp; <kbd>M</kbd> Message &nbsp; <kbd>N</kbd> Note &nbsp; <kbd>F</kbd> Fragment<br><br><b>Edit</b><br><kbd>Delete</kbd> / <kbd>Backspace</kbd> &mdash; remove selected &nbsp; <kbd>Esc</kbd> &mdash; deselect &nbsp; <kbd>?</kbd> &mdash; Help<br><br><b>Undo / Redo</b><br><kbd>Ctrl+Z</kbd> undo &nbsp; <kbd>Ctrl+Y</kbd> redo<br><br><b>Nudge selected element</b><br><kbd>&#8592;</kbd> &nbsp; <kbd>&#8594;</kbd> &mdash; 10 px &nbsp;&nbsp; <kbd>&#8592;</kbd> <kbd>&#8594;</kbd> also pans canvas when nothing selected',position:'bottom'},
       {target:'#canvas',title:'Canvas',body:'<b>Click</b> any element to select it. An <b>Edit</b> badge appears at its corner &mdash; click it to open Properties. <b>Drag</b> actors to reorder their positions. <kbd>Scroll</kbd> or <kbd>Ctrl+</kbd> / <kbd>Ctrl-</kbd> to zoom.',position:'center'},
     {target:'#tab-output',title:'UML Output',body:'The right panel shows your diagram as live <b>PlantUML</b> or <b>Mermaid</b> text, updating on every change. Use <b>Copy</b> to grab the text for any tool that reads UML syntax.',position:'left'},
     {target:'#btn-import-menu',title:'Import & Export',body:'Use <b>Export</b> to save your diagram as PlantUML, Mermaid, or JSON. Use <b>Import</b> to load existing UML &mdash; paste PlantUML or Mermaid text and the parser validates line by line before committing.',position:'bottom'},
@@ -6195,6 +6222,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('sf-tour-step-label').textContent='Step '+(current+1)+' of '+STEPS.length;
     document.getElementById('sf-tour-title').textContent=step.title;
     document.getElementById('sf-tour-body').innerHTML=step.body;
+    var card=document.getElementById('sf-tour-card');if(card)card.setAttribute('aria-label','Tour step '+(current+1)+' of '+STEPS.length+': '+step.title);
     var dots=document.getElementById('sf-tour-dots');
     dots.innerHTML=STEPS.map(function(_,i){return'<div class="sf-tour-dot'+(i===current?' active':'')+'"></div>';}).join('');
     document.getElementById('sf-tour-prev').style.visibility=current===0?'hidden':'visible';
