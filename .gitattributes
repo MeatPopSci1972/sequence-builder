@@ -51,3 +51,4 @@ lint.js            export-ignore
 test-snapshots/    export-ignore
 dev/               export-ignore
 docs/              export-ignore
+releases/**/*.html -text
