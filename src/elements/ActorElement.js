@@ -1,4 +1,4 @@
-// SequenceForge — ActorElement.js
+// Sequence Builder — ActorElement.js
 // Implements SequenceElement for actor (participant) records.
 // Audience: Human + fresh AI instance
 //

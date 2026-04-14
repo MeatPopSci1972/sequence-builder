@@ -1,4 +1,4 @@
-// SequenceForge dev server v5
+// Sequence Builder dev server v5
 // node sf-server.js  (use launcher.js for hot-reload)
 const http     = require('http');
 const fs       = require('fs');
@@ -102,7 +102,7 @@ function renderReport(result, ms) {
   const passed = (raw.match(/(\d+) passed/) || [])[1] || '0';
   const failed = (raw.match(/(\d+) failed/) || [])[1] || '0';
   const allPass = result.exitCode === 0;
-  const title = 'SequenceForge — Test Results';
+  const title = 'Sequence Builder — Test Results';
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+title+'</title><style>body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:20px}h1{color:#00ff9d}.pass{color:#3fb950}.fail{color:#f85149}pre{white-space:pre-wrap}</style></head><body><h1>'+title+'</h1><p>Ran at '+new Date().toLocaleTimeString()+' <a href="/test" style="color:#00ff9d">↺ Re-run</a></p><p class="'+(allPass?'pass':'fail')+'">'+(allPass?'✓ ALL PASS':'✗ FAILURES')+'</p><p>'+passed+' passed | '+failed+' failed | '+(parseInt(passed)+parseInt(failed))+' total</p><pre>'+raw+'</pre></body></html>';
 }
 const server = http.createServer(function(req, res) {
@@ -454,12 +454,12 @@ function writeVersionToHTML(newVer) {
   }
   if (req.method === 'GET' && urlPath === '/api') {
     res.writeHead(200,{'Content-Type':'application/json'});
-    res.end(JSON.stringify({server:'SequenceForge dev server v5',port:3799,endpoints:SF_ENDPOINTS},null,2)); return;
+    res.end(JSON.stringify({server:'Sequence Builder dev server v5',port:3799,endpoints:SF_ENDPOINTS},null,2)); return;
   }
   if (req.method === 'GET' && urlPath === '/usage') {
     res.writeHead(200,{'Content-Type':'text/plain'});
     res.end([
-      'SequenceForge Dev Server v5 -- AI Usage Guide',
+      'Sequence Builder Dev Server v5 -- AI Usage Guide',
       'FIRST ACTIONS: 1.GET /status  2.GET /HANDOFF.md  3.GET /test (99 passed)',
       'GATE: 99 passed before AND after your work',
       'LINT: POST /lint after every HTML write',

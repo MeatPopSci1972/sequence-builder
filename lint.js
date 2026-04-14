@@ -1,4 +1,4 @@
-// lint.js -- SequenceForge HTML integrity checker
+// lint.js -- Sequence Builder HTML integrity checker
 // Run: node lint.js
 // POST /lint via sf-server.js
 

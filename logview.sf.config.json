@@ -1,5 +1,5 @@
 {
-  "label": "SequenceForge",
+  "label": "Sequence Builder",
   "baseUrl": "http://localhost:3799",
   "logFormat": "sf-server",
   "repo": "MeatPopSci1972/sequence-builder",

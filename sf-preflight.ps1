@@ -1,5 +1,5 @@
 # sf-preflight.ps1
-# SequenceForge session pre-flight check
+# Sequence Builder session pre-flight check
 # Run: .\sf-preflight.ps1
 
 $base = "http://localhost:3799"
@@ -13,7 +13,7 @@ function Info($msg) { Write-Host "        $msg" -ForegroundColor DarkCyan }
 function Warn($msg) { Write-Host "  WARN  $msg" -ForegroundColor Yellow }
 
 Write-Host ""
-Write-Host "SequenceForge Pre-flight" -ForegroundColor Cyan
+Write-Host "Sequence Builder Pre-flight" -ForegroundColor Cyan
 Separator
 
 # 1. Status (JSON)

@@ -344,7 +344,7 @@ Optional manual block (appended by AI immediately after auto-gen, before commit)
 **GENERATED FILE — never edit on GitHub directly.** Always fix via `POST /generate-readme` locally then push. Manual GitHub edits cause rebase conflicts on next push.
 
 **Required content:**
-- One-sentence description of what SequenceForge is
+- One-sentence description of what Sequence Builder is
 - Live demo link — format: `https://github.com/MeatPopSci1972/sequence-builder/releases/download/v{{version}}/sequence-builder.html`
 - All-releases link — format: `https://github.com/MeatPopSci1972/sequence-builder/releases`
 

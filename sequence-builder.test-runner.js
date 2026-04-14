@@ -1,4 +1,4 @@
-﻿// sequence-builder.test-runner.js -- SequenceForge test runner
+﻿// sequence-builder.test-runner.js -- Sequence Builder test runner
 // Requires the test array from sequence-builder.test.js and executes all tests.
 // Usage: node sequence-builder.test-runner.js
 'use strict'

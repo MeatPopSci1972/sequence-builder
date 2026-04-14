@@ -1,4 +1,4 @@
-# SequenceForge Changelog
+# Sequence Builder Changelog
 
 ## v0.9.103 — v0.9.103
 _2026-04-13_
@@ -189,7 +189,7 @@ _2026-04-10_
 - GET /check-pages — verify GitHub Pages live after push; step 15 in logview runner; HANDOFF + endpoints updated
 
 ### Fixes
-- update-handoff reads SF_VERSION constant — last remaining SequenceForge v pattern removed
+- update-handoff reads SF_VERSION constant — last remaining Sequence Builder v pattern removed
 
 ### Chores
 - HANDOFF

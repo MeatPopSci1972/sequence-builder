@@ -1,4 +1,4 @@
-// launcher.js -- SequenceForge hot-reload wrapper
+// launcher.js -- Sequence Builder hot-reload wrapper
 // Usage: node launcher.js  (instead of node sf-server.js)
 // Watches sf-server.js for changes and auto-restarts the server.
 // Zero dependencies -- uses only Node built-ins.

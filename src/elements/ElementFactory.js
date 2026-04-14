@@ -1,4 +1,4 @@
-// SequenceForge — ElementFactory.js
+// Sequence Builder — ElementFactory.js
 // Factory that maps store data records to SequenceElement instances.
 // Audience: Human + fresh AI instance
 //

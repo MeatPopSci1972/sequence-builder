@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ═══════════════════════════════════════════════════════════════
-//  SequenceForge — build.js
+//  Sequence Builder — build.js
 //  Syncs sequence-builder.store.js → sequence-builder.html
 //
 //  What it does:

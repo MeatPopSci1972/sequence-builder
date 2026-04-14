@@ -1,4 +1,4 @@
-# SequenceForge
+# Sequence Builder
 
 > A single-file, zero-dependency UML sequence diagram builder.  
 > Runs entirely in the browser. No build step. npm install only for Playwright render tests.

@@ -1,4 +1,4 @@
-// SequenceForge — MessageElement.js
+// Sequence Builder — MessageElement.js
 // Implements SequenceElement for message records.
 // Audience: Human + fresh AI instance
 //

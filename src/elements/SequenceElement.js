@@ -1,4 +1,4 @@
-// SequenceForge — SequenceElement.js
+// Sequence Builder — SequenceElement.js
 // Base contract for all diagram elements.
 // Audience: Human + fresh AI instance
 //

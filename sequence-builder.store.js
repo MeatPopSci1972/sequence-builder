@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-//  SequenceForge — DiagramStore
+//  Sequence Builder — DiagramStore
 //  Audience: Human + fresh AI instance
 //
 //  Pure JS module — zero DOM touches, zero external deps.

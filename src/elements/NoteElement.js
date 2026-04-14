@@ -1,4 +1,4 @@
-// SequenceForge — NoteElement.js
+// Sequence Builder — NoteElement.js
 // Implements SequenceElement for note records.
 // Audience: Human + fresh AI instance
 //

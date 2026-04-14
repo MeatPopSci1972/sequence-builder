@@ -1,4 +1,4 @@
-// SequenceForge — FragmentElement.js
+// Sequence Builder — FragmentElement.js
 // Implements SequenceElement for fragment (alt/loop/opt) records.
 // Audience: Human + fresh AI instance
 //
