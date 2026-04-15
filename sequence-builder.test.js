@@ -2710,10 +2710,10 @@ test('SF_VERSION — data-version attribute exists and is a valid semver', funct
   var m = html.match(/data-version="(\d+\.\d+\.\d+)"/)
   assert(!!m, 'data-version attribute not found')
 })
-test('SF_VERSION — no Sequence Builder v\\d version reads in sf-server.js', function () {
-  var src = require('fs').readFileSync(require('path').join(__dirname, 'sf-server.js'), 'utf8')
+test('SF_VERSION — no Sequence Builder v\\d version reads in server.js', function () {
+  var src = require('fs').readFileSync(require('path').join(__dirname, 'server.js'), 'utf8')
   var regexReads = src.match(/match\([^)]*Sequence Builder v/g) || []
-  assert(regexReads.length === 0, 'found Sequence Builder v regex reads in sf-server.js: ' + JSON.stringify(regexReads))
+  assert(regexReads.length === 0, 'found Sequence Builder v regex reads in server.js: ' + JSON.stringify(regexReads))
 })
 test('SF_VERSION — no Sequence Builder v\\d version reads in sf-readme-gen.js', function () {
   var src = require('fs').readFileSync(require('path').join(__dirname, 'sf-readme-gen.js'), 'utf8')
