@@ -58,6 +58,7 @@ Use POST /patch with a known anchor string to write. Full-file reads are PROHIBI
 - test-snapshots/ — render layer snapshot files (gitignored; seed with GET /test-render?update=1)
 - launcher.js — hot-reload wrapper: USE THIS to start server (node launcher.js)
 - sf-preflight.ps1 — pre-flight check script (run before each session)
+- sb-sync-labels.sh — idempotent GitHub label sync (run from Git Bash: GITHUB_TOKEN=ghp_xxx bash sb-sync-labels.sh)
 - log.html — server log viewer UI
 - CHANGELOG.md — release history, auto-generated via POST /changelog (auto-commits)
 - releases/ — per-version snapshots: releases/vX.Y.Z/sequence-builder.html + HANDOFF-vX.Y.Z.md
@@ -198,6 +199,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 2. POST /lint after every HTML write. If lint fails, fix structure before /test.
 3. Visible errors over graceful degradation.
 
+### SF_VERSION — do not rename
+SF_VERSION is the JavaScript constant name used throughout the codebase (sequence-builder.html, server.js, sf-readme-gen.js, sequence-builder.test.js). Renaming it requires an atomic sweep of all four files plus the test suite. Do not rename opportunistically — open a dedicated chore issue with the full blast radius documented first.
+
 ## VERSION
 - Current: 0.9.103
 - Bump pattern: html.split('0.9.103').join('0.9.104')
@@ -208,6 +212,30 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 - auth-flow — Auth Flow (original)
 - scada-control — SCADA: Control Flow
 - cybersec-zones — CyberSecurity: Zone Analysis
+
+## ISSUE LABELS
+GitHub labels are the routing and triage layer for all issues. The canonical label set is maintained by `sb-sync-labels.sh` — run it any time labels drift. Token: `public_repo` scope only.
+
+**Routing** — who/what executes this issue:
+- `for_cowork` — autonomous execution ready; issue has explicit Steps + Done when + Do not touch sections
+- `for_session` — requires Claude conversation; judgment or design decision embedded
+- `rfc` — design spike; no implementation until gate condition met
+
+**Type** — what kind of work:
+- `fix` · `feat` · `chore` · `refactor` · `accessibility`
+
+**Scope** — where in the codebase:
+- `ui` · `store` · `server` · `tour` · `tests`
+
+**Priority** — when to pick it up:
+- `next-priority` — owner-designated next item
+- `icebox` — parked, not current cycle
+- `hotfix` / `regression` — drop everything
+
+**Cowork-ready issue format** — an issue tagged `for_cowork` MUST have:
+- `## Steps` — ordered, explicit, with gate URLs and expected responses
+- `## Done when` — machine-verifiable criteria (gate URLs, pass counts, lint ok)
+- `## Do not touch` — explicit file/scope boundaries to prevent scope creep
 
 ## BACKLOG
 
@@ -229,7 +257,7 @@ This cycle (v0.9.103 session):
 - server.js updated to invoke test-runner.js
 - Issue #17 CLOSED: WCAG v3 quick pass -- SVG text alternative (diagram-description live region), APCA contrast fix (dark --text2/--text3 nudged to Lc 60+), tour aria-live on step navigation
 
-NEXT: Issue #24 -- Tour: dedicated keyboard shortcuts step
+NEXT: Issue #24 -- Tour: dedicated keyboard shortcuts step — NOTE: already shipped, close this issue
 
 ~~FIXED v0.9.103 - snapshot v0.0.0 during Run All: buildQuery now reads state.version first for snapshot and validate-readme steps. field value is manual override only.~~
 
@@ -291,7 +319,7 @@ These standards define what each document type must contain, what format to use,
 ### HANDOFF.md
 
 **Required sections (in order):**
-FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW · READ CONSOLE PATTERN · STORE ARCHITECTURE · SECURITY NOTE · HOT RELOAD · LOG UI · TOUR SYSTEM · DEV LOOP WISDOM · VERSION · DEMOS · BACKLOG · REPO · (recovery note)
+FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW · READ CONSOLE PATTERN · STORE ARCHITECTURE · SECURITY NOTE · HOT RELOAD · LOG UI · TOUR SYSTEM · DEV LOOP WISDOM · VERSION · DEMOS · ISSUE LABELS · BACKLOG · REPO · (recovery note)
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
 - `## FIRST ACTIONS` — gate counts must match `GET /test` (177 ran, 0 failures) and `GET /test-render` (15 ran, 0 failures)
@@ -388,8 +416,8 @@ Optional manual block (appended by AI immediately after auto-gen, before commit)
 
 ## SEQUENCE-LOG-VIEWER
 - GitHub: https://github.com/MeatPopSci1972/sequence-log-viewer
+- Local: E:\log-viewer\sequence-log-viewer
 - Status: TRANSITION — logview.html is being extracted here from SF repo
 - SF config: logview.sf.config.json (committed to SF repo, drives the left panel)
 - logview.html and logview-test.html remain in SF repo as reference until standalone is verified
 - Issues 1–4 (config-driven panel, multi-repo, OTel, right-click copy) live in the logview repo
-
