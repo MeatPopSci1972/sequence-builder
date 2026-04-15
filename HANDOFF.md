@@ -1,4 +1,4 @@
-﻿Handoff
+Handoff
 <!-- IMPORTANT: Update this file on every release. Version and backlog must stay current. -->
 
 ## FIRST ACTIONS (do these before anything else)
@@ -16,7 +16,7 @@ ALWAYS use GET /slice?file=sequence-builder.html&section=SECTION to read only wh
 Available sections: store · render · events · toolbar · themes
 Use POST /patch with a known anchor string to write. Full-file reads are PROHIBITED.
 
-## DEV SERVER API (sf-server.js v5, port 3799)
+## DEV SERVER API (server.js v5, port 3799)
 
 | Method | Path | Purpose |
 |--------|------|---------|
@@ -52,7 +52,7 @@ Use POST /patch with a known anchor string to write. Full-file reads are PROHIBI
 - themes.json — theme definitions (dark/light/system/lcars), served as GET /themes.json
 - build.js — syncs store.js into HTML between @@STORE-START / @@STORE-END
 - lint.js — HTML integrity checker: buttons, SVG balance, sentinels, version
-- sf-server.js — dev server v5 (entry point + route dispatcher; requires sf-endpoints.js + sf-readme-gen.js)
+- server.js — dev server v5 (entry point + route dispatcher; requires sf-endpoints.js + sf-readme-gen.js)
 - sf-endpoints.js — SF_ENDPOINTS const — single source of truth for all API endpoints (used by /api and /generate-readme)
 - sf-readme-gen.js — generateReadme() — generates README.md from live git, test, endpoint, version sources (GET/PUT files, POST /build /lint /git /snapshot /patch, GET /log /api /usage /test-render)
 - test-snapshots/ — render layer snapshot files (gitignored; seed with GET /test-render?update=1)
@@ -133,9 +133,9 @@ NOTE: sequence-builder.html uses CRLF (\r\n); sequence-builder.test.js uses LF (
 
 ## HOT RELOAD
 ALWAYS start the server with: node launcher.js
-NEVER run: node sf-server.js directly (loses auto-restart on sf-server.js changes)
-launcher.js watches sf-server.js, sf-readme-gen.js, and sf-endpoints.js via fs.watch, kills and restarts within ~300ms.
-After writing sf-server.js, wait ~1s then verify with GET /status.
+NEVER run: node server.js directly (loses auto-restart on server.js changes)
+launcher.js watches server.js, sf-readme-gen.js, and sf-endpoints.js via fs.watch, kills and restarts within ~300ms.
+After writing server.js, wait ~1s then verify with GET /status.
 
 ## LOG UI
 Open http://localhost:3799/log.html for a live server event dashboard.
@@ -186,11 +186,11 @@ Across multiple sessions, index-based HTML patching produced silent corruptions.
 Ghost SVG fragments leaked into toolbar button text nodes.
 POST /lint is now part of every gate. Call it after every HTML write, before /test.
 
-### PUT sf-server.js triggers hot-reload
-Launcher.js watches sf-server.js for changes. A PUT write triggers a server restart before the HTTP response is sent -- the connection drops with 'Failed to fetch'. The write still lands; verify with a fresh GET after restart. To rewrite sf-server.js: assemble the complete file content in one js_tool call and PUT atomically. Never send partial content -- hot-reload will fire on the partial write, crash-loop until a valid file is restored.
+### PUT server.js triggers hot-reload
+Launcher.js watches server.js for changes. A PUT write triggers a server restart before the HTTP response is sent -- the connection drops with 'Failed to fetch'. The write still lands; verify with a fresh GET after restart. To rewrite server.js: assemble the complete file content in one js_tool call and PUT atomically. Never send partial content -- hot-reload will fire on the partial write, crash-loop until a valid file is restored.
 
-### sf-server.js patch rules
-NEVER splice sf-server.js by character position. Use POST /patch with single-line CRLF-matched anchors ONLY. A replaced:0 means CRLF vs LF mismatch -- read the raw bytes, confirm \r\n, retry. If an anchor is not unique enough, add a comment sentinel in a separate patch first, then patch against it. Never insert multi-line function bodies adjacent to http.createServer() -- the splice boundary is too fragile.
+### server.js patch rules
+NEVER splice server.js by character position. Use POST /patch with single-line CRLF-matched anchors ONLY. A replaced:0 means CRLF vs LF mismatch -- read the raw bytes, confirm \r\n, retry. If an anchor is not unique enough, add a comment sentinel in a separate patch first, then patch against it. Never insert multi-line function bodies adjacent to http.createServer() -- the splice boundary is too fragile.
 
 ### The reinforcement pattern
 When an AI instance is deep in a problem loop (patch, break, patch again):
@@ -226,7 +226,7 @@ This cycle (v0.9.103 session):
 - sequence-log-viewer: HANDOFF item closed -- check-pages works standalone
 - buildQuery fix: state.version now authoritative for snapshot + validate-readme (both repos)
 - test runner refactor: IIFE extracted to sequence-builder.test-runner.js, test.js exports plain array
-- sf-server.js updated to invoke test-runner.js
+- server.js updated to invoke test-runner.js
 - Issue #17 CLOSED: WCAG v3 quick pass -- SVG text alternative (diagram-description live region), APCA contrast fix (dark --text2/--text3 nudged to Lc 60+), tour aria-live on step navigation
 
 NEXT: Issue #24 -- Tour: dedicated keyboard shortcuts step
@@ -255,7 +255,7 @@ User should be able to drag the LEFT or RIGHT tip of a message arrow to reassign
 ~~**BUG-003 (SHIPPED — fixed before v0.9.93) — Tour spotlight 0,0 on Import/Export step.** Do not re-add. Confirmed gone. Tombstone only.~~
 
 **Item 1 — HANDOFF template automation (icebox item 2):**
-Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
+Implement `POST /update-handoff` in server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
 
 **Item 2 — UI element factories (discussion only, no code):**
 After template automation ships, open a design discussion on UI element factories. The trigger condition (a second consumer of element construction logic outside render()) has not fired — this is a scoping conversation, not implementation. Proto2prod discipline applies: validate the need before building. Review render() with fresh eyes, identify any duplication that has emerged since v0.9.68, and decide together whether the trigger has been met.
@@ -266,7 +266,7 @@ GitHub Issues is the authoritative backlog. No local icebox maintained.
 
 2. ~~**HANDOFF template automation**~~ — DOCUMENTATION STANDARDS section uses {{placeholder}} markers for live-fetchable values (version, test counts, bump pattern, demo URL). Future work: implement `POST /update-handoff` that calls `GET /status` + `GET /test` + `GET /test-render` and populates all {{}} fields automatically, eliminating the manual VERSION staleness class of bug seen in v0.9.61–v0.9.64. Trigger for promotion: a second VERSION staleness incident, or when the release flow is next touched for another reason.
 
-3. ~~**Investigate: .gitattributes + normalisePatch CRLF gap**~~ — shipped v0.9.78. PUT handler in sf-server.js now normalises CRLF→LF on every write. Eliminates the multi-line patch failure class permanently. — .gitattributes enforces LF on commit/checkout but the dev server's normalisePatch() still converts LF→CRLF for CRLF files at patch time. The gap: javascript_tool fetch bodies arrive as LF strings; if the target file is CRLF on disk, normalisePatch converts the old string to CRLF before searching — but multi-line strings built with \n in JS don't survive that conversion cleanly (mixed endings). Root cause is that the dev server reads CRLF from disk even though .gitattributes says LF. Fix candidates: (a) POST /patch normalises the file on disk to LF before patching, (b) the server rewrites CRLF files to LF on first write after .gitattributes was added, (c) add a lint.js check that no tracked file contains CRLF. Trigger: next session touching sf-server.js or sequence-builder.html.
+3. ~~**Investigate: .gitattributes + normalisePatch CRLF gap**~~ — shipped v0.9.78. PUT handler in server.js now normalises CRLF→LF on every write. Eliminates the multi-line patch failure class permanently. — .gitattributes enforces LF on commit/checkout but the dev server's normalisePatch() still converts LF→CRLF for CRLF files at patch time. The gap: javascript_tool fetch bodies arrive as LF strings; if the target file is CRLF on disk, normalisePatch converts the old string to CRLF before searching — but multi-line strings built with \n in JS don't survive that conversion cleanly (mixed endings). Root cause is that the dev server reads CRLF from disk even though .gitattributes says LF. Fix candidates: (a) POST /patch normalises the file on disk to LF before patching, (b) the server rewrites CRLF files to LF on first write after .gitattributes was added, (c) add a lint.js check that no tracked file contains CRLF. Trigger: next session touching server.js or sequence-builder.html.
 4. **Tour: demonstrate keyboard shortcuts** — the tour palette step mentions A/M/N/F but a dedicated step showing each shortcut in action would improve discoverability. Trigger: next tour revision pass.
 4. ~~**Zoom controls: float on canvas**~~ — shipped v0.9.75 — move btn-zoom-out, btn-zoom-reset, btn-zoom-in, btn-zoom-fit from toolbar to a floating pill anchored bottom-center of canvas. Standard pattern (Figma, Miro, Lucidchart). Toolbar slots vacated.
 5. ~~**Remove `?` toolbar button**~~ — shipped v0.9.74.

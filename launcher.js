@@ -1,18 +1,18 @@
 // launcher.js -- Sequence Builder hot-reload wrapper
-// Usage: node launcher.js  (instead of node sf-server.js)
-// Watches sf-server.js for changes and auto-restarts the server.
+// Usage: node launcher.js  (instead of node server.js)
+// Watches server.js for changes and auto-restarts the server.
 // Zero dependencies -- uses only Node built-ins.
 
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const SERVER = path.join(__dirname, 'sf-server.js');
+const SERVER = path.join(__dirname, 'server.js');
 let child = null;
 let restarting = false;
 
 function start() {
-  child = spawn('node', ['sf-server.js'], {
+  child = spawn('node', ['server.js'], {
     cwd: __dirname,
     stdio: 'inherit'
   });
@@ -28,7 +28,7 @@ function start() {
 function restart() {
   if (restarting) return;
   restarting = true;
-  console.log('[launcher] sf-server.js changed -- restarting...');
+  console.log('[launcher] server.js changed -- restarting...');
   child.kill();
   setTimeout(function() {
     restarting = false;
@@ -38,7 +38,7 @@ function restart() {
 
 // Watch all server files for changes
 const WATCH_FILES = [
-  path.join(__dirname, 'sf-server.js'),
+  path.join(__dirname, 'server.js'),
   path.join(__dirname, 'sf-readme-gen.js'),
   path.join(__dirname, 'sf-endpoints.js')
 ];
