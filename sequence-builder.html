@@ -3,7 +3,7 @@
   Sequence Builder — Visual Sequence Diagram Builder
   Version: (see SF_VERSION constant in boot section)
   License: MIT
-  Repository: https://github.com/GGemini/sequenceforge
+  Repository: https://github.com/MeatPopSci1972/sequence-builder
 
   Single-file, zero-dependency static HTML application.
   Drop onto any static host (GitHub Pages, Netlify, S3) — no build step required.
@@ -5111,7 +5111,7 @@ function exportToPng() {
     URL.revokeObjectURL(url);
     const a = document.createElement('a');
     a.href = c.toDataURL('image/png');
-    a.download = 'sequenceforge-diagram.png';
+    a.download = 'sequence-builder-diagram.png';
     a.click();
     toast('PNG exported');
   };
@@ -5363,7 +5363,7 @@ function _exportDiagram() {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = 'sequenceforge-diagram.json';
+  a.download = 'sequence-builder-diagram.json';
   a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
