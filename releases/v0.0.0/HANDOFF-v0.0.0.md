@@ -1,4 +1,4 @@
-﻿Handoff
+Handoff
 <!-- IMPORTANT: Update this file on every release. Version and backlog must stay current. -->
 
 ## FIRST ACTIONS (do these before anything else)
@@ -16,7 +16,7 @@ ALWAYS use GET /slice?file=sequence-builder.html&section=SECTION to read only wh
 Available sections: store · render · events · toolbar · themes
 Use POST /patch with a known anchor string to write. Full-file reads are PROHIBITED.
 
-## DEV SERVER API (sf-server.js v5, port 3799)
+## DEV SERVER API (server.js v5, port 3799)
 
 | Method | Path | Purpose |
 |--------|------|---------|
@@ -48,16 +48,17 @@ Use POST /patch with a known anchor string to write. Full-file reads are PROHIBI
 ## KEY FILES
 - sequence-builder.html — single-file app (toolbar, CSS, JS, store injected at build)
 - sequence-builder.store.js — store source (build.js syncs into HTML between sentinels)
-- sequence-builder.test.js — 170 contract tests (Suites 1-16)
+- sequence-builder.test.js — 177 contract tests (Suites 1-16)
 - themes.json — theme definitions (dark/light/system/lcars), served as GET /themes.json
 - build.js — syncs store.js into HTML between @@STORE-START / @@STORE-END
 - lint.js — HTML integrity checker: buttons, SVG balance, sentinels, version
-- sf-server.js — dev server v5 (entry point + route dispatcher; requires sf-endpoints.js + sf-readme-gen.js)
+- server.js — dev server v5 (entry point + route dispatcher; requires sf-endpoints.js + sf-readme-gen.js)
 - sf-endpoints.js — SF_ENDPOINTS const — single source of truth for all API endpoints (used by /api and /generate-readme)
 - sf-readme-gen.js — generateReadme() — generates README.md from live git, test, endpoint, version sources (GET/PUT files, POST /build /lint /git /snapshot /patch, GET /log /api /usage /test-render)
 - test-snapshots/ — render layer snapshot files (gitignored; seed with GET /test-render?update=1)
 - launcher.js — hot-reload wrapper: USE THIS to start server (node launcher.js)
 - sf-preflight.ps1 — pre-flight check script (run before each session)
+- sync-labels.sh — idempotent GitHub label sync (run from Git Bash: GITHUB_TOKEN=ghp_xxx bash sync-labels.sh)
 - log.html — server log viewer UI
 - CHANGELOG.md — release history, auto-generated via POST /changelog (auto-commits)
 - releases/ — per-version snapshots: releases/vX.Y.Z/sequence-builder.html + HANDOFF-vX.Y.Z.md
@@ -90,7 +91,7 @@ fetch('http://localhost:3799/lint', {method:'POST'})
 ```
 
 ## RELEASE FLOW (v0.9.68+)
-1. GET /test (170/170) + GET /test-render (15/15) both green — also verify sf-preflight.ps1 expected count matches
+1. GET /test (177/177) + GET /test-render (15/15) both green — also verify sf-preflight.ps1 expected count matches
 2. POST /bump — increments patch from latest git tag, writes display version to HTML
 3. POST /build
 4. POST /lint — must be ok before continuing
@@ -133,9 +134,9 @@ NOTE: sequence-builder.html uses CRLF (\r\n); sequence-builder.test.js uses LF (
 
 ## HOT RELOAD
 ALWAYS start the server with: node launcher.js
-NEVER run: node sf-server.js directly (loses auto-restart on sf-server.js changes)
-launcher.js watches sf-server.js, sf-readme-gen.js, and sf-endpoints.js via fs.watch, kills and restarts within ~300ms.
-After writing sf-server.js, wait ~1s then verify with GET /status.
+NEVER run: node server.js directly (loses auto-restart on server.js changes)
+launcher.js watches server.js, sf-readme-gen.js, and sf-endpoints.js via fs.watch, kills and restarts within ~300ms.
+After writing server.js, wait ~1s then verify with GET /status.
 
 ## LOG UI
 Open http://localhost:3799/log.html for a live server event dashboard.
@@ -186,11 +187,11 @@ Across multiple sessions, index-based HTML patching produced silent corruptions.
 Ghost SVG fragments leaked into toolbar button text nodes.
 POST /lint is now part of every gate. Call it after every HTML write, before /test.
 
-### PUT sf-server.js triggers hot-reload
-Launcher.js watches sf-server.js for changes. A PUT write triggers a server restart before the HTTP response is sent -- the connection drops with 'Failed to fetch'. The write still lands; verify with a fresh GET after restart. To rewrite sf-server.js: assemble the complete file content in one js_tool call and PUT atomically. Never send partial content -- hot-reload will fire on the partial write, crash-loop until a valid file is restored.
+### PUT server.js triggers hot-reload
+Launcher.js watches server.js for changes. A PUT write triggers a server restart before the HTTP response is sent -- the connection drops with 'Failed to fetch'. The write still lands; verify with a fresh GET after restart. To rewrite server.js: assemble the complete file content in one js_tool call and PUT atomically. Never send partial content -- hot-reload will fire on the partial write, crash-loop until a valid file is restored.
 
-### sf-server.js patch rules
-NEVER splice sf-server.js by character position. Use POST /patch with single-line CRLF-matched anchors ONLY. A replaced:0 means CRLF vs LF mismatch -- read the raw bytes, confirm \r\n, retry. If an anchor is not unique enough, add a comment sentinel in a separate patch first, then patch against it. Never insert multi-line function bodies adjacent to http.createServer() -- the splice boundary is too fragile.
+### server.js patch rules
+NEVER splice server.js by character position. Use POST /patch with single-line CRLF-matched anchors ONLY. A replaced:0 means CRLF vs LF mismatch -- read the raw bytes, confirm \r\n, retry. If an anchor is not unique enough, add a comment sentinel in a separate patch first, then patch against it. Never insert multi-line function bodies adjacent to http.createServer() -- the splice boundary is too fragile.
 
 ### The reinforcement pattern
 When an AI instance is deep in a problem loop (patch, break, patch again):
@@ -198,16 +199,43 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 2. POST /lint after every HTML write. If lint fails, fix structure before /test.
 3. Visible errors over graceful degradation.
 
+### SF_VERSION — do not rename
+SF_VERSION is the JavaScript constant name used throughout the codebase (sequence-builder.html, server.js, sf-readme-gen.js, sequence-builder.test.js). Renaming it requires an atomic sweep of all four files plus the test suite. Do not rename opportunistically — open a dedicated chore issue with the full blast radius documented first.
+
 ## VERSION
-- Current: 0.9.102
-- Bump pattern: html.split('0.9.102').join('0.9.103')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.102/sequence-builder.html
+- Current: 0.9.103
+- Bump pattern: html.split('0.9.103').join('0.9.104')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.103/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
 - auth-flow — Auth Flow (original)
 - scada-control — SCADA: Control Flow
 - cybersec-zones — CyberSecurity: Zone Analysis
+
+## ISSUE LABELS
+GitHub labels are the routing and triage layer for all issues. The canonical label set is maintained by `sync-labels.sh` — run it any time labels drift. Token: `public_repo` scope only.
+
+**Routing** — who/what executes this issue:
+- `for_cowork` — autonomous execution ready; issue has explicit Steps + Done when + Do not touch sections
+- `for_session` — requires Claude conversation; judgment or design decision embedded
+- `rfc` — design spike; no implementation until gate condition met
+
+**Type** — what kind of work:
+- `fix` · `feat` · `chore` · `refactor` · `accessibility`
+
+**Scope** — where in the codebase:
+- `ui` · `store` · `server` · `tour` · `tests`
+
+**Priority** — when to pick it up:
+- `next-priority` — owner-designated next item
+- `icebox` — parked, not current cycle
+- `hotfix` / `regression` — drop everything
+
+**Cowork-ready issue format** — an issue tagged `for_cowork` MUST have:
+- `## Steps` — ordered, explicit, with gate URLs and expected responses
+- `## Done when` — machine-verifiable criteria (gate URLs, pass counts, lint ok)
+- `## Do not touch` — explicit file/scope boundaries to prevent scope creep
 
 ## BACKLOG
 
@@ -226,10 +254,10 @@ This cycle (v0.9.103 session):
 - sequence-log-viewer: HANDOFF item closed -- check-pages works standalone
 - buildQuery fix: state.version now authoritative for snapshot + validate-readme (both repos)
 - test runner refactor: IIFE extracted to sequence-builder.test-runner.js, test.js exports plain array
-- sf-server.js updated to invoke test-runner.js
+- server.js updated to invoke test-runner.js
 - Issue #17 CLOSED: WCAG v3 quick pass -- SVG text alternative (diagram-description live region), APCA contrast fix (dark --text2/--text3 nudged to Lc 60+), tour aria-live on step navigation
 
-NEXT: Issue #24 -- Tour: dedicated keyboard shortcuts step
+NEXT: Issue #24 -- Tour: dedicated keyboard shortcuts step — NOTE: already shipped, close this issue
 
 ~~FIXED v0.9.103 - snapshot v0.0.0 during Run All: buildQuery now reads state.version first for snapshot and validate-readme steps. field value is manual override only.~~
 
@@ -254,19 +282,13 @@ User should be able to drag the LEFT or RIGHT tip of a message arrow to reassign
 
 ~~**BUG-003 (SHIPPED — fixed before v0.9.93) — Tour spotlight 0,0 on Import/Export step.** Do not re-add. Confirmed gone. Tombstone only.~~
 
-**Item 1 — HANDOFF template automation (icebox item 2):**
-Implement `POST /update-handoff` in sf-server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
-
-**Item 2 — UI element factories (discussion only, no code):**
-After template automation ships, open a design discussion on UI element factories. The trigger condition (a second consumer of element construction logic outside render()) has not fired — this is a scoping conversation, not implementation. Proto2prod discipline applies: validate the need before building. Review render() with fresh eyes, identify any duplication that has emerged since v0.9.68, and decide together whether the trigger has been met.
-
 ### Icebox
 GitHub Issues is the authoritative backlog. No local icebox maintained.
 1. ~~**Define documentation standards**~~ — **shipped v0.9.69**. ## DOCUMENTATION STANDARDS and ## HANDOFF SNAPSHOT AUDIT sections written. Standards cover HANDOFF.md, CHANGELOG.md, README.md, and GitHub release notes. Template {{placeholder}} markers added for future automation. Audit covers v0.9.61–v0.9.68 archives with cross-version pattern summary.
 
 2. ~~**HANDOFF template automation**~~ — DOCUMENTATION STANDARDS section uses {{placeholder}} markers for live-fetchable values (version, test counts, bump pattern, demo URL). Future work: implement `POST /update-handoff` that calls `GET /status` + `GET /test` + `GET /test-render` and populates all {{}} fields automatically, eliminating the manual VERSION staleness class of bug seen in v0.9.61–v0.9.64. Trigger for promotion: a second VERSION staleness incident, or when the release flow is next touched for another reason.
 
-3. ~~**Investigate: .gitattributes + normalisePatch CRLF gap**~~ — shipped v0.9.78. PUT handler in sf-server.js now normalises CRLF→LF on every write. Eliminates the multi-line patch failure class permanently. — .gitattributes enforces LF on commit/checkout but the dev server's normalisePatch() still converts LF→CRLF for CRLF files at patch time. The gap: javascript_tool fetch bodies arrive as LF strings; if the target file is CRLF on disk, normalisePatch converts the old string to CRLF before searching — but multi-line strings built with \n in JS don't survive that conversion cleanly (mixed endings). Root cause is that the dev server reads CRLF from disk even though .gitattributes says LF. Fix candidates: (a) POST /patch normalises the file on disk to LF before patching, (b) the server rewrites CRLF files to LF on first write after .gitattributes was added, (c) add a lint.js check that no tracked file contains CRLF. Trigger: next session touching sf-server.js or sequence-builder.html.
+3. ~~**Investigate: .gitattributes + normalisePatch CRLF gap**~~ — shipped v0.9.78. PUT handler in server.js now normalises CRLF→LF on every write. Eliminates the multi-line patch failure class permanently. — .gitattributes enforces LF on commit/checkout but the dev server's normalisePatch() still converts LF→CRLF for CRLF files at patch time. The gap: javascript_tool fetch bodies arrive as LF strings; if the target file is CRLF on disk, normalisePatch converts the old string to CRLF before searching — but multi-line strings built with \n in JS don't survive that conversion cleanly (mixed endings). Root cause is that the dev server reads CRLF from disk even though .gitattributes says LF. Fix candidates: (a) POST /patch normalises the file on disk to LF before patching, (b) the server rewrites CRLF files to LF on first write after .gitattributes was added, (c) add a lint.js check that no tracked file contains CRLF. Trigger: next session touching server.js or sequence-builder.html.
 4. **Tour: demonstrate keyboard shortcuts** — the tour palette step mentions A/M/N/F but a dedicated step showing each shortcut in action would improve discoverability. Trigger: next tour revision pass.
 4. ~~**Zoom controls: float on canvas**~~ — shipped v0.9.75 — move btn-zoom-out, btn-zoom-reset, btn-zoom-in, btn-zoom-fit from toolbar to a floating pill anchored bottom-center of canvas. Standard pattern (Figma, Miro, Lucidchart). Toolbar slots vacated.
 5. ~~**Remove `?` toolbar button**~~ — shipped v0.9.74.
@@ -291,13 +313,13 @@ These standards define what each document type must contain, what format to use,
 ### HANDOFF.md
 
 **Required sections (in order):**
-FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW · READ CONSOLE PATTERN · STORE ARCHITECTURE · SECURITY NOTE · HOT RELOAD · LOG UI · TOUR SYSTEM · DEV LOOP WISDOM · VERSION · DEMOS · BACKLOG · REPO · (recovery note)
+FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW · READ CONSOLE PATTERN · STORE ARCHITECTURE · SECURITY NOTE · HOT RELOAD · LOG UI · TOUR SYSTEM · DEV LOOP WISDOM · VERSION · DEMOS · ISSUE LABELS · BACKLOG · REPO · (recovery note)
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
 - `## FIRST ACTIONS` — gate counts must match `GET /test` (177 ran, 0 failures) and `GET /test-render` (15 ran, 0 failures)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.102)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.102').join('0.9.103')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.102)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.103)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.103').join('0.9.104')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.103)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
@@ -344,12 +366,12 @@ Optional manual block (appended by AI immediately after auto-gen, before commit)
 **GENERATED FILE — never edit on GitHub directly.** Always fix via `POST /generate-readme` locally then push. Manual GitHub edits cause rebase conflicts on next push.
 
 **Required content:**
-- One-sentence description of what SequenceForge is
+- One-sentence description of what Sequence Builder is
 - Live demo link — format: `https://github.com/MeatPopSci1972/sequence-builder/releases/download/v{{version}}/sequence-builder.html`
 - All-releases link — format: `https://github.com/MeatPopSci1972/sequence-builder/releases`
 
 **Template-tracked fields:**
-- Live demo link version segment must match current release (0.9.69)
+- Live demo link version segment must match current release (0.9.103)
 
 **Update rules:**
 - Live demo link must be updated on every release as part of the release flow (step 6: GET /validate-readme enforces this)
@@ -388,8 +410,8 @@ Optional manual block (appended by AI immediately after auto-gen, before commit)
 
 ## SEQUENCE-LOG-VIEWER
 - GitHub: https://github.com/MeatPopSci1972/sequence-log-viewer
+- Local: E:\log-viewer\sequence-log-viewer
 - Status: TRANSITION — logview.html is being extracted here from SF repo
 - SF config: logview.sf.config.json (committed to SF repo, drives the left panel)
 - logview.html and logview-test.html remain in SF repo as reference until standalone is verified
 - Issues 1–4 (config-driven panel, multi-repo, OTel, right-click copy) live in the logview repo
-

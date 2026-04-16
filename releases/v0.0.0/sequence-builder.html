@@ -1,9 +1,9 @@
 ﻿<!DOCTYPE html>
 <!--
-  SequenceForge — Visual Sequence Diagram Builder
+  Sequence Builder — Visual Sequence Diagram Builder
   Version: (see SF_VERSION constant in boot section)
   License: MIT
-  Repository: https://github.com/GGemini/sequenceforge
+  Repository: https://github.com/MeatPopSci1972/sequence-builder
 
   Single-file, zero-dependency static HTML application.
   Drop onto any static host (GitHub Pages, Netlify, S3) — no build step required.
@@ -26,7 +26,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SequenceForge — Visual Diagram Builder</title>
+<title>Sequence Builder — Visual Diagram Builder</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230d0f14'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='16' font-weight='700' fill='%234af0c4' text-anchor='middle'%3ESF%3C/text%3E%3C/svg%3E">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap');
@@ -816,14 +816,14 @@
 
 <a href="#canvas-wrap" class="skip-link">Skip to canvas</a>
 
-<div id="app" role="application" aria-label="SequenceForge diagram builder">
+<div id="app" role="application" aria-label="Sequence Builder diagram builder">
 
   <!-- TOPBAR -->
   <header id="topbar" role="banner">
 
     <!-- Group 1: Brand -->
     <div class="tbtn-group">
-      <h1 aria-label="SequenceForge" id="app-title" data-version="0.9.103">Sequence<span>Forge</span></h1><span id="app-version-badge" class="app-version-badge"></span>
+      <h1 aria-label="Sequence Builder" id="app-title" data-version="0.9.104">Sequence<span>Forge</span></h1><span id="app-version-badge" class="app-version-badge"></span>
     </div>
 
     <!-- Group 2: Create elements -->
@@ -1406,12 +1406,12 @@ document.getElementById('debug-verbose-toggle')?.addEventListener('click', () =>
 });
 
 // Single source of truth for release version
-const SF_VERSION = '0.9.103';
+const SF_VERSION = '0.9.104';
 // Sync data-version attribute from SF_VERSION — keeps HTML in step with the constant
 document.getElementById('app-title').dataset.version = SF_VERSION;
 
 // Boot message
-_dbgWrite('info', ['SequenceForge v' + SF_VERSION + ' — debug console ready']);
+_dbgWrite('info', ['Sequence Builder v' + SF_VERSION + ' — debug console ready']);
 
 // Set true to enable high-frequency diagnostic logging (save, msg-dblclick).
 // Keep false in production — save fires on every render cycle.
@@ -1423,7 +1423,7 @@ let DEBUG_VERBOSE = false;
 // ═══════════════════════════════════════════════════════
 // @@ELEMENTS-START
 // ── SequenceElement.js ──
-// SequenceForge — SequenceElement.js
+// Sequence Builder — SequenceElement.js
 // Base contract for all diagram elements.
 // Audience: Human + fresh AI instance
 //
@@ -1558,7 +1558,7 @@ class SequenceElement {
 }
 
 // ── ActorElement.js ──
-// SequenceForge — ActorElement.js
+// Sequence Builder — ActorElement.js
 // Implements SequenceElement for actor (participant) records.
 // Audience: Human + fresh AI instance
 //
@@ -1683,7 +1683,7 @@ class ActorElement /* extends SequenceElement */ {
 }
 
 // ── ElementFactory.js ──
-// SequenceForge — ElementFactory.js
+// Sequence Builder — ElementFactory.js
 // Factory that maps store data records to SequenceElement instances.
 // Audience: Human + fresh AI instance
 //
@@ -1717,7 +1717,7 @@ class ElementFactory {
 }
 
 // ── FragmentElement.js ──
-// SequenceForge — FragmentElement.js
+// Sequence Builder — FragmentElement.js
 // Implements SequenceElement for fragment (alt/loop/opt) records.
 // Audience: Human + fresh AI instance
 //
@@ -1804,7 +1804,7 @@ class FragmentElement /* extends SequenceElement */ {
 }
 
 // ── MessageElement.js ──
-// SequenceForge — MessageElement.js
+// Sequence Builder — MessageElement.js
 // Implements SequenceElement for message records.
 // Audience: Human + fresh AI instance
 //
@@ -1890,7 +1890,7 @@ class MessageElement /* extends SequenceElement */ {
 }
 
 // ── NoteElement.js ──
-// SequenceForge — NoteElement.js
+// Sequence Builder — NoteElement.js
 // Implements SequenceElement for note records.
 // Audience: Human + fresh AI instance
 //
@@ -1991,7 +1991,7 @@ class NoteElement /* extends SequenceElement */ {
 
 // @@STORE-START
 // ═══════════════════════════════════════════════════════
-//  SequenceForge — DiagramStore
+//  Sequence Builder — DiagramStore
 //  Audience: Human + fresh AI instance
 //
 //  Pure JS module — zero DOM touches, zero external deps.
@@ -4793,7 +4793,7 @@ const _mCancel   = document.getElementById('modal-cancel');
 let   _mResolve  = null;
 
 if (!_mBackdrop || !_mOk || !_mCancel) {
-  console.error('SequenceForge: modal elements not found in DOM — check HTML order');
+  console.error('Sequence Builder: modal elements not found in DOM — check HTML order');
 }
 
 function showConfirmModal() {
@@ -5111,7 +5111,7 @@ function exportToPng() {
     URL.revokeObjectURL(url);
     const a = document.createElement('a');
     a.href = c.toDataURL('image/png');
-    a.download = 'sequenceforge-diagram.png';
+    a.download = 'sequence-builder-diagram.png';
     a.click();
     toast('PNG exported');
   };
@@ -5363,7 +5363,7 @@ function _exportDiagram() {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = 'sequenceforge-diagram.json';
+  a.download = 'sequence-builder-diagram.json';
   a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
@@ -6182,7 +6182,7 @@ document.addEventListener('DOMContentLoaded', function() {
     {target:'#btn-import-menu',title:'Import & Export',body:'Use <b>Export</b> to save your diagram as PlantUML, Mermaid, or JSON. Use <b>Import</b> to load existing UML &mdash; paste PlantUML or Mermaid text and the parser validates line by line before committing.',position:'bottom'},
     {target:'#btn-undo',title:'Undo / Redo',body:'Full 50-step undo history with branching. <kbd>Ctrl+Z</kbd> to undo, <kbd>Ctrl+Y</kbd> to redo. Making a new change after undo clears the redo branch &mdash; same behaviour as any good editor.',position:'bottom'},
     {target:'#btn-debug',title:'Debug Console',body:'The debug console logs every store action. Useful when something behaves unexpectedly. Toggle <b>Verbose</b> to see drag events too. Click <b>Copy Log</b> to share a trace.',position:'top'},
-    {target:'#settings-autofit-checkbox',title:'Auto-fit on Load',body:'When enabled, SequenceForge automatically scales the diagram to fill the canvas every time you load a demo or import a diagram. Toggle it off in <b>Settings</b> if you prefer to control zoom manually.',position:'right',beforeShow:function(){var b=document.getElementById('settings-modal-backdrop');if(b&&b.style.display!=='flex'){document.getElementById('btn-settings')&&document.getElementById('btn-settings').click();}['sf-tour-backdrop','sf-tour-spotlight','sf-tour-card'].forEach(function(id,i){var el=document.getElementById(id);if(el)el.style.zIndex=10003+i;});},afterLeave:function(){var b=document.getElementById('settings-modal-backdrop');if(b)b.style.display='none';var base=[9000,9001,9002];['sf-tour-backdrop','sf-tour-spotlight','sf-tour-card'].forEach(function(id,i){var el=document.getElementById(id);if(el)el.style.zIndex=base[i];});}},
+    {target:'#settings-autofit-checkbox',title:'Auto-fit on Load',body:'When enabled, Sequence Builder automatically scales the diagram to fill the canvas every time you load a demo or import a diagram. Toggle it off in <b>Settings</b> if you prefer to control zoom manually.',position:'right',beforeShow:function(){var b=document.getElementById('settings-modal-backdrop');if(b&&b.style.display!=='flex'){document.getElementById('btn-settings')&&document.getElementById('btn-settings').click();}['sf-tour-backdrop','sf-tour-spotlight','sf-tour-card'].forEach(function(id,i){var el=document.getElementById(id);if(el)el.style.zIndex=10003+i;});},afterLeave:function(){var b=document.getElementById('settings-modal-backdrop');if(b)b.style.display='none';var base=[9000,9001,9002];['sf-tour-backdrop','sf-tour-spotlight','sf-tour-card'].forEach(function(id,i){var el=document.getElementById(id);if(el)el.style.zIndex=base[i];});}},
   ];
 
   var current=0;

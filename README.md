@@ -1,9 +1,9 @@
-# Sequence Builder 
+# Sequence Builder
 
-> A model-driven renderer, delivered as a single-file, zero-dependency UML sequence diagram builder.  
+> A single-file, zero-dependency UML sequence diagram builder.  
 > Runs entirely in the browser. No build step. npm install only for Playwright render tests.
 
-**[Live demo v0.9.102](https://MeatPopSci1972.github.io/sequence-builder/releases/v0.9.102/sequence-builder.html)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
+**[Live demo — v0.9.104](https://MeatPopSci1972.github.io/sequence-builder/releases/v0.9.104/sequence-builder.html)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
 
 ---
 
@@ -52,6 +52,7 @@ Capabilities pinned by the contract test suites:
 | `LICENSE` | |
 | `README.md` | |
 | `build.js` | |
+| `endpoints.js` | |
 | `launcher.js` | |
 | `lint.js` | |
 | `log.html` | |
@@ -59,44 +60,44 @@ Capabilities pinned by the contract test suites:
 | `logview.html` | |
 | `logview.sf.config.json` | |
 | `package.json` | |
+| `preflight.ps1` | |
+| `readme-gen.js` | |
 | `sequence-builder.html` | |
 | `sequence-builder.store.js` | |
 | `sequence-builder.test-runner.js` | |
 | `sequence-builder.test.js` | |
-| `sf-endpoints.js` | |
-| `sf-preflight.ps1` | |
-| `sf-readme-gen.js` | |
-| `sf-server.js` | |
+| `server.js` | |
 | `src/elements/ActorElement.js` | |
 | `src/elements/ElementFactory.js` | |
 | `src/elements/FragmentElement.js` | |
 | `src/elements/MessageElement.js` | |
 | `src/elements/NoteElement.js` | |
 | `src/elements/SequenceElement.js` | |
+| `sync-labels.sh` | |
 | `themes.json` | |
 
 ---
 
 ## Dev server API
 
-Served by `sf-server.js` via `launcher.js` on port 3799.
+Served by `server.js` via `launcher.js` on port 3799.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/status` | Session bootstrap â€” version, git, demos |
+| GET | `/status` | Session bootstrap — version, git, demos |
 | GET | `/HANDOFF.md` | Session handoff doc |
 | GET | `/api` | Endpoint reference JSON (this) |
 | GET | `/usage` | AI usage guide plain text |
 | GET | `/log` | Server event log JSON |
 | GET | `/git-log` | git log --oneline JSON. Default n=20 |
-| GET | `/test` | Run build+tests â€” returns HTML report |
-| GET | `/test-render` | Playwright render gate â€” 3 demos x 5 SVG layers |
+| GET | `/test` | Run build+tests — returns HTML report |
+| GET | `/test-render` | Playwright render gate — 3 demos x 5 SVG layers |
 | GET | `/validate-readme` | Check README link+label for vX.Y.Z. Returns {ok,hasLink,hasLabel} |
 | GET | `/check-pages?v=X.Y.Z` | Fetch live GitHub Pages URL for vX.Y.Z. Returns {ok,status,url,ms} |
 | GET | `/slice` | Return named sentinel section of a file. No section = manifest |
-| POST | `/generate-readme` | Generate README.md from live sources â€” git, test suites, endpoints, version |
-| POST | `/build` | Run build.js â€” sync store.js into HTML |
-| POST | `/lint` | Run lint.js â€” button count, SVG balance, sentinels |
+| POST | `/generate-readme` | Generate README.md from live sources — git, test suites, endpoints, version |
+| POST | `/build` | Run build.js — sync store.js into HTML |
+| POST | `/lint` | Run lint.js — button count, SVG balance, sentinels |
 | POST | `/patch` | Find-replace in file. Body:{file,anchor,replace}. Flex whitespace matching. Returns {ok,replaced,length} |
 | POST | `/git` | git add -A && commit. Body:{message} |
 | POST | `/git-restore` | Restore tracked file to HEAD. Body:{file} |
