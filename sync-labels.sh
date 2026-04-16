@@ -8,7 +8,7 @@
 # Usage:
 #   GITHUB_TOKEN=ghp_yourtoken bash sync-labels.sh
 #
-# Token needs: repo scope (or public_repo for public repos)
+# Token needs: public_repo scope
 # Get one at:  https://github.com/settings/tokens
 #
 # To add a label:    add a upsert_label line in the relevant section below
@@ -90,7 +90,7 @@ echo ""
 echo "--- scope ---"
 upsert_label "ui"            "bfd4f2" "Rendering, CSS, HTML structure"
 upsert_label "store"         "bfe5bf" "State management"
-upsert_label "server"        "f9d0c4" "sf-server.js, endpoints"
+upsert_label "server"        "f9d0c4" "server.js, endpoints"
 upsert_label "tour"          "e99695" "Tour system"
 upsert_label "tests"         "c2e0c6" "Test suite only"
 

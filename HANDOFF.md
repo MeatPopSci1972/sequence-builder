@@ -58,7 +58,7 @@ Use POST /patch with a known anchor string to write. Full-file reads are PROHIBI
 - test-snapshots/ — render layer snapshot files (gitignored; seed with GET /test-render?update=1)
 - launcher.js — hot-reload wrapper: USE THIS to start server (node launcher.js)
 - sf-preflight.ps1 — pre-flight check script (run before each session)
-- sb-sync-labels.sh — idempotent GitHub label sync (run from Git Bash: GITHUB_TOKEN=ghp_xxx bash sb-sync-labels.sh)
+- sync-labels.sh — idempotent GitHub label sync (run from Git Bash: GITHUB_TOKEN=ghp_xxx bash sync-labels.sh)
 - log.html — server log viewer UI
 - CHANGELOG.md — release history, auto-generated via POST /changelog (auto-commits)
 - releases/ — per-version snapshots: releases/vX.Y.Z/sequence-builder.html + HANDOFF-vX.Y.Z.md
@@ -214,7 +214,7 @@ SF_VERSION is the JavaScript constant name used throughout the codebase (sequenc
 - cybersec-zones — CyberSecurity: Zone Analysis
 
 ## ISSUE LABELS
-GitHub labels are the routing and triage layer for all issues. The canonical label set is maintained by `sb-sync-labels.sh` — run it any time labels drift. Token: `public_repo` scope only.
+GitHub labels are the routing and triage layer for all issues. The canonical label set is maintained by `sync-labels.sh` — run it any time labels drift. Token: `public_repo` scope only.
 
 **Routing** — who/what executes this issue:
 - `for_cowork` — autonomous execution ready; issue has explicit Steps + Done when + Do not touch sections
