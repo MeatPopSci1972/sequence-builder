@@ -48,7 +48,7 @@ Use POST /patch with a known anchor string to write. Full-file reads are PROHIBI
 ## KEY FILES
 - sequence-builder.html — single-file app (toolbar, CSS, JS, store injected at build)
 - sequence-builder.store.js — store source (build.js syncs into HTML between sentinels)
-- sequence-builder.test.js — 170 contract tests (Suites 1-16)
+- sequence-builder.test.js — 177 contract tests (Suites 1-16)
 - themes.json — theme definitions (dark/light/system/lcars), served as GET /themes.json
 - build.js — syncs store.js into HTML between @@STORE-START / @@STORE-END
 - lint.js — HTML integrity checker: buttons, SVG balance, sentinels, version
@@ -91,7 +91,7 @@ fetch('http://localhost:3799/lint', {method:'POST'})
 ```
 
 ## RELEASE FLOW (v0.9.68+)
-1. GET /test (170/170) + GET /test-render (15/15) both green — also verify sf-preflight.ps1 expected count matches
+1. GET /test (177/177) + GET /test-render (15/15) both green — also verify sf-preflight.ps1 expected count matches
 2. POST /bump — increments patch from latest git tag, writes display version to HTML
 3. POST /build
 4. POST /lint — must be ok before continuing
@@ -282,12 +282,6 @@ User should be able to drag the LEFT or RIGHT tip of a message arrow to reassign
 
 ~~**BUG-003 (SHIPPED — fixed before v0.9.93) — Tour spotlight 0,0 on Import/Export step.** Do not re-add. Confirmed gone. Tombstone only.~~
 
-**Item 1 — HANDOFF template automation (icebox item 2):**
-Implement `POST /update-handoff` in server.js. It should call `GET /status` + `GET /test` + `GET /test-render` internally and populate all `{{placeholder}}` fields in HANDOFF.md defined in the ## DOCUMENTATION STANDARDS section. This permanently closes the VERSION staleness class of bug documented in ## HANDOFF SNAPSHOT AUDIT (cross-version pattern #1 and #4). Read ## DOCUMENTATION STANDARDS carefully before scoping — the {{placeholder}} field list is already defined there.
-
-**Item 2 — UI element factories (discussion only, no code):**
-After template automation ships, open a design discussion on UI element factories. The trigger condition (a second consumer of element construction logic outside render()) has not fired — this is a scoping conversation, not implementation. Proto2prod discipline applies: validate the need before building. Review render() with fresh eyes, identify any duplication that has emerged since v0.9.68, and decide together whether the trigger has been met.
-
 ### Icebox
 GitHub Issues is the authoritative backlog. No local icebox maintained.
 1. ~~**Define documentation standards**~~ — **shipped v0.9.69**. ## DOCUMENTATION STANDARDS and ## HANDOFF SNAPSHOT AUDIT sections written. Standards cover HANDOFF.md, CHANGELOG.md, README.md, and GitHub release notes. Template {{placeholder}} markers added for future automation. Audit covers v0.9.61–v0.9.68 archives with cross-version pattern summary.
@@ -377,7 +371,7 @@ Optional manual block (appended by AI immediately after auto-gen, before commit)
 - All-releases link — format: `https://github.com/MeatPopSci1972/sequence-builder/releases`
 
 **Template-tracked fields:**
-- Live demo link version segment must match current release (0.9.69)
+- Live demo link version segment must match current release (0.9.103)
 
 **Update rules:**
 - Live demo link must be updated on every release as part of the release flow (step 6: GET /validate-readme enforces this)
