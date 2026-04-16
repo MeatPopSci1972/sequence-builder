@@ -2715,10 +2715,10 @@ test('SF_VERSION — no Sequence Builder v\\d version reads in server.js', funct
   var regexReads = src.match(/match\([^)]*Sequence Builder v/g) || []
   assert(regexReads.length === 0, 'found Sequence Builder v regex reads in server.js: ' + JSON.stringify(regexReads))
 })
-test('SF_VERSION — no Sequence Builder v\\d version reads in sf-readme-gen.js', function () {
-  var src = require('fs').readFileSync(require('path').join(__dirname, 'sf-readme-gen.js'), 'utf8')
+test('SF_VERSION — no Sequence Builder v\\d version reads in readme-gen.js', function () {
+  var src = require('fs').readFileSync(require('path').join(__dirname, 'readme-gen.js'), 'utf8')
   var regexReads = src.match(/match\([^)]*Sequence Builder v/g) || []
-  assert(regexReads.length === 0, 'found Sequence Builder v regex reads in sf-readme-gen.js: ' + JSON.stringify(regexReads))
+  assert(regexReads.length === 0, 'found Sequence Builder v regex reads in readme-gen.js: ' + JSON.stringify(regexReads))
 })
 
 
