@@ -1,5 +1,27 @@
 # Sequence Builder Changelog
 
+## v0.9.104 — v0.9.104
+_2026-04-16_
+
+### Features
+- v0.9.104
+
+### Fixes
+- update test suite reference sf-server.js -> server.js\n\n- SF_VERSION test now reads server.js not sf-server.js\n- test description and assertion message updated to match\n- 177/177 green
+- README live demo link corrected to
+
+### Chores
+- HANDOFF
+- prune shipped Item 1 + note Item 2 as RFC candidate\n\n- Item 1 (HANDOFF template automation via POST /update-handoff) shipped in v0.9.70, already tombstoned in Icebox. Removed from active BACKLOG.\n- Item 2 (UI element factories) is a discussion with unmet trigger condition. Deferred from HANDOFF.md; will file as GitHub issue with rfc+icebox labels.
+- rename sf-readme-gen.js ref in tests + SB OPS branding in logview
+- rename sf-endpoints.js, sf-readme-gen.js, sf-preflight.ps1
+- add label taxonomy to HANDOFF + commit sb-sync-labels.sh\n\n- sb-sync-labels.sh added to repo root (idempotent GitHub label upsert)\n- HANDOFF ## ISSUE LABELS section added - routing/type/scope/priority taxonomy\n- HANDOFF ## KEY FILES updated with sb-sync-labels.sh entry\n- HANDOFF DEV LOOP WISDOM - SF_VERSION rename warning added\n- HANDOFF REPO section updated with sequence-log-viewer local path\n- HANDOFF ## BACKLOG - noted #24 already shipped, needs closing
+- rename sf-server.js to server.js\n\n- server.js is the new entry point\n- launcher.js, HANDOFF.md, sf-preflight.ps1, package.json updated\n- sf-server.js deleted\n- 177/177 tests green, 15/15 render snapshots green, lint ok
+- rename sequenceforge references to sequence-builder\n\n- repo URL in HTML comment header updated to MeatPopSci1972/sequence-builder\n- PNG and JSON export filenames updated to sequence-builder-diagram.*\n- dev/ canary files and archived releases left intact (superseded/read-only)
+- suppress CRLF noise on release snapshots
+
+---
+
 ## v0.9.103 — v0.9.103
 _2026-04-13_
 
