@@ -39,8 +39,8 @@ function restart() {
 // Watch all server files for changes
 const WATCH_FILES = [
   path.join(__dirname, 'server.js'),
-  path.join(__dirname, 'sf-readme-gen.js'),
-  path.join(__dirname, 'sf-endpoints.js')
+  path.join(__dirname, 'readme-gen.js'),
+  path.join(__dirname, 'endpoints.js')
 ];
 WATCH_FILES.forEach(function(f) {
   if (fs.existsSync(f)) {

@@ -1,11 +1,11 @@
 // Sequence Builder dev server v5
-// node sf-server.js  (use launcher.js for hot-reload)
+// node server.js  (use launcher.js for hot-reload)
 const http     = require('http');
 const fs       = require('fs');
 const path     = require('path');
 const { execFile } = require('child_process');
-const { SF_ENDPOINTS } = require('./sf-endpoints');
-const { generateReadme } = require('./sf-readme-gen');
+const { SF_ENDPOINTS } = require('./endpoints');
+const { generateReadme } = require('./readme-gen');
 const ROOT = path.resolve(__dirname);
 const PORT = 3799;
 const MIME = { '.html':'text/html','.js':'text/javascript','.json':'application/json','.md':'text/plain','.css':'text/css' };
@@ -464,7 +464,7 @@ function writeVersionToHTML(newVer) {
       'GATE: 99 passed before AND after your work',
       'LINT: POST /lint after every HTML write',
       'POST /patch: find-replace. Body:{file,old,new}. Returns {ok,replaced,length}. addLog fires.',
-      'POST /patch CRLF: old/new auto-normalised to CRLF for CRLF files (sequence-builder.html, sf-server.js).',
+      'POST /patch CRLF: old/new auto-normalised to CRLF for CRLF files (sequence-builder.html, server.js).',
       '  normalisePatch() runs server-side -- call sites send plain LF, server converts. No manual \\r\\n needed.',
       '  A miss (replaced:0) means old string not found -- check for typos or context drift.',
       'RELEASE: gate->build->bump->lint->snapshot->validate-readme->changelog->HANDOFF->git->tag->push->GitHub Release',
@@ -725,4 +725,4 @@ if (req.method === 'GET' && urlPath === '/test-render') {
   res.writeHead(405); res.end('Method not allowed');
 });
 
-server.listen(PORT, () => { console.log('sf-server v5 listening on port '+PORT); });
+server.listen(PORT, () => { console.log('server v5 listening on port '+PORT); });

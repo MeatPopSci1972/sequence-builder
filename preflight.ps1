@@ -1,6 +1,6 @@
-# sf-preflight.ps1
+# preflight.ps1
 # Sequence Builder session pre-flight check
-# Run: .\sf-preflight.ps1
+# Run: .\preflight.ps1
 
 $base = "http://localhost:3799"
 $pass = 0

@@ -1,6 +1,6 @@
-// sf-readme-gen.js
+// readme-gen.js
 // Generates README.md from live sources.
-// Called by POST /generate-readme in sf-server.js.
+// Called by POST /generate-readme in server.js.
 // Sources: git ls-files, test suite headers, SF_ENDPOINTS, version from HTML.
 
 'use strict';
@@ -8,7 +8,7 @@
 const fs   = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const { SF_ENDPOINTS } = require('./sf-endpoints');
+const { SF_ENDPOINTS } = require('./endpoints');
 
 function generateReadme(ROOT) {
   // 1. Version from HTML comment
@@ -92,7 +92,7 @@ function generateReadme(ROOT) {
     '',
     '## Dev server API',
     '',
-    'Served by `sf-server.js` via `launcher.js` on port 3799.',
+    'Served by `server.js` via `launcher.js` on port 3799.',
     '',
     '| Method | Path | Description |',
     '|--------|------|-------------|',
