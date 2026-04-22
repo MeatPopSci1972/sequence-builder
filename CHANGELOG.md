@@ -1,5 +1,21 @@
 # Sequence Builder Changelog
 
+## v0.9.105 — v0.9.105
+_2026-04-22_
+
+### Features
+- v0.9.105
+
+### Fixes
+- add missing release/v0.9.104 artifacts\n\nSnapshot step (6) in release flow silently defaulted to v0.0.0 instead of using state.version, so releases/v0.9.104/ was never created. Files manually created post-hoc from current HEAD (which is tag v0.9.104). Infrastructure fix tracked in Issue #41.
+
+### Chores
+- HANDOFF
+- cowork test flight 2 — self-verification pattern
+- cowork test flight — COWORK_HELLO.md
+
+---
+
 ## v0.9.104 — v0.9.104
 _2026-04-16_
 
