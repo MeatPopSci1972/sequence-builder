@@ -823,7 +823,7 @@
 
     <!-- Group 1: Brand -->
     <div class="tbtn-group">
-      <h1 aria-label="Sequence Builder" id="app-title" data-version="0.9.106">Sequence<span>Forge</span></h1><span id="app-version-badge" class="app-version-badge"></span>
+      <h1 aria-label="Sequence Builder" id="app-title" data-version="0.9.107">Sequence<span>Forge</span></h1><span id="app-version-badge" class="app-version-badge"></span>
     </div>
 
     <!-- Group 2: Create elements -->
@@ -1406,7 +1406,7 @@ document.getElementById('debug-verbose-toggle')?.addEventListener('click', () =>
 });
 
 // Single source of truth for release version
-const SF_VERSION = '0.9.106';
+const SF_VERSION = '0.9.107';
 // Sync data-version attribute from SF_VERSION — keeps HTML in step with the constant
 document.getElementById('app-title').dataset.version = SF_VERSION;
 
@@ -5809,7 +5809,7 @@ function toast(msg) {
 window.SF_DEMO_FILES = null;
 
 function fetchDemoIndex() {
-  return fetch('/demo/index.json')
+  return fetch('demo/index.json')
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(data) {
       window.SF_DEMO_FILES = Array.isArray(data.demos) ? data.demos : [];
@@ -5842,7 +5842,7 @@ function _updateDemoBadge() {
 function loadDemoFromFile(id) {
   var entry = (window.SF_DEMO_FILES || []).find(function(d) { return d.id === id; });
   if (!entry) { toast('Demo not found: ' + id); return; }
-  fetch('/demo/' + entry.file)
+  fetch('demo/' + entry.file)
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(data) {
       store.dispatch({ type: 'LOAD_DIAGRAM', payload: Object.assign({}, data, { _source: 'demo' }), meta: { undoable: false } });
