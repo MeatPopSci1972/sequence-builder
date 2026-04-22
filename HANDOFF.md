@@ -203,9 +203,9 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 SF_VERSION is the JavaScript constant name used throughout the codebase (sequence-builder.html, server.js, sf-readme-gen.js, sequence-builder.test.js). Renaming it requires an atomic sweep of all four files plus the test suite. Do not rename opportunistically — open a dedicated chore issue with the full blast radius documented first.
 
 ## VERSION
-- Current: 0.9.107
-- Bump pattern: html.split('0.9.107').join('0.9.108')
-- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.107/sequence-builder.html
+- Current: 0.9.109
+- Bump pattern: html.split('0.9.109').join('0.9.110')
+- Release handoff: https://github.com/MeatPopSci1972/sequence-builder/blob/main/releases/v0.9.109/sequence-builder.html
 - NOTE: version bump replaces 3 occurrences (comment, data-version attr, version regex) -- all correct
 
 ## DEMOS (registered in store)
@@ -317,9 +317,9 @@ FIRST ACTIONS · DEV SERVER API · KEY FILES · WORKFLOW PATTERN · RELEASE FLOW
 
 **Template-tracked fields** *(must match live data — verify at session start)*:
 - `## FIRST ACTIONS` — gate counts must match `GET /test` (177 ran, 0 failures) and `GET /test-render` (15 ran, 0 failures)
-- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.107)
-- `## VERSION — Bump pattern:` — must be `html.split('0.9.107').join('0.9.108')`
-- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.107)
+- `## VERSION — Current:` — must match `GET /status` → `version` field (0.9.109)
+- `## VERSION — Bump pattern:` — must be `html.split('0.9.109').join('0.9.110')`
+- `## VERSION — Release handoff URL:` — must point to current version snapshot (0.9.109)
 - `## BACKLOG` — shipped items must reflect last commit; icebox must not contain items that have been shipped
 
 **Update rules:**
