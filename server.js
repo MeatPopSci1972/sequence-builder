@@ -1,4 +1,4 @@
-// Sequence Builder dev server v5
+﻿// Sequence Builder dev server v5
 // node server.js  (use launcher.js for hot-reload)
 const http     = require('http');
 const fs       = require('fs');
@@ -351,7 +351,9 @@ function writeVersionToHTML(newVer) {
     }); return;
   }
   if (req.method === 'POST' && urlPath.startsWith('/snapshot')) {
-    const version = urlObj.searchParams.get('v')||'0.0.0';
+    let body = ''; req.on('data',d=>body+=d); req.on('end',()=>{
+    let bodyV = ''; try { bodyV = JSON.parse(body).v || ''; } catch(e) {}
+    const version = urlObj.searchParams.get('v') || bodyV || '0.0.0';
     const src = path.join(ROOT,'sequence-builder.html');
     const dir = path.join(ROOT,'releases','v'+version);
     fs.mkdirSync(dir,{recursive:true});
@@ -365,7 +367,7 @@ function writeVersionToHTML(newVer) {
         const stableUrl = 'https://MeatPopSci1972.github.io/sequence-builder/sequence-builder.html';
         if(rm.indexOf(stableUrl)===-1) addLog('POST /snapshot','WARN: README missing stable live demo link');
       } catch(e){ addLog('POST /snapshot','WARN: README unreadable'); }
-    }); return;
+    }); }); return;
   }
   if (req.method === 'POST' && urlPath === '/generate-readme') {
     try {
