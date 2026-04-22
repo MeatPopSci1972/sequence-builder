@@ -1,0 +1,127 @@
+{
+  "actors": [
+    {
+      "id": "actor_transit_passenger-card",
+      "x": 40,
+      "label": "Passenger Card",
+      "type": "actor-external"
+    },
+    {
+      "id": "actor_transit_gate-reader",
+      "x": 200,
+      "label": "Gate Reader",
+      "type": "actor-system"
+    },
+    {
+      "id": "actor_transit_auth-service",
+      "x": 360,
+      "label": "Auth Service",
+      "type": "actor-system"
+    },
+    {
+      "id": "actor_transit_fare-system",
+      "x": 520,
+      "label": "Fare System",
+      "type": "actor-system"
+    },
+    {
+      "id": "actor_transit_bank-issuer",
+      "x": 680,
+      "label": "Bank / Issuer",
+      "type": "actor-external"
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg_transit_tap",
+      "fromId": "actor_transit_passenger-card",
+      "toId": "actor_transit_gate-reader",
+      "label": "Tap (NFC)",
+      "kind": "sync",
+      "direction": "right",
+      "y": 122
+    },
+    {
+      "id": "msg_transit_token-auth-request",
+      "fromId": "actor_transit_gate-reader",
+      "toId": "actor_transit_auth-service",
+      "label": "Token auth request",
+      "kind": "sync",
+      "direction": "right",
+      "y": 174
+    },
+    {
+      "id": "msg_transit_validate-card",
+      "fromId": "actor_transit_auth-service",
+      "toId": "actor_transit_bank-issuer",
+      "label": "Validate card token",
+      "kind": "sync",
+      "direction": "right",
+      "y": 226
+    },
+    {
+      "id": "msg_transit_token-valid",
+      "fromId": "actor_transit_bank-issuer",
+      "toId": "actor_transit_auth-service",
+      "label": "Token valid",
+      "kind": "return",
+      "direction": "right",
+      "y": 278
+    },
+    {
+      "id": "msg_transit_deduct-fare",
+      "fromId": "actor_transit_auth-service",
+      "toId": "actor_transit_fare-system",
+      "label": "Deduct fare",
+      "kind": "sync",
+      "direction": "right",
+      "y": 330
+    },
+    {
+      "id": "msg_transit_fare-confirmed",
+      "fromId": "actor_transit_fare-system",
+      "toId": "actor_transit_auth-service",
+      "label": "Fare confirmed",
+      "kind": "return",
+      "direction": "right",
+      "y": 382
+    },
+    {
+      "id": "msg_transit_gate-open",
+      "fromId": "actor_transit_auth-service",
+      "toId": "actor_transit_gate-reader",
+      "label": "Authorise gate open",
+      "kind": "return",
+      "direction": "right",
+      "y": 434
+    },
+    {
+      "id": "msg_transit_gate-signal",
+      "fromId": "actor_transit_gate-reader",
+      "toId": "actor_transit_passenger-card",
+      "label": "Gate open signal",
+      "kind": "async",
+      "direction": "right",
+      "y": 486
+    }
+  ],
+  "notes": [
+    {
+      "id": "note_transit_tap-latency",
+      "x": 20,
+      "y": 148,
+      "text": "End-to-end tap-to-gate target: < 300ms"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "frag_transit_bank-auth",
+      "x": 330,
+      "y": 205,
+      "w": 390,
+      "h": 100,
+      "kind": "frag-alt",
+      "cond": "online auth path"
+    }
+  ]
+}

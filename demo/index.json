@@ -1,0 +1,24 @@
+{
+  "demos": [
+    {
+      "id": "auth-flow",
+      "label": "Auth Flow",
+      "file": "auth-flow.json"
+    },
+    {
+      "id": "scada-control",
+      "label": "SCADA: Control Flow",
+      "file": "scada-control-flow.json"
+    },
+    {
+      "id": "cybersec-zones",
+      "label": "CyberSecurity: Zone Analysis",
+      "file": "cybersec-zones.json"
+    },
+    {
+      "id": "transit-tap-to-ride",
+      "label": "Urban Transit: Tap to Ride",
+      "file": "transit-tap-to-ride.json"
+    }
+  ]
+}

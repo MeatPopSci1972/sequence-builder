@@ -1,0 +1,23 @@
+{
+  "actors": [
+    { "id": "actor_scada_hmi",       "x": 40,  "label": "HMI",       "type": "actor-person" },
+    { "id": "actor_scada_plc",       "x": 210, "label": "PLC",       "type": "actor-system" },
+    { "id": "actor_scada_rtu",       "x": 380, "label": "RTU",       "type": "actor-system" },
+    { "id": "actor_scada_historian", "x": 550, "label": "Historian", "type": "actor-db"     }
+  ],
+  "messages": [
+    { "id": "msg_scada_poll-cycle",      "fromId": "actor_scada_hmi", "toId": "actor_scada_plc",       "label": "Poll cycle (1 s)",   "kind": "sync",   "direction": "right", "y": 122 },
+    { "id": "msg_scada_read-registers",  "fromId": "actor_scada_plc", "toId": "actor_scada_rtu",       "label": "Read registers",     "kind": "sync",   "direction": "right", "y": 174 },
+    { "id": "msg_scada_field-telemetry", "fromId": "actor_scada_rtu", "toId": "actor_scada_plc",       "label": "Field telemetry",    "kind": "return", "direction": "right", "y": 226 },
+    { "id": "msg_scada_setpoint",        "fromId": "actor_scada_plc", "toId": "actor_scada_rtu",       "label": "Setpoint command",   "kind": "sync",   "direction": "right", "y": 278 },
+    { "id": "msg_scada_acknowledge",     "fromId": "actor_scada_rtu", "toId": "actor_scada_plc",       "label": "Acknowledge",        "kind": "return", "direction": "right", "y": 330 },
+    { "id": "msg_scada_log-values",      "fromId": "actor_scada_plc", "toId": "actor_scada_historian", "label": "Log values",         "kind": "async",  "direction": "right", "y": 382 },
+    { "id": "msg_scada_status-update",   "fromId": "actor_scada_plc", "toId": "actor_scada_hmi",       "label": "Status update",      "kind": "return", "direction": "right", "y": 434 }
+  ],
+  "notes": [
+    { "id": "note_scada_control-loop", "x": 20, "y": 148, "text": "SCADA control loop" }
+  ],
+  "fragments": [
+    { "id": "frag_scada_scan-active", "x": 160, "y": 148, "w": 340, "h": 140, "kind": "frag-loop", "cond": "scan active" }
+  ]
+}

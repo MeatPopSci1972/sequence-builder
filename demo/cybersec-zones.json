@@ -1,0 +1,109 @@
+{
+  "actors": [
+    {
+      "id": "actor_cybersec_corporate-lan",
+      "x": 40,
+      "label": "Corporate LAN",
+      "type": "actor-system"
+    },
+    {
+      "id": "actor_cybersec_firewall",
+      "x": 200,
+      "label": "Firewall",
+      "type": "actor-system"
+    },
+    {
+      "id": "actor_cybersec_jump-server",
+      "x": 360,
+      "label": "Jump Server",
+      "type": "actor-system"
+    },
+    {
+      "id": "actor_cybersec_ot-network",
+      "x": 520,
+      "label": "OT Network",
+      "type": "actor-system"
+    },
+    {
+      "id": "actor_cybersec_historian",
+      "x": 680,
+      "label": "Historian",
+      "type": "actor-db"
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg_cybersec_remote-access-request",
+      "fromId": "actor_cybersec_corporate-lan",
+      "toId": "actor_cybersec_firewall",
+      "label": "Remote access request",
+      "kind": "sync",
+      "direction": "right",
+      "y": 122
+    },
+    {
+      "id": "msg_cybersec_allow-port-3389",
+      "fromId": "actor_cybersec_firewall",
+      "toId": "actor_cybersec_jump-server",
+      "label": "Allow (port 3389)",
+      "kind": "sync",
+      "direction": "right",
+      "y": 226
+    },
+    {
+      "id": "msg_cybersec_authenticated-session",
+      "fromId": "actor_cybersec_jump-server",
+      "toId": "actor_cybersec_ot-network",
+      "label": "Authenticated session",
+      "kind": "sync",
+      "direction": "right",
+      "y": 278
+    },
+    {
+      "id": "msg_cybersec_process-data-write",
+      "fromId": "actor_cybersec_ot-network",
+      "toId": "actor_cybersec_historian",
+      "label": "Process data write",
+      "kind": "async",
+      "direction": "right",
+      "y": 330
+    },
+    {
+      "id": "msg_cybersec_replication-no-dpi",
+      "fromId": "actor_cybersec_historian",
+      "toId": "actor_cybersec_corporate-lan",
+      "label": "Replication (no DPI)",
+      "kind": "async",
+      "direction": "right",
+      "y": 382
+    },
+    {
+      "id": "msg_cybersec_audit-log-egress",
+      "fromId": "actor_cybersec_ot-network",
+      "toId": "actor_cybersec_firewall",
+      "label": "Audit log egress",
+      "kind": "async",
+      "direction": "right",
+      "y": 434
+    }
+  ],
+  "notes": [
+    {
+      "id": "note_cybersec_unmonitored-replication",
+      "x": 20,
+      "y": 174,
+      "text": "Unmonitored replication path — no DPI at historian egress"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "frag_cybersec_purdue-boundary",
+      "x": 330,
+      "y": 80,
+      "w": 390,
+      "h": 230,
+      "kind": "frag-alt",
+      "cond": "Purdue L3 / L2 boundary"
+    }
+  ]
+}

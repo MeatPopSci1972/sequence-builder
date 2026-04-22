@@ -1,0 +1,22 @@
+{
+  "actors": [
+    { "id": "actor_auth_user",         "x": 40,  "label": "User",         "type": "actor-person" },
+    { "id": "actor_auth_api-gateway",  "x": 210, "label": "API Gateway",  "type": "actor-system" },
+    { "id": "actor_auth_auth-service", "x": 380, "label": "Auth Service", "type": "actor-system" },
+    { "id": "actor_auth_database",     "x": 550, "label": "Database",     "type": "actor-db"     }
+  ],
+  "messages": [
+    { "id": "msg_auth_post-login",          "fromId": "actor_auth_user",         "toId": "actor_auth_api-gateway",  "label": "POST /login",         "kind": "sync",   "direction": "right", "y": 122 },
+    { "id": "msg_auth_validate-credentials","fromId": "actor_auth_api-gateway",  "toId": "actor_auth_auth-service", "label": "validateCredentials", "kind": "sync",   "direction": "right", "y": 226 },
+    { "id": "msg_auth_select-user",         "fromId": "actor_auth_auth-service", "toId": "actor_auth_database",     "label": "SELECT user WHERE…",  "kind": "sync",   "direction": "right", "y": 278 },
+    { "id": "msg_auth_user-record",         "fromId": "actor_auth_database",     "toId": "actor_auth_auth-service", "label": "user record",         "kind": "return", "direction": "right", "y": 330 },
+    { "id": "msg_auth_jwt-token",           "fromId": "actor_auth_auth-service", "toId": "actor_auth_api-gateway",  "label": "JWT token",           "kind": "return", "direction": "right", "y": 382 },
+    { "id": "msg_auth_200-ok",              "fromId": "actor_auth_api-gateway",  "toId": "actor_auth_user",         "label": "200 OK + token",      "kind": "return", "direction": "right", "y": 434 }
+  ],
+  "notes": [
+    { "id": "note_auth_flow", "x": 20, "y": 174, "text": "Auth flow" }
+  ],
+  "fragments": [
+    { "id": "frag_auth_valid-credentials", "x": 160, "y": 170, "w": 340, "h": 175, "kind": "frag-alt", "cond": "valid credentials" }
+  ]
+}

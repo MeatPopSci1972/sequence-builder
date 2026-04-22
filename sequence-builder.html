@@ -823,7 +823,7 @@
 
     <!-- Group 1: Brand -->
     <div class="tbtn-group">
-      <h1 aria-label="Sequence Builder" id="app-title" data-version="0.9.104">Sequence<span>Forge</span></h1><span id="app-version-badge" class="app-version-badge"></span>
+      <h1 aria-label="Sequence Builder" id="app-title" data-version="0.9.105">Sequence<span>Forge</span></h1><span id="app-version-badge" class="app-version-badge"></span>
     </div>
 
     <!-- Group 2: Create elements -->
@@ -1406,7 +1406,7 @@ document.getElementById('debug-verbose-toggle')?.addEventListener('click', () =>
 });
 
 // Single source of truth for release version
-const SF_VERSION = '0.9.104';
+const SF_VERSION = '0.9.105';
 // Sync data-version attribute from SF_VERSION — keeps HTML in step with the constant
 document.getElementById('app-title').dataset.version = SF_VERSION;
 
@@ -5803,13 +5803,71 @@ function toast(msg) {
 // ═══════════════════════════════════════════════════════
 //  DEMO DATA — now delegated entirely to the store
 // ═══════════════════════════════════════════════════════
-function loadDemo(id) {
-  store.dispatch({ type: 'LOAD_DEMO', payload: { id: id }, meta: { undoable: false } });
+// ── File-based demo loader (Step 2 — Issue #36) ─────────────────────────────
+// SF_DEMO_FILES: null = not yet fetched, [] = fetch failed/empty, [...] = loaded
+// SF_DEMOS: legacy store-baked list — fallback when SF_DEMO_FILES is null
+window.SF_DEMO_FILES = null;
+
+function fetchDemoIndex() {
+  return fetch('/demo/index.json')
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) {
+      window.SF_DEMO_FILES = Array.isArray(data.demos) ? data.demos : [];
+      _updateDemoBadge();
+      return window.SF_DEMO_FILES;
+    })
+    .catch(function() {
+      window.SF_DEMO_FILES = [];
+      _updateDemoBadge();
+      return [];
+    });
 }
+
+function _updateDemoBadge() {
+  var btn = document.getElementById('btn-load-demo');
+  if (!btn) return;
+  var badge = btn.querySelector('.demo-refresh-badge');
+  var needsBadge = !window.SF_DEMO_FILES || window.SF_DEMO_FILES.length < 1;
+  if (needsBadge && !badge) {
+    var b = document.createElement('span');
+    b.className = 'demo-refresh-badge';
+    b.textContent = '↻';
+    b.title = 'No demos found — click to refresh';
+    btn.appendChild(b);
+  } else if (!needsBadge && badge) {
+    badge.remove();
+  }
+}
+
+function loadDemoFromFile(id) {
+  var entry = (window.SF_DEMO_FILES || []).find(function(d) { return d.id === id; });
+  if (!entry) { toast('Demo not found: ' + id); return; }
+  fetch('/demo/' + entry.file)
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) {
+      store.dispatch({ type: 'LOAD_DIAGRAM', payload: Object.assign({}, data, { _source: 'demo' }), meta: { undoable: false } });
+    })
+    .catch(function(err) {
+      toast('Failed to load demo: ' + err.message);
+    });
+}
+
+function loadDemo(id) {
+  // File-based path — LOAD_DEMO store path unused (Step 3, Issue #36)
+  loadDemoFromFile(id);
+}
+
 function _buildDemoMenu() {
   var menu = document.getElementById('demo-menu');
   if (!menu) return;
-  var demos = window.SF_DEMOS || [];
+  // Prefer file-based list; fall back to store-baked SF_DEMOS
+  var demos = (window.SF_DEMO_FILES && window.SF_DEMO_FILES.length > 0)
+    ? window.SF_DEMO_FILES
+    : (window.SF_DEMOS || []);
+  if (demos.length === 0) {
+    menu.innerHTML = '<li class="tbtn-demo-item tbtn-demo-empty" role="menuitem" style="color:var(--text3);cursor:default;font-style:italic">I looked in /demo/ and didn\'t find any demo files.</li>';
+    return;
+  }
   menu.innerHTML = demos.map(function(d) {
     return '<li class="tbtn-demo-item" role="menuitem" data-id="' + d.id + '">' + d.label + '</li>';
   }).join('');
@@ -5817,10 +5875,29 @@ function _buildDemoMenu() {
     li.addEventListener('click', function() { loadDemo(li.dataset.id); _closeDemoMenu(); });
   });
 }
+
 function _toggleDemoMenu() {
   var wrap = document.getElementById('demo-dropdown-wrap');
   var btn  = document.getElementById('btn-load-demo');
   if (!wrap) return;
+  // REFRESH badge state: fetch index first, then open
+  if (!window.SF_DEMO_FILES || window.SF_DEMO_FILES.length < 1) {
+    fetchDemoIndex().then(function() {
+      if (window.SF_DEMO_FILES && window.SF_DEMO_FILES.length > 0) {
+        wrap.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+        _buildDemoMenu();
+      } else {
+        var isFile = window.location.protocol === 'file:';
+        var dbgMsg = isFile
+          ? 'Demo fetch skipped — file:// protocol does not support folder serving. Host this file on a web server to enable demos.'
+          : 'No demo files found — looked in /demo/index.json. Drop demo JSON files in the /demo/ folder and click the Demo button to refresh.';
+        dbg('demo', dbgMsg);
+        toast('Demo unavailable — see Debug console (↓) for details.');
+      }
+    });
+    return;
+  }
   var open = wrap.classList.toggle('open');
   btn.setAttribute('aria-expanded', String(open));
   if (open) _buildDemoMenu();
