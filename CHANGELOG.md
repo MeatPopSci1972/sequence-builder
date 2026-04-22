@@ -1,5 +1,17 @@
 # Sequence Builder Changelog
 
+## v0.9.106 — v0.9.106
+_2026-04-22_
+
+### Features
+- v0.9.106
+
+### Chores
+- HANDOFF
+- add v0.9.105 release snapshot
+
+---
+
 ## v0.9.105 — v0.9.105
 _2026-04-22_
 
