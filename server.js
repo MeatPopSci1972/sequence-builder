@@ -220,12 +220,31 @@ const server = http.createServer(function(req, res) {
 // No stored version, no two patterns, no drift.
 function nextVersionFromGit() {
   const {execSync} = require('child_process')
+  // Always read current HTML version as a floor — prevents regression if
+  // git describe can't find a tag reachable from HEAD (Issue #7).
+  const fp = require('path').join(ROOT, 'sequence-builder.html')
+  let htmlVer = '0.0.0'
+  try {
+    const m = require('fs').readFileSync(fp, 'utf8').match(/const SF_VERSION = '(\d+\.\d+\.\d+)'/);
+    if (m) htmlVer = m[1]
+  } catch(e) {}
+  const htmlParts = htmlVer.split('.').map(Number)
+  const htmlNext  = [htmlParts[0], htmlParts[1], htmlParts[2] + 1].join('.')
   try {
     const latest = execSync('git describe --tags --abbrev=0', {cwd:ROOT, encoding:'utf8'}).trim()
-    const parts = latest.replace(/^v/, '').split('.').map(Number)
-    parts[2]++
-    return parts.join('.')
-  } catch(e) { return '0.0.1' }
+    const gitParts = latest.replace(/^v/, '').split('.').map(Number)
+    const gitNext  = [gitParts[0], gitParts[1], gitParts[2] + 1].join('.')
+    // Take the higher of gitTag+1 and htmlVersion+1 — whichever is ahead wins.
+    // This handles: re-run after failed push, orphan HEAD, missing tags.
+    const pick = (a, b) => {
+      const [a0,a1,a2] = a.split('.').map(Number)
+      const [b0,b1,b2] = b.split('.').map(Number)
+      if (a0 !== b0) return a0 > b0 ? a : b
+      if (a1 !== b1) return a1 > b1 ? a : b
+      return a2 >= b2 ? a : b
+    }
+    return pick(gitNext, htmlNext)
+  } catch(e) { return htmlNext }
 }
 function writeVersionToHTML(newVer) {
   const fp = path.join(ROOT, 'sequence-builder.html')
@@ -253,7 +272,7 @@ function writeVersionToHTML(newVer) {
         const curVer = curM ? curM[1] : null
         if (curVer && curVer === newVer) {
           res.writeHead(200, {'Content-Type': 'application/json'})
-          res.end(JSON.stringify({ok:true, alreadyBumped:true, version:newVer, ms:Date.now()-t0}))
+          res.end(JSON.stringify({ok:true, alreadyBumped:true, newVersion:newVer, ms:Date.now()-t0}))
           addLog('POST /bump', '-> already at ' + newVer)
           return
         }
@@ -533,7 +552,7 @@ function writeVersionToHTML(newVer) {
       try {
         uhBrowser = await pw2.chromium.launch({headless:true});
         const uhPage = await uhBrowser.newPage();
-        const uhHPath = 'file:///'+path.join(ROOT,'sequence-builder.html').replace(/\\/g,'/');
+        const uhHPath = 'http://localhost:' + PORT + '/sequence-builder.html';
         await uhPage.goto(uhHPath,{waitUntil:'domcontentloaded'});
         await uhPage.waitForFunction('typeof window.loadDemo === "function" && typeof window.render === "function"',{timeout:10000});
         let uhPass = 0, uhFail = 0;
@@ -618,7 +637,7 @@ if (req.method === 'GET' && urlPath === '/test-render') {
       try {
         browser = await pw.chromium.launch({headless: true});
         const page = await browser.newPage();
-        const htmlPath = 'file:///' + path.join(ROOT, 'sequence-builder.html').replace(/\\/g, '/');
+        const htmlPath = 'http://localhost:' + PORT + '/sequence-builder.html';
         await page.goto(htmlPath, {waitUntil: 'domcontentloaded'});
         // wait for app to initialise — loadDemo and render are the public API
         await page.waitForFunction('typeof window.loadDemo === "function" && typeof window.render === "function"', {timeout: 10000});

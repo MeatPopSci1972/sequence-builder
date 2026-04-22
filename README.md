@@ -3,7 +3,7 @@
 > A single-file, zero-dependency UML sequence diagram builder.  
 > Runs entirely in the browser. No build step. npm install only for Playwright render tests.
 
-**[Live demo](https://MeatPopSci1972.github.io/sequence-builder/sequence-builder.html)** &nbsp;|&nbsp; **[Download v0.9.107](https://github.com/MeatPopSci1972/sequence-builder/releases/tag/v0.9.107)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
+**[Live demo](https://MeatPopSci1972.github.io/sequence-builder/sequence-builder.html)** &nbsp;|&nbsp; **[Download v0.9.109](https://github.com/MeatPopSci1972/sequence-builder/releases/tag/v0.9.109)** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**
 
 ---
 

@@ -21,6 +21,19 @@ function freshStore() {
   return createStore()
 }
 
+// ── Demo fixture loader ──────────────────────────────────────────────────────
+// Replaces LOAD_DEMO dispatches — reads auth-flow.json and loads via LOAD_DIAGRAM.
+// _source:'demo' is passed so listeners that check p.source === 'demo' still fire.
+const _authFlowFixture = JSON.parse(
+  require('fs').readFileSync(require('path').join(__dirname, 'demo', 'auth-flow.json'), 'utf8')
+)
+function loadDemoFixture(store) {
+  store.dispatch({
+    type: 'LOAD_DIAGRAM',
+    payload: Object.assign(JSON.parse(JSON.stringify(_authFlowFixture)), { _source: 'demo' })
+  })
+}
+
 function assert(condition, message) {
   if (!condition) throw new Error(message || 'Assertion failed')
 }
@@ -1063,7 +1076,7 @@ function serializePlantUML(actors, messages, notes, fragments) {
 setGroup("end-to-end")
 test('e2e: LOAD_DEMO produces expected actor/message/fragment/note counts', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   const s = store.state
   assertEqual(s.actors.length, 4, '4 actors')
   assertEqual(s.messages.length, 6, '6 messages')
@@ -1073,7 +1086,7 @@ test('e2e: LOAD_DEMO produces expected actor/message/fragment/note counts', () =
 
 test('e2e: LOAD_DEMO actor labels are correct', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   const labels = store.state.actors.map(a => a.label)
   assert(labels.includes('User'), 'has User')
   assert(labels.includes('API Gateway'), 'has API Gateway')
@@ -1083,7 +1096,7 @@ test('e2e: LOAD_DEMO actor labels are correct', () => {
 
 test('e2e: LOAD_DEMO first message is POST /login sync right', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   const s = store.state
   const user = s.actors.find(a => a.label === 'User')
   const api = s.actors.find(a => a.label === 'API Gateway')
@@ -1098,7 +1111,7 @@ test('e2e: LOAD_DEMO first message is POST /login sync right', () => {
 // ── Step 2: Modify ───────────────────────────────────────
 test('e2e: add actor after demo load increases actor count', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   store.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Cache', type: 'actor-db' } })
   assertEqual(store.state.actors.length, 5, '5 actors after add')
   assert(
@@ -1109,7 +1122,7 @@ test('e2e: add actor after demo load increases actor count', () => {
 
 test('e2e: UPDATE_MESSAGE changes label on first message', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   const msgId = store.state.messages[0].id
   store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: msgId, label: 'POST /auth/login' } })
   assertEqual(store.state.messages[0].label, 'POST /auth/login', 'label updated')
@@ -1117,7 +1130,7 @@ test('e2e: UPDATE_MESSAGE changes label on first message', () => {
 
 test('e2e: MOVE_MESSAGE changes y position', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   const msgId = store.state.messages[0].id
   store.dispatch({ type: 'MOVE_MESSAGE', payload: { id: msgId, y: 999 } })
   assertEqual(store.state.messages[0].y, 999, 'y updated to 999')
@@ -1125,7 +1138,7 @@ test('e2e: MOVE_MESSAGE changes y position', () => {
 
 test('e2e: ADD_NOTE after demo adds to note count', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   store.dispatch({ type: 'ADD_NOTE', payload: { x: 10, y: 50, text: 'Security boundary' } })
   assertEqual(store.state.notes.length, 2, '2 notes')
   assert(
@@ -1137,7 +1150,7 @@ test('e2e: ADD_NOTE after demo adds to note count', () => {
 // ── Step 3: Snapshot as exported JSON ───────────────────
 test('e2e: state snapshot is serializable and round-trips through JSON', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   store.dispatch({
     type: 'UPDATE_MESSAGE',
     payload: { id: store.state.messages[0].id, label: 'POST /auth/login' }
@@ -1157,7 +1170,7 @@ test('e2e: state snapshot is serializable and round-trips through JSON', () => {
 // ── Step 4: Clear canvas ─────────────────────────────────
 test('e2e: CLEAR_DIAGRAM resets actors, messages, notes, fragments to empty', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   store.dispatch({ type: 'CLEAR_DIAGRAM' })
   const s = store.state
   assertEqual(s.actors.length, 0, 'actors empty')
@@ -1168,7 +1181,11 @@ test('e2e: CLEAR_DIAGRAM resets actors, messages, notes, fragments to empty', ()
 
 test('e2e: CLEAR_DIAGRAM is undoable — UNDO restores demo state', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
+  // LOAD_DIAGRAM clears the undo stack — we need at least one undoable action
+  // before CLEAR so UNDO has a snapshot to pop back to
+  store.dispatch({ type: 'ADD_ACTOR', payload: { label: '_sentinel' } })
+  store.dispatch({ type: 'UNDO' }) // undo the sentinel — back to clean demo state
   store.dispatch({ type: 'CLEAR_DIAGRAM' })
   store.dispatch({ type: 'UNDO' })
   assertEqual(store.state.actors.length, 4, 'actors restored after undo')
@@ -1178,7 +1195,7 @@ test('e2e: CLEAR_DIAGRAM is undoable — UNDO restores demo state', () => {
 // ── Step 5: Import (LOAD_DIAGRAM from snapshot) ──────────
 test('e2e: LOAD_DIAGRAM from exported snapshot restores full state', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   store.dispatch({
     type: 'UPDATE_MESSAGE',
     payload: { id: store.state.messages[0].id, label: 'POST /auth/login' }
@@ -1207,7 +1224,7 @@ test('e2e: LOAD_DIAGRAM from exported snapshot restores full state', () => {
 
 test('e2e: LOAD_DIAGRAM clears undo stack — UNDO after import is a no-op', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   const snapshot = JSON.parse(JSON.stringify(store.state))
   store.dispatch({ type: 'CLEAR_DIAGRAM' })
   store.dispatch({ type: 'LOAD_DIAGRAM', payload: { ...snapshot, _source: 'import' } })
@@ -1219,7 +1236,7 @@ test('e2e: LOAD_DIAGRAM clears undo stack — UNDO after import is a no-op', () 
 // ── Step 6: Validate serialized output ───────────────────
 test('e2e: PlantUML output contains all actor labels from demo', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   const { actors, messages, notes, fragments } = store.state
   const output = serializePlantUML(actors, messages, notes, fragments)
 
@@ -1233,7 +1250,7 @@ test('e2e: PlantUML output contains all actor labels from demo', () => {
 
 test('e2e: PlantUML output contains all message labels from demo', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   const { actors, messages, notes, fragments } = store.state
   const output = serializePlantUML(actors, messages, notes, fragments)
 
@@ -1247,7 +1264,7 @@ test('e2e: PlantUML output contains all message labels from demo', () => {
 
 test('e2e: PlantUML output reflects modified label after UPDATE_MESSAGE', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   const msgId = store.state.messages[0].id
   store.dispatch({ type: 'UPDATE_MESSAGE', payload: { id: msgId, label: 'POST /auth/login' } })
   const { actors, messages, notes, fragments } = store.state
@@ -1262,7 +1279,7 @@ test('e2e: PlantUML output reflects modified label after UPDATE_MESSAGE', () => 
 
 test('e2e: PlantUML output contains fragment keyword from demo', () => {
   const store = freshStore()
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
   const { actors, messages, notes, fragments } = store.state
   const output = serializePlantUML(actors, messages, notes, fragments)
 
@@ -1275,7 +1292,7 @@ test('e2e: full lifecycle — demo → modify → export → clear → import �
   const store = freshStore()
 
   // Load demo
-  store.dispatch({ type: 'LOAD_DEMO' })
+  loadDemoFixture(store)
 
   // Modify
   const msgId = store.state.messages[0].id
@@ -1731,23 +1748,23 @@ test('message label changes are undoable', () => {
   // Pins the store-level contract that autoFitOnLoad depends on.
   // fitToZoom() is DOM-bound; those checks live in manual QA.
 
-  test('LOAD_DEMO fires diagram:loaded', () => {
+  test('loadDemoFixture fires diagram:loaded', () => {
     const s = createStore()
     let fired = false
     s.on('diagram:loaded', () => {
       fired = true
     })
-    s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
-    assert(fired, 'LOAD_DEMO must emit diagram:loaded')
+    loadDemoFixture(s)
+    assert(fired, 'loadDemoFixture must emit diagram:loaded')
   })
 
-  test('LOAD_DEMO event carries source demo', () => {
+  test('loadDemoFixture event carries source demo', () => {
     const s = createStore()
     let src = 'none'
     s.on('diagram:loaded', p => {
       src = p.source
     })
-    s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
+    loadDemoFixture(s)
     assert(src === 'demo', 'expected demo, got: ' + src)
   })
 
@@ -1777,22 +1794,22 @@ test('message label changes are undoable', () => {
     assert(src === 'import', 'expected import, got: ' + src)
   })
 
-  test('LOAD_DEMO clears undo stack', () => {
+  test('loadDemoFixture clears undo stack', () => {
     const s = createStore()
     s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'X' } })
-    s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
-    assert(!s.canUndo, 'LOAD_DEMO must clear undo stack')
+    loadDemoFixture(s)
+    assert(!s.canUndo, 'loadDemoFixture must clear undo stack')
   })
 
-  test('LOAD_DEMO populates actors', () => {
+  test('loadDemoFixture populates actors', () => {
     const s = createStore()
-    s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
-    assert(s.state.actors.length > 0, 'LOAD_DEMO must populate actors')
+    loadDemoFixture(s)
+    assert(s.state.actors.length > 0, 'loadDemoFixture must populate actors')
   })
 
   test('LOAD_DIAGRAM restores actor count from snapshot', () => {
     const s = createStore()
-    s.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' }, meta: { undoable: false } })
+    loadDemoFixture(s)
     const snap = JSON.parse(JSON.stringify(s.state))
     s.dispatch({ type: 'ADD_ACTOR', payload: { label: 'Extra' } })
     s.dispatch({ type: 'LOAD_DIAGRAM', payload: Object.assign({}, snap) })
@@ -2312,15 +2329,16 @@ test('ADD_FRAGMENT id has frag_ prefix + 26-char ULID', function () {
   })(freshStore, assert)
 })
 
-test('LOAD_DEMO actor ids are 26-char ULIDs', function () {
-  ;(function (freshStore, assert) {
+test('demo actor ids use fixed human-readable format', function () {
+  ;(function (freshStore, assert, loadDemoFixture) {
     const store = freshStore()
-    const RE = /^[0-9A-Z]{26}$/
-    store.dispatch({ type: 'LOAD_DEMO', payload: { id: 'auth-flow' } })
+    loadDemoFixture(store)
+    // Demo JSON uses fixed IDs like actor_auth_user — not ULIDs by design
+    const RE = /^(actor|msg|note|frag)_[a-z][a-z0-9_-]+$/
     for (const actor of store.state.actors) {
-      assert(RE.test(actor.id), 'demo actor id should be ULID, got: ' + actor.id)
+      assert(RE.test(actor.id), 'demo actor id should match fixed-id format, got: ' + actor.id)
     }
-  })(freshStore, assert)
+  })(freshStore, assert, loadDemoFixture)
 })
 
 test('dispatch stamps meta.affectedId from payload.id', function () {

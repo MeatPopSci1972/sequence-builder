@@ -823,7 +823,7 @@
 
     <!-- Group 1: Brand -->
     <div class="tbtn-group">
-      <h1 aria-label="Sequence Builder" id="app-title" data-version="0.9.109">Sequence<span>Forge</span></h1><span id="app-version-badge" class="app-version-badge"></span>
+      <h1 aria-label="Sequence Builder" id="app-title" data-version="0.9.108">Sequence<span>Forge</span></h1><span id="app-version-badge" class="app-version-badge"></span>
     </div>
 
     <!-- Group 2: Create elements -->
@@ -1406,7 +1406,7 @@ document.getElementById('debug-verbose-toggle')?.addEventListener('click', () =>
 });
 
 // Single source of truth for release version
-const SF_VERSION = '0.9.109';
+const SF_VERSION = '0.9.108';
 // Sync data-version attribute from SF_VERSION — keeps HTML in step with the constant
 document.getElementById('app-title').dataset.version = SF_VERSION;
 
@@ -4558,8 +4558,7 @@ document.getElementById('btn-export').addEventListener('click', function(e) { e.
 document.getElementById('btn-export-png').addEventListener('click', function(e) { e.stopPropagation(); _closeIOMenus(); exportToPng(); });
 document.getElementById('btn-import').addEventListener('click', function(e) { e.stopPropagation(); _closeIOMenus(); document.getElementById('import-file-input').value=''; document.getElementById('import-file-input').click(); });
 document.getElementById('btn-import-uml').addEventListener('click', function(e) { e.stopPropagation(); _closeIOMenus(); _openUMLImportModal(); });
-// Demo menu rebuilt on open via _toggleDemoMenu → fetchDemoIndex (Issue #36)
-// Legacy SF_DEMOS store listener removed — no longer needed
+store.on('diagram:loaded', function() { if (window.SF_DEMOS) _buildDemoMenu(); });
 
 // ═══════════════════════════════════════════════════════
 //  ZOOM (WCAG 1.4.4 — Resize Text / Reflow)
@@ -5501,6 +5500,7 @@ function toast(msg) {
 // ═══════════════════════════════════════════════════════
 // ── File-based demo loader (Step 2 — Issue #36) ─────────────────────────────
 // SF_DEMO_FILES: null = not yet fetched, [] = fetch failed/empty, [...] = loaded
+// SF_DEMOS: legacy store-baked list — fallback when SF_DEMO_FILES is null
 window.SF_DEMO_FILES = null;
 
 function fetchDemoIndex() {
@@ -5555,10 +5555,10 @@ function loadDemo(id) {
 function _buildDemoMenu() {
   var menu = document.getElementById('demo-menu');
   if (!menu) return;
-  // Prefer file-based list; fall back to empty if not yet loaded
+  // Prefer file-based list; fall back to store-baked SF_DEMOS
   var demos = (window.SF_DEMO_FILES && window.SF_DEMO_FILES.length > 0)
     ? window.SF_DEMO_FILES
-    : [];
+    : (window.SF_DEMOS || []);
   if (demos.length === 0) {
     menu.innerHTML = '<li class="tbtn-demo-item tbtn-demo-empty" role="menuitem" style="color:var(--text3);cursor:default;font-style:italic">I looked in /demo/ and didn\'t find any demo files.</li>';
     return;

@@ -823,7 +823,7 @@
 
     <!-- Group 1: Brand -->
     <div class="tbtn-group">
-      <h1 aria-label="Sequence Builder" id="app-title" data-version="0.9.107">Sequence<span>Forge</span></h1><span id="app-version-badge" class="app-version-badge"></span>
+      <h1 aria-label="Sequence Builder" id="app-title" data-version="0.9.109">Sequence<span>Forge</span></h1><span id="app-version-badge" class="app-version-badge"></span>
     </div>
 
     <!-- Group 2: Create elements -->
@@ -1406,7 +1406,7 @@ document.getElementById('debug-verbose-toggle')?.addEventListener('click', () =>
 });
 
 // Single source of truth for release version
-const SF_VERSION = '0.9.107';
+const SF_VERSION = '0.9.109';
 // Sync data-version attribute from SF_VERSION — keeps HTML in step with the constant
 document.getElementById('app-title').dataset.version = SF_VERSION;
 
@@ -2468,303 +2468,6 @@ function createStore() {
       emit('diagram:loaded', { ...snapshot(), source: payload._source || 'import' })
     },
 
-    // ── DEMOS ── <<STORE_DEMOS_START>>
-    // Named demo diagrams — add entries here to populate the Demo dropdown.
-    // loadDemo(id?) dispatches LOAD_DEMO with the matching entry.
-    // No id = first entry (index 0). Exposed as window.SF_DEMOS for canary.
-    LOAD_DEMO({ payload: { id } = {} } = {}) {
-      const DEMOS = [
-        // ── Demo 0: Auth Flow ─────────────────────────────────────────────
-        {
-          id: 'auth-flow',
-          label: 'Auth Flow',
-          build(tid) {
-            const user = { id: tid(), x: 40, label: 'User', type: 'actor-person' }
-            const api = { id: tid(), x: 210, label: 'API Gateway', type: 'actor-system' }
-            const auth = { id: tid(), x: 380, label: 'Auth Service', type: 'actor-system' }
-            const db = { id: tid(), x: 550, label: 'Database', type: 'actor-db' }
-            return {
-              actors: [user, api, auth, db],
-              messages: [
-                {
-                  id: tid(),
-                  fromId: user.id,
-                  toId: api.id,
-                  label: 'POST /login',
-                  kind: 'sync',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: api.id,
-                  toId: auth.id,
-                  label: 'validateCredentials',
-                  kind: 'sync',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: auth.id,
-                  toId: db.id,
-                  label: 'SELECT user WHERE…',
-                  kind: 'sync',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: db.id,
-                  toId: auth.id,
-                  label: 'user record',
-                  kind: 'return',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: auth.id,
-                  toId: api.id,
-                  label: 'JWT token',
-                  kind: 'return',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: api.id,
-                  toId: user.id,
-                  label: '200 OK + token',
-                  kind: 'return',
-                  direction: 'right',
-                  y: 0
-                }
-              ],
-              fragments: [
-                {
-                  id: tid(),
-                  x: 160,
-                  y: 170,
-                  w: 340,
-                  h: 175,
-                  kind: 'frag-alt',
-                  cond: 'valid credentials'
-                }
-              ],
-              notes: [{ id: tid(), x: 20, y: 0, text: 'Auth flow' }]
-            }
-          }
-        },
-        // ── Demo 1: SCADA Control Flow ────────────────────────────────────
-        {
-          id: 'scada-control',
-          label: 'SCADA: Control Flow',
-          build(tid) {
-            const hmi = { id: tid(), x: 40, label: 'HMI', type: 'actor-person' }
-            const plc = { id: tid(), x: 210, label: 'PLC', type: 'actor-system' }
-            const rtu = { id: tid(), x: 380, label: 'RTU', type: 'actor-system' }
-            const hist = { id: tid(), x: 550, label: 'Historian', type: 'actor-db' }
-            return {
-              actors: [hmi, plc, rtu, hist],
-              messages: [
-                {
-                  id: tid(),
-                  fromId: hmi.id,
-                  toId: plc.id,
-                  label: 'Poll cycle (1 s)',
-                  kind: 'sync',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: plc.id,
-                  toId: rtu.id,
-                  label: 'Read registers',
-                  kind: 'sync',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: rtu.id,
-                  toId: plc.id,
-                  label: 'Field telemetry',
-                  kind: 'return',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: plc.id,
-                  toId: rtu.id,
-                  label: 'Setpoint command',
-                  kind: 'sync',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: rtu.id,
-                  toId: plc.id,
-                  label: 'Acknowledge',
-                  kind: 'return',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: plc.id,
-                  toId: hist.id,
-                  label: 'Log values',
-                  kind: 'async',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: plc.id,
-                  toId: hmi.id,
-                  label: 'Status update',
-                  kind: 'return',
-                  direction: 'right',
-                  y: 0
-                }
-              ],
-              fragments: [
-                {
-                  id: tid(),
-                  x: 160,
-                  y: 185,
-                  w: 340,
-                  h: 140,
-                  kind: 'frag-loop',
-                  cond: 'scan active'
-                }
-              ],
-              notes: [{ id: tid(), x: 20, y: 0, text: 'SCADA control loop' }]
-            }
-          }
-        },
-        // ── Demo 2: CyberSecurity Zone Analysis ───────────────────────────
-        {
-          id: 'cybersec-zones',
-          label: 'CyberSecurity: Zone Analysis',
-          build(tid) {
-            const corp = { id: tid(), x: 40, label: 'Corporate LAN', type: 'actor-system' }
-            const fw = { id: tid(), x: 200, label: 'Firewall', type: 'actor-system' }
-            const jump = { id: tid(), x: 360, label: 'Jump Server', type: 'actor-system' }
-            const ot = { id: tid(), x: 520, label: 'OT Network', type: 'actor-system' }
-            const hist = { id: tid(), x: 680, label: 'Historian', type: 'actor-db' }
-            return {
-              actors: [corp, fw, jump, ot, hist],
-              messages: [
-                {
-                  id: tid(),
-                  fromId: corp.id,
-                  toId: fw.id,
-                  label: 'Remote access request',
-                  kind: 'sync',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: fw.id,
-                  toId: jump.id,
-                  label: 'Allow (port 3389)',
-                  kind: 'sync',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: jump.id,
-                  toId: ot.id,
-                  label: 'Authenticated session',
-                  kind: 'sync',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: ot.id,
-                  toId: hist.id,
-                  label: 'Process data write',
-                  kind: 'async',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: hist.id,
-                  toId: corp.id,
-                  label: 'Replication (no DPI)',
-                  kind: 'async',
-                  direction: 'right',
-                  y: 0
-                },
-                {
-                  id: tid(),
-                  fromId: ot.id,
-                  toId: fw.id,
-                  label: 'Audit log egress',
-                  kind: 'async',
-                  direction: 'right',
-                  y: 0
-                }
-              ],
-              fragments: [
-                {
-                  id: tid(),
-                  x: 330,
-                  y: 80,
-                  w: 390,
-                  h: 230,
-                  kind: 'frag-alt',
-                  cond: 'Purdue L3 / L2 boundary'
-                }
-              ],
-              notes: [
-                {
-                  id: tid(),
-                  x: 20,
-                  y: 0,
-                  text: 'Unmonitored replication path — no DPI at historian egress'
-                }
-              ]
-            }
-          }
-        }
-      ]
-      // <<STORE_DEMOS_END>>
-
-      _snapshots.length = 0
-      _redoStack.length = 0
-
-      const demo = DEMOS.find(d => d.id === id) || DEMOS[0]
-      // tid uses raw ulid() — demos predate typed generators, build() is type-agnostic
-      const tid = () => ulid()
-
-      const built = demo.build(tid)
-      state.actors = built.actors
-      state.messages = built.messages
-      state.fragments = built.fragments || []
-      state.notes = built.notes || []
-
-      // Expose demo list for canary + dropdown rendering
-      if (typeof window !== 'undefined') {
-        window.SF_DEMOS = DEMOS.map(d => ({ id: d.id, label: d.label }))
-      }
-
-      emit('diagram:loaded', {
-        ...snapshot(),
-        source: 'demo',
-        demoId: demo.id,
-        demoLabel: demo.label
-      })
-    }
   }
 
   // ── dispatch ─────────────────────────────────────────────
@@ -2815,14 +2518,6 @@ function createStore() {
   }
 
   // ── Public interface ─────────────────────────────────────
-  // Expose demo list at startup — dropdown populates before first LOAD_DEMO
-  if (typeof window !== 'undefined') {
-    window.SF_DEMOS = [
-      { id: 'auth-flow', label: 'Auth Flow' },
-      { id: 'scada-control', label: 'SCADA: Control Flow' },
-      { id: 'cybersec-zones', label: 'CyberSecurity: Zone Analysis' }
-    ]
-  }
   function getActorById(id) {
     return state.actors.find(a => a.id === id)
   }
@@ -4863,7 +4558,8 @@ document.getElementById('btn-export').addEventListener('click', function(e) { e.
 document.getElementById('btn-export-png').addEventListener('click', function(e) { e.stopPropagation(); _closeIOMenus(); exportToPng(); });
 document.getElementById('btn-import').addEventListener('click', function(e) { e.stopPropagation(); _closeIOMenus(); document.getElementById('import-file-input').value=''; document.getElementById('import-file-input').click(); });
 document.getElementById('btn-import-uml').addEventListener('click', function(e) { e.stopPropagation(); _closeIOMenus(); _openUMLImportModal(); });
-store.on('diagram:loaded', function() { if (window.SF_DEMOS) _buildDemoMenu(); });
+// Demo menu rebuilt on open via _toggleDemoMenu → fetchDemoIndex (Issue #36)
+// Legacy SF_DEMOS store listener removed — no longer needed
 
 // ═══════════════════════════════════════════════════════
 //  ZOOM (WCAG 1.4.4 — Resize Text / Reflow)
@@ -5805,7 +5501,6 @@ function toast(msg) {
 // ═══════════════════════════════════════════════════════
 // ── File-based demo loader (Step 2 — Issue #36) ─────────────────────────────
 // SF_DEMO_FILES: null = not yet fetched, [] = fetch failed/empty, [...] = loaded
-// SF_DEMOS: legacy store-baked list — fallback when SF_DEMO_FILES is null
 window.SF_DEMO_FILES = null;
 
 function fetchDemoIndex() {
@@ -5860,10 +5555,10 @@ function loadDemo(id) {
 function _buildDemoMenu() {
   var menu = document.getElementById('demo-menu');
   if (!menu) return;
-  // Prefer file-based list; fall back to store-baked SF_DEMOS
+  // Prefer file-based list; fall back to empty if not yet loaded
   var demos = (window.SF_DEMO_FILES && window.SF_DEMO_FILES.length > 0)
     ? window.SF_DEMO_FILES
-    : (window.SF_DEMOS || []);
+    : [];
   if (demos.length === 0) {
     menu.innerHTML = '<li class="tbtn-demo-item tbtn-demo-empty" role="menuitem" style="color:var(--text3);cursor:default;font-style:italic">I looked in /demo/ and didn\'t find any demo files.</li>';
     return;
