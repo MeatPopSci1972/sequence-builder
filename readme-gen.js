@@ -15,8 +15,8 @@ function generateReadme(ROOT) {
   const htmlHead  = fs.readFileSync(path.join(ROOT, 'sequence-builder.html'), 'utf8');
   const verMatch  = htmlHead.match(/const SF_VERSION = '([\d.]+)'/);
   const version   = verMatch ? verMatch[1] : '0.0.0';
-  const demoUrl   = 'https://MeatPopSci1972.github.io/sequence-builder/releases/v' + version + '/sequence-builder.html';
-  const relUrl    = 'https://github.com/MeatPopSci1972/sequence-builder/releases';
+  const demoUrl   = 'https://MeatPopSci1972.github.io/sequence-builder/sequence-builder.html';
+  const relUrl    = 'https://github.com/MeatPopSci1972/sequence-builder/releases/tag/v' + version;
 
   // 2. Repo file list from git — exclude generated/archive/dev dirs
   const EXCLUDE = ['releases/', 'docs/', 'test-snapshots/', 'dev/', '.'];
@@ -58,7 +58,7 @@ function generateReadme(ROOT) {
     '> A single-file, zero-dependency UML sequence diagram builder.  ',
     '> Runs entirely in the browser. No build step. npm install only for Playwright render tests.',
     '',
-    '**[Live demo \u2014 v' + version + '](' + demoUrl + ')** &nbsp;|&nbsp; **[All releases](' + relUrl + ')**',
+    '**[Live demo](' + demoUrl + ')** &nbsp;|&nbsp; **[Download v' + version + '](' + relUrl + ')** &nbsp;|&nbsp; **[All releases](https://github.com/MeatPopSci1972/sequence-builder/releases)**',
     '',
     '---',
     '',

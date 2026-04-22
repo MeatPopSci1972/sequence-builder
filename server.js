@@ -343,9 +343,8 @@ function writeVersionToHTML(newVer) {
       addLog('POST /snapshot','v'+version);
       try {
         const rm = fs.readFileSync(path.join(ROOT,'README.md'),'utf8');
-        const tgt = 'releases/v'+version+'/sequence-builder.html';
-        if(rm.indexOf(tgt)===-1) addLog('POST /snapshot','WARN: README missing link to '+version);
-        if(rm.indexOf('github.io/sequence-builder/)')!==-1) addLog('POST /snapshot','WARN: README contains loop link');
+        const stableUrl = 'https://MeatPopSci1972.github.io/sequence-builder/sequence-builder.html';
+        if(rm.indexOf(stableUrl)===-1) addLog('POST /snapshot','WARN: README missing stable live demo link');
       } catch(e){ addLog('POST /snapshot','WARN: README unreadable'); }
     }); return;
   }
@@ -364,7 +363,7 @@ function writeVersionToHTML(newVer) {
   if (req.method === 'GET' && urlPath === '/check-pages') {
     const version = urlObj.searchParams.get('v')||'0.0.0';
     const t0 = Date.now();
-    const pageUrl = 'https://MeatPopSci1972.github.io/sequence-builder/releases/v'+version+'/sequence-builder.html';
+    const pageUrl = 'https://MeatPopSci1972.github.io/sequence-builder/sequence-builder.html';
     const https = require('https');
     https.get(pageUrl, (r) => {
       const ok = r.statusCode === 200;
@@ -381,15 +380,17 @@ function writeVersionToHTML(newVer) {
   }
 
   if (req.method === 'GET' && urlPath === '/validate-readme') {
-    const version = urlObj.searchParams.get('v')||'0.0.0';
     try {
       const rm = fs.readFileSync(path.join(ROOT,'README.md'),'utf8');
-      const target = 'releases/v'+version+'/sequence-builder.html';
-      const hasLink = rm.indexOf(target)!==-1;
-      const hasLoop = rm.indexOf('github.io/sequence-builder/)')!==-1;
-      const hasLabel = rm.indexOf('v'+version)!==-1;
+      const stableUrl = 'MeatPopSci1972.github.io/sequence-builder/sequence-builder.html';
+      const releasesUrl = 'github.com/MeatPopSci1972/sequence-builder/releases';
+      const version = urlObj.searchParams.get('v')||'0.0.0';
+      const hasStableLink = rm.indexOf(stableUrl) !== -1;
+      const hasReleasesLink = rm.indexOf(releasesUrl) !== -1;
+      const hasVersion = rm.indexOf('v' + version) !== -1;
+      const ok = hasStableLink && hasReleasesLink && hasVersion;
       res.writeHead(200,{'Content-Type':'application/json'});
-      res.end(JSON.stringify({ok:hasLink&&!hasLoop&&hasLabel,hasLink,hasLoop,hasLabel,target,version}));
+      res.end(JSON.stringify({ok,hasStableLink,hasReleasesLink,hasVersion,version}));
     } catch(e) { res.writeHead(500); res.end(JSON.stringify({ok:false,error:e.message})); }
     return;
   }
