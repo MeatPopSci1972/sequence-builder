@@ -173,6 +173,23 @@ function run() {
     assert(canonicalize(a) !== canonicalize(b), 'inputs with different content should not be equal')
   })
 
+  // Follow-up B: namespace re-declaration known limitation (v2).
+  // Locks in current behavior so #52 consumers are not surprised.
+  // xlink: namespace on <use> — canonical output is stable; no redundant re-declaration in this case.
+  test('Known limitation: xlink namespace on use element canonicalizes without redundant re-declaration', () => {
+    const parts = [
+      '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">',
+      '<defs><circle id="c" cx="10" cy="10" r="5"/></defs>',
+      '<use xlink:href="#c" x="20" y="20"/>',
+      '</svg>'
+    ]
+    const out = canonicalize(parts.join(''))
+    // Behavior frozen: xlink:href attribute is preserved; no duplicate xmlns:xlink on child
+    assert(out.indexOf('xlink:href="#c"') !== -1, 'xlink:href should be preserved: ' + out)
+    const xlinkCount = out.split('xmlns:xlink').length - 1
+    assert(xlinkCount === 1, 'xmlns:xlink should appear exactly once (on root), got ' + xlinkCount + ': ' + out)
+  })
+
   // Amendment 4: known empty canonical form frozen before implementation.
   // This exact byte string is the sentinel that future consumers (render gate) reject.
   test('Integration: empty SVG has known canonical form', () => {

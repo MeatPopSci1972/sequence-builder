@@ -7,6 +7,14 @@
 //   Known edge case: Math.round(1.005 * 100)/100 is unreliable in some JS engines; toFixed(2) is stable.
 //
 // No consumers in this issue. Wired into render gate (#52) and Suite 16 comparisons separately.
+//
+// Parser note: @xmldom/xmldom is lenient — unclosed tags, malformed attributes, and most
+//   ill-formed inputs are silently recovered. The only reliable malformed-input signal is
+//   root === null (no tags at all). parsererror elements are checked but rarely fired.
+//
+// Known limitation (v2): namespace re-declaration on child elements (e.g. xlink: prefixes
+//   on <use xlink:href>) may produce redundant xmlns: attributes in canonical output.
+//   Current behavior is locked in by test. See filed v2 issue.
 
 'use strict'
 
