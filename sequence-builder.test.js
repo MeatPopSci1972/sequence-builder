@@ -2740,4 +2740,14 @@ test('SF_VERSION — no Sequence Builder v\\d version reads in readme-gen.js', f
 })
 
 
+// ── Canonicalize suite (Issue #51) ──────────────────────────────────────
+;(function(){
+  const canonSuite = require('./sequence-builder.canonicalize.test.js')
+  canonSuite.run().forEach(function(r){
+    test(r.name, function(){
+      if (!r.ok) throw new Error(r.error || 'canonicalize test failed')
+    })
+  })
+})()
+
 module.exports = _tests
