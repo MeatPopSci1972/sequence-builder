@@ -202,6 +202,14 @@ When an AI instance is deep in a problem loop (patch, break, patch again):
 ### SF_VERSION — do not rename
 SF_VERSION is the JavaScript constant name used throughout the codebase (sequence-builder.html, server.js, sf-readme-gen.js, sequence-builder.test.js). Renaming it requires an atomic sweep of all four files plus the test suite. Do not rename opportunistically — open a dedicated chore issue with the full blast radius documented first.
 
+## TEST-RENDER
+
+### MIN_LAYER_BYTES sanity guard
+
+- `MIN_LAYER_BYTES = 100` (defined in `server.js`).
+- Protects against: zero-byte snapshot files and degenerate Playwright captures (v0.9.109 false-pass regression).
+- Reference: Issue #62.
+
 ## VERSION
 - Current: 0.9.109
 - Bump pattern: html.split('0.9.109').join('0.9.110')

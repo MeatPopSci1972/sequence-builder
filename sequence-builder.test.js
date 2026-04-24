@@ -1,4 +1,4 @@
-// Sequence Builder — Store Contract Tests
+﻿// Sequence Builder — Store Contract Tests
 // Two-phase runner: test() registers, runAll() executes once at end.
 // Add new test() calls anywhere above runAll(). Count is always correct.
 'use strict'
@@ -2749,5 +2749,14 @@ test('SF_VERSION — no Sequence Builder v\\d version reads in readme-gen.js', f
     })
   })
 })()
+
+// ── Suite 16: compareLayer degenerate-snapshot guard (Issue #62) ──────────────
+test('compareLayer — degenerate snapshot triggers correct error', function() {
+  const { compareLayer } = require('./server.js')
+  const result = compareLayer('', 'some actual content with enough bytes to pass the floor check here ok', true)
+  assert(result.passed === false, 'expected passed:false for zero-byte snapshot')
+  const pattern = /^degenerate snapshot: \d+ bytes, expected >= 100; run with \?update=1 to re-seed$/
+  assert(pattern.test(result.error), 'error message did not match expected pattern, got: ' + result.error)
+})
 
 module.exports = _tests

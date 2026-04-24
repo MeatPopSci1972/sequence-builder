@@ -10,6 +10,9 @@ const ROOT = path.resolve(__dirname);
 const PORT = 3799;
 const MIME = { '.html':'text/html','.js':'text/javascript','.json':'application/json','.md':'text/plain','.css':'text/css' };
 const LOG_BUFFER_DEFAULT = 100;
+// Minimum byte floor for a real SVG layer capture. See Issue #62.
+// Smallest real layer (notes, cybersec-zones) ~400 bytes. 100 is conservative.
+const MIN_LAYER_BYTES = 100;
 let logBuffer = [];
 let logHtmlMtime = 0;
 
@@ -105,6 +108,41 @@ function renderReport(result, ms) {
   const title = 'Sequence Builder — Test Results';
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+title+'</title><style>body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:20px}h1{color:#00ff9d}.pass{color:#3fb950}.fail{color:#f85149}pre{white-space:pre-wrap}</style></head><body><h1>'+title+'</h1><p>Ran at '+new Date().toLocaleTimeString()+' <a href="/test" style="color:#00ff9d">↺ Re-run</a></p><p class="'+(allPass?'pass':'fail')+'">'+(allPass?'✓ ALL PASS':'✗ FAILURES')+'</p><p>'+passed+' passed | '+failed+' failed | '+(parseInt(passed)+parseInt(failed))+' total</p><pre>'+raw+'</pre></body></html>';
 }
+// normalizeIds: strips ULID suffixes from SVG innerHTML before snapshot comparison.
+// ULIDs are non-deterministic per-run; structure is what matters, not identity.
+// Replaces actor_XXXX, msg_XXXX, note_XXXX, frag_XXXX with stable placeholders.
+function normalizeIds(html) {
+  return html
+    // prefixed typed IDs: actor_XXXX, msg_XXXX, note_XXXX, frag_XXXX
+    .replace(/actor_[0-9A-Z]{26}/g, 'actor_ID')
+    .replace(/msg_[0-9A-Z]{26}/g,   'msg_ID')
+    .replace(/note_[0-9A-Z]{26}/g,  'note_ID')
+    .replace(/frag_[0-9A-Z]{26}/g,  'frag_ID')
+    // bare ULIDs in data-id attributes (used by LOAD_DEMO tid())
+    .replace(/data-id="[0-9A-Z]{26}"/g, 'data-id="ULID"');
+}
+
+// compareLayer: pure compare logic extracted for testability (Issue #62 / Suite 16).
+// Returns {passed, error?, snapshotLength?, actualLength?, length?}.
+// Called by /test-render compare path; also directly by sequence-builder.test.js Suite 16.
+function compareLayer(snapshot, actual, snapshotExists) {
+  if (snapshotExists && snapshot.length < MIN_LAYER_BYTES) {
+    const err = `degenerate snapshot: ${snapshot.length} bytes, expected >= ${MIN_LAYER_BYTES}; run with ?update=1 to re-seed`;
+    return { passed: false, error: err, snapshotLength: snapshot.length };
+  }
+  if (!actual || actual.length < MIN_LAYER_BYTES) {
+    const err = `degenerate captured content: ${actual ? actual.length : 0} bytes, expected >= ${MIN_LAYER_BYTES}; Playwright may have captured before demo loaded`;
+    return { passed: false, error: err, actualLength: actual ? actual.length : 0 };
+  }
+  if (!snapshotExists) {
+    return { passed: false, error: 'no snapshot ' + String.fromCharCode(8212) + ' run with ?update=1 first' };
+  }
+  if (normalizeIds(actual) === normalizeIds(snapshot)) {
+    return { passed: true, length: snapshot.length };
+  }
+  return { passed: false, snapshotLength: snapshot.length, actualLength: actual.length };
+}
+
 const server = http.createServer(function(req, res) {
   const urlObj = new URL(req.url, 'http://localhost:' + PORT);
   const urlPath = urlObj.pathname;
@@ -607,20 +645,6 @@ function writeVersionToHTML(newVer) {
   });
   return;
 }
-// normalizeIds: strips ULID suffixes from SVG innerHTML before snapshot comparison.
-// ULIDs are non-deterministic per-run; structure is what matters, not identity.
-// Replaces actor_XXXX, msg_XXXX, note_XXXX, frag_XXXX with stable placeholders.
-function normalizeIds(html) {
-  return html
-    // prefixed typed IDs: actor_XXXX, msg_XXXX, note_XXXX, frag_XXXX
-    .replace(/actor_[0-9A-Z]{26}/g, 'actor_ID')
-    .replace(/msg_[0-9A-Z]{26}/g,   'msg_ID')
-    .replace(/note_[0-9A-Z]{26}/g,  'note_ID')
-    .replace(/frag_[0-9A-Z]{26}/g,  'frag_ID')
-    // bare ULIDs in data-id attributes (used by LOAD_DEMO tid())
-    .replace(/data-id="[0-9A-Z]{26}"/g, 'data-id="ULID"');
-}
-
 if (req.method === 'GET' && urlPath === '/test-render') {
     const t0 = Date.now();
     const update = urlObj.searchParams.get('update') === '1';
@@ -641,22 +665,31 @@ if (req.method === 'GET' && urlPath === '/test-render') {
         const page = await browser.newPage();
         const htmlPath = 'http://localhost:' + PORT + '/sequence-builder.html';
         await page.goto(htmlPath, {waitUntil: 'domcontentloaded'});
-        // wait for app to initialise — loadDemo and render are the public API
-        await page.waitForFunction('typeof window.loadDemo === "function" && typeof window.render === "function"', {timeout: 10000});
+        // wait for app functions to exist, then seed SF_DEMO_FILES (lazy-loaded; not auto-fetched at boot)
+        await page.waitForFunction('typeof window.loadDemo === "function"', {timeout: 10000});
+        await page.evaluate(async function() {
+          var r = await fetch('demo/index.json');
+          var data = await r.json();
+          window.SF_DEMO_FILES = Array.isArray(data.demos) ? data.demos : [];
+        });
         if (update) {
           let wrote = 0;
           for (const demo of DEMOS) {
             await page.evaluate(function(d) {
+              var al = document.getElementById('actors-layer'); if (al) al.innerHTML = '';
               window.loadDemo(d);
-              window.render();
             }, demo);
-            await page.waitForTimeout(100);
+            await page.waitForFunction(function() { var el = document.getElementById('actors-layer'); return el && el.innerHTML.length > 0; }, { timeout: 5000 });
             for (const layer of LAYERS) {
               const html = await page.evaluate(function(id) {
                 var el = document.getElementById(id);
                 return el ? el.innerHTML : '';
               }, layer);
               const snapFile = path.join(snapshotDir, demo + '--' + layer + '.html');
+              if (!html || html.length < MIN_LAYER_BYTES) {
+                addLog('GET /test-render?update=1', `seed: skip ${demo}/${layer}: captured ${html?.length ?? 0} bytes (min ${MIN_LAYER_BYTES})`);
+                continue;
+              }
               fs.writeFileSync(snapFile, normalizeIds(html), 'utf8');
               wrote++;
             }
@@ -671,10 +704,10 @@ if (req.method === 'GET' && urlPath === '/test-render') {
           let totalPassed = 0, totalFailed = 0;
           for (const demo of DEMOS) {
             await page.evaluate(function(d) {
+              var al = document.getElementById('actors-layer'); if (al) al.innerHTML = '';
               window.loadDemo(d);
-              window.render();
             }, demo);
-            await page.waitForTimeout(100);
+            await page.waitForFunction(function() { var el = document.getElementById('actors-layer'); return el && el.innerHTML.length > 0; }, { timeout: 5000 });
             const demoResult = {demo, passed: true, layers: {}};
             for (const layer of LAYERS) {
               const actual = await page.evaluate(function(id) {
@@ -685,18 +718,11 @@ if (req.method === 'GET' && urlPath === '/test-render') {
               let snapshotExists = false;
               let snapshot = '';
               try { snapshot = fs.readFileSync(snapFile, 'utf8'); snapshotExists = true; } catch(e) {}
-              if (!snapshotExists) {
-                demoResult.layers[layer] = {passed: false, error: 'no snapshot — run with ?update=1 first'};
-                demoResult.passed = false;
-                totalFailed++;
-              } else if (normalizeIds(actual) === normalizeIds(snapshot)) {
-                demoResult.layers[layer] = {passed: true, length: snapshot.length};
-                totalPassed++;
-              } else {
-                demoResult.layers[layer] = {passed: false, snapshotLength: snapshot.length, actualLength: actual.length};
-                demoResult.passed = false;
-                totalFailed++;
-              }
+              const layerResult = compareLayer(snapshot, actual, snapshotExists);
+              if (!layerResult.passed) addLog('GET /test-render', `fail ${demo}/${layer}: ${layerResult.error || 'mismatch'}`);
+              demoResult.layers[layer] = layerResult;
+              if (layerResult.passed) { totalPassed++; } else { demoResult.passed = false; totalFailed++; }
+              if (layerResult.error && (layerResult.snapshotLength !== undefined || layerResult.actualLength !== undefined)) continue;
             }
             results.push(demoResult);
           }
@@ -747,4 +773,9 @@ if (req.method === 'GET' && urlPath === '/test-render') {
   res.writeHead(405); res.end('Method not allowed');
 });
 
-server.listen(PORT, () => { console.log('server v5 listening on port '+PORT); });
+if (require.main === module) {
+  server.listen(PORT, () => { console.log('server v5 listening on port '+PORT); });
+} else {
+  // Exported for testing (Issue #62 / Suite 16)
+  module.exports = { compareLayer, MIN_LAYER_BYTES };
+}
